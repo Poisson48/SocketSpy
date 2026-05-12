@@ -1,5 +1,6 @@
 #pragma once
 #include <QWidget>
+#include <QComboBox>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QCheckBox>
@@ -14,6 +15,10 @@ class TransmitPanel : public QWidget {
 public:
     explicit TransmitPanel(QWidget* parent = nullptr);
 
+public slots:
+    void setCurrentIface(const QString& iface);
+    void refreshIfaces();
+
 private slots:
     void onSend();
 
@@ -21,7 +26,7 @@ private:
     void setupUi();
     bool validate(QString& errorMsg) const;
 
-    QLineEdit*   m_iface{nullptr};
+    QComboBox*   m_iface{nullptr};
     QLineEdit*   m_id{nullptr};
     QSpinBox*    m_dlc{nullptr};
     QLineEdit*   m_data{nullptr};

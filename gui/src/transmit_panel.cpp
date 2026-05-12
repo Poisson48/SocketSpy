@@ -1,8 +1,10 @@
 #include "transmit_panel.h"
+#include "iface_detector.h"
 #include "cancore.h"
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QPushButton>
 #include <cerrno>
 #include <cstring>
 
@@ -15,7 +17,19 @@ TransmitPanel::TransmitPanel(QWidget* parent) : QWidget(parent) {
 }
 
 void TransmitPanel::setupUi() {
-    m_iface    = new QLineEdit("vcan0", this);
+    m_iface    = new QComboBox(this);
+    m_iface->addItems(IfaceDetector::scanCanIfaces());
+    m_iface->setMinimumWidth(120);
+
+    auto* refreshBtn = new QPushButton("↺", this);
+    refreshBtn->setFixedWidth(28);
+    refreshBtn->setToolTip("Rafraîchir la liste des interfaces");
+    connect(refreshBtn, &QPushButton::clicked, this, &TransmitPanel::refreshIfaces);
+
+    auto* ifaceRow = new QHBoxLayout;
+    ifaceRow->addWidget(m_iface);
+    ifaceRow->addWidget(refreshBtn);
+
     m_id       = new QLineEdit("000", this);
     m_dlc      = new QSpinBox(this);
     m_dlc->setRange(0, 8);
@@ -26,7 +40,7 @@ void TransmitPanel::setupUi() {
     m_status   = new QLabel(this);
 
     auto* form = new QFormLayout;
-    form->addRow("Interface:", m_iface);
+    form->addRow("Interface:", ifaceRow);
     form->addRow("ID (hex):", m_id);
     form->addRow("DLC:", m_dlc);
     form->addRow("Data (hex bytes):", m_data);
@@ -45,6 +59,22 @@ void TransmitPanel::setupUi() {
     connect(m_send, &QPushButton::clicked, this, &TransmitPanel::onSend);
 }
 
+void TransmitPanel::setCurrentIface(const QString& iface) {
+    int idx = m_iface->findText(iface);
+    if (idx >= 0) { m_iface->setCurrentIndex(idx); return; }
+    m_iface->addItem(iface);
+    m_iface->setCurrentText(iface);
+}
+
+void TransmitPanel::refreshIfaces() {
+    const QString current = m_iface->currentText();
+    m_iface->blockSignals(true);
+    m_iface->clear();
+    m_iface->addItems(IfaceDetector::scanCanIfaces());
+    m_iface->blockSignals(false);
+    setCurrentIface(current);
+}
+
 bool TransmitPanel::validate(QString& err) const {
     bool ok = false;
     uint32_t maxId = m_extended->isChecked() ? 0x1FFFFFFFU : 0x7FFU;
@@ -55,22 +85,16 @@ bool TransmitPanel::validate(QString& err) const {
             : "ID must be 0..0x7FF for standard frames";
         return false;
     }
-    int dlc = m_dlc->value();
-    if (dlc < 0 || dlc > 8) { err = "DLC must be 0..8"; return false; }
-
-    // Validate hex data fields
     if (!m_data->text().trimmed().isEmpty()) {
-        QStringList tokens = m_data->text().trimmed().split(
-            ' ', Qt::SkipEmptyParts);
-        if (tokens.size() > dlc) {
-            err = QString("Data has %1 bytes but DLC is %2")
-                      .arg(tokens.size()).arg(dlc);
+        QStringList tokens = m_data->text().trimmed().split(' ', Qt::SkipEmptyParts);
+        if (tokens.size() > m_dlc->value()) {
+            err = QString("Data has %1 bytes but DLC is %2").arg(tokens.size()).arg(m_dlc->value());
             return false;
         }
         for (const auto& t : tokens) {
             if (t.length() > 2) { err = "Each data byte is max 2 hex digits"; return false; }
             t.toUInt(&ok, 16);
-            if (!ok) { err = QString("Invalid hex byte: %1").arg(t); return false; }
+            if (!ok) { err = "Invalid hex byte: " + t; return false; }
         }
     }
     return true;
@@ -78,36 +102,25 @@ bool TransmitPanel::validate(QString& err) const {
 
 void TransmitPanel::onSend() {
     QString err;
-    if (!validate(err)) {
-        m_status->setText("<font color='red'>" + err + "</font>");
-        return;
-    }
+    if (!validate(err)) { m_status->setText("<font color='red'>" + err + "</font>"); return; }
 
-    IfaceHandle h = can_open(m_iface->text().toStdString());
+    IfaceHandle h = can_open(m_iface->currentText().toStdString());
     if (!h.valid()) {
-        m_status->setText(
-            QString("<font color='red'>can_open: %1</font>").arg(strerror(errno)));
+        m_status->setText(QString("<font color='red'>can_open: %1</font>").arg(strerror(errno)));
         return;
     }
 
     CanFrame f{};
     f.id  = m_id->text().toUInt(nullptr, 16);
     f.dlc = static_cast<uint8_t>(m_dlc->value());
-    if (m_extended->isChecked())
-        f.flags = 0; // extended bit is implicit from id > 0x7FF in can_send
-
     QStringList tokens = m_data->text().trimmed().split(' ', Qt::SkipEmptyParts);
     for (int i = 0; i < tokens.size() && i < 8; ++i)
         f.data[i] = static_cast<uint8_t>(tokens[i].toUInt(nullptr, 16));
 
     bool ok = can_send(h, f);
     can_close(h);
-
-    if (ok)
-        m_status->setText("<font color='green'>OK</font>");
-    else
-        m_status->setText(
-            QString("<font color='red'>send failed: %1</font>").arg(strerror(errno)));
+    m_status->setText(ok ? "<font color='green'>OK</font>"
+                         : QString("<font color='red'>send failed: %1</font>").arg(strerror(errno)));
 }
 
 } // namespace socketspy::gui

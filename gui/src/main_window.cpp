@@ -198,7 +198,8 @@ void MainWindow::setupToolBar() {
     tb->addWidget(m_connStatusLabel);
     tb->addSeparator();
 
-    connect(m_ifaceCombo,   &QComboBox::currentTextChanged,            this, &MainWindow::onIfaceChanged);
+    connect(m_ifaceCombo,   &QComboBox::currentTextChanged, this,        &MainWindow::onIfaceChanged);
+    connect(m_ifaceCombo,   &QComboBox::currentTextChanged, m_transmit, &TransmitPanel::setCurrentIface);
     connect(m_bitrateCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onBitrateChanged);
     connect(refreshBtn,     &QPushButton::clicked,                     this, &MainWindow::onRefreshIfaces);
 

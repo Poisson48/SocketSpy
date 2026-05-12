@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 #include "cancore.h"
+#include <linux/can.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include <cstring>
 
 using namespace socketspy::core;

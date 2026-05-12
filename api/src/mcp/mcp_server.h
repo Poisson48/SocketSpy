@@ -36,11 +36,14 @@ public:
     // MUST bind ONLY to loopback. This is enforced in code, not config.
     void serve_tcp(uint16_t port);
 
+    // Dispatch a single JSON-RPC request object and return the response.
+    // Public so TCP connection handlers (free functions/threads) can call it.
+    json handle_request(const json& request);
+
     McpServer(const McpServer&) = delete;
     McpServer& operator=(const McpServer&) = delete;
 
 private:
-    json handle_request(const json& request);
     json handle_initialize(const json& params);
     json handle_tools_list(const json& params);
     json handle_tools_call(const json& params);

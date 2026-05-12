@@ -2,6 +2,7 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 #include <linux/can/error.h>
+#include <linux/net_tstamp.h>
 #include <net/if.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -141,7 +142,8 @@ uint64_t extract_timestamp_us(const struct msghdr& msg) noexcept {
     // Walk cmsg chain looking for SO_TIMESTAMPING.
     for (const struct cmsghdr* cm = CMSG_FIRSTHDR(&msg);
          cm != nullptr;
-         cm = CMSG_NXTHDR(const_cast<struct msghdr*>(&msg), cm)) {
+         cm = CMSG_NXTHDR(const_cast<struct msghdr*>(&msg),
+                          const_cast<struct cmsghdr*>(cm))) {
 
         if (cm->cmsg_level != SOL_SOCKET) continue;
         if (cm->cmsg_type  != SO_TIMESTAMPING) continue;

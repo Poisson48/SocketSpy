@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include "cancore.h"
+#include "filter_model.h"
 
 // Temporarily suppress the Qt `signals` keyword macro so that
 // socketspy::dbc::Message::signals (a data member) parses correctly.
@@ -26,6 +27,7 @@ public:
 public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);
+    void onFilterChanged(const socketspy::gui::FrameFilter& filter);
 
 signals:
     void signalDoubleClicked(QString signalName, uint32_t msgId);
@@ -44,6 +46,8 @@ private:
 
     socketspy::dbc::DbcDatabase* m_dbc{nullptr};
     bool m_dbcLoaded{false};
+
+    socketspy::gui::FrameFilter m_filter;
 };
 
 } // namespace socketspy::gui

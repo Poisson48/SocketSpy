@@ -4,9 +4,11 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QToolBar>
+#include <QDockWidget>
 #include <QString>
 #include <QStringList>
 #include <memory>
+#include "filter_panel.h"
 
 // Temporarily suppress the Qt `signals` keyword macro so that
 // socketspy::dbc::Message::signals (a data member) parses correctly.
@@ -59,6 +61,8 @@ private:
     TransmitPanel*    m_transmit{nullptr};
     SignalGraphPanel* m_graph{nullptr};
     ReplayPanel*      m_replay{nullptr};
+    FilterPanel*      m_filterPanel{nullptr};
+    QDockWidget*      m_filterDock{nullptr};
 
     CanCapture*       m_capture{nullptr};
     QComboBox*        m_ifaceCombo{nullptr};

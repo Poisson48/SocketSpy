@@ -51,6 +51,7 @@ void MonitorPanel::setupUi() {
 
 void MonitorPanel::onFrameReceived(CanFrame frame) {
     if (m_pause->isChecked()) return;
+    if (!m_filter.accepts(frame)) return;
 
     if (m_table->rowCount() >= kMaxRows)
         m_table->removeRow(0);
@@ -74,6 +75,10 @@ void MonitorPanel::onFrameReceived(CanFrame frame) {
     m_table->setItem(row, 3, new QTableWidgetItem(hexData));
     m_table->setItem(row, 4, new QTableWidgetItem(decodeFrame(frame)));
     m_table->scrollToBottom();
+}
+
+void MonitorPanel::onFilterChanged(const FrameFilter& filter) {
+    m_filter = filter;
 }
 
 void MonitorPanel::onDbcLoaded(DbcDatabase db) {

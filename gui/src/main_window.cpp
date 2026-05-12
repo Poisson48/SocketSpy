@@ -3,6 +3,8 @@
 #include "monitor_panel.h"
 #include "transmit_panel.h"
 #include "signal_graph.h"
+#include "log_recorder.h"
+#include "replay_panel.h"
 
 // Include DBC parser after Qt headers but with signals macro suppressed.
 #pragma push_macro("signals")
@@ -51,15 +53,21 @@ void MainWindow::setupUi() {
     m_transmit = new TransmitPanel(this);
     m_graph    = new SignalGraphPanel(this);
 
+    m_replay = new ReplayPanel(this);
+
     m_tabs->addTab(m_monitor,  "Monitor");
     m_tabs->addTab(m_transmit, "Transmit");
     m_tabs->addTab(m_graph,    "Signal Graph");
+    m_tabs->addTab(m_replay,   "Replay");
 
     m_statusLabel = new QLabel("Interface: " + m_iface + "  |  0 fps", this);
     statusBar()->addPermanentWidget(m_statusLabel);
 
     connect(m_monitor, &MonitorPanel::signalDoubleClicked,
             m_graph,   &SignalGraphPanel::addSignal);
+
+    connect(m_replay, &ReplayPanel::replayFrame,
+            m_monitor, &MonitorPanel::onFrameReceived);
 }
 
 void MainWindow::setupMenuBar() {
@@ -184,6 +192,28 @@ void MainWindow::setupToolBar() {
             this, &MainWindow::onIfaceChanged);
     connect(refreshBtn, &QPushButton::clicked,
             this, &MainWindow::onRefreshIfaces);
+
+    auto* recordBtn = new QPushButton("Record", this);
+    recordBtn->setToolTip("Start recording to .log file");
+    auto* stopRecBtn = new QPushButton("Stop Rec", this);
+    stopRecBtn->setToolTip("Stop recording");
+    stopRecBtn->setEnabled(false);
+    tb->addSeparator();
+    tb->addWidget(recordBtn);
+    tb->addWidget(stopRecBtn);
+
+    connect(recordBtn,  &QPushButton::clicked, this, [this, recordBtn, stopRecBtn]() {
+        onStartRecording();
+        if (m_recorder.isOpen()) {
+            recordBtn->setEnabled(false);
+            stopRecBtn->setEnabled(true);
+        }
+    });
+    connect(stopRecBtn, &QPushButton::clicked, this, [this, recordBtn, stopRecBtn]() {
+        onStopRecording();
+        recordBtn->setEnabled(true);
+        stopRecBtn->setEnabled(false);
+    });
 }
 
 void MainWindow::onIfaceChanged(const QString& iface) {
@@ -238,6 +268,29 @@ void MainWindow::onToggleGraph(bool visible) {
         m_tabs->addTab(m_graph, "Signal Graph");
     else if (!visible && idx != -1)
         m_tabs->removeTab(idx);
+}
+
+void MainWindow::onStartRecording() {
+    QString path = QFileDialog::getSaveFileName(
+        this, "Save CAN Log", {}, "CAN Log Files (*.log);;All Files (*)");
+    if (path.isEmpty()) return;
+    m_recorder.open(path);
+    if (!m_recorder.isOpen()) return;
+    connect(m_capture, &CanCapture::frameReceived,
+            this, [this](socketspy::core::CanFrame frame) {
+                m_recorder.write(frame, m_iface);
+            });
+}
+
+void MainWindow::onStopRecording() {
+    m_recorder.close();
+    disconnect(m_capture, &CanCapture::frameReceived,
+               this, nullptr);
+    // Reconnect signals severed by the blanket disconnect
+    connect(m_capture, &CanCapture::frameReceived,
+            m_monitor, &MonitorPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived,
+            m_graph,   &SignalGraphPanel::onFrameReceived);
 }
 
 } // namespace socketspy::gui

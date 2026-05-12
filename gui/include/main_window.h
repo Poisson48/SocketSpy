@@ -15,6 +15,9 @@
 #include "dbc_types.h"
 #pragma pop_macro("signals")
 
+#include "log_recorder.h"
+#include "replay_panel.h"
+
 namespace socketspy::gui {
 
 class CanCapture;
@@ -39,6 +42,8 @@ private slots:
     void onToggleGraph(bool visible);
     void onIfaceChanged(const QString& iface);
     void onRefreshIfaces();
+    void onStartRecording();
+    void onStopRecording();
 
 private:
     void setupUi();
@@ -53,12 +58,15 @@ private:
     MonitorPanel*     m_monitor{nullptr};
     TransmitPanel*    m_transmit{nullptr};
     SignalGraphPanel* m_graph{nullptr};
+    ReplayPanel*      m_replay{nullptr};
 
     CanCapture*       m_capture{nullptr};
     QComboBox*        m_ifaceCombo{nullptr};
 
     std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;
     QString m_iface{"vcan0"};
+
+    LogRecorder m_recorder;
 };
 
 } // namespace socketspy::gui

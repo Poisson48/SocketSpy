@@ -100,6 +100,47 @@ The binary is always at:
 
 ---
 
+## ARM / Raspberry Pi
+
+### 1. Native build on ARM (Raspberry Pi OS Bookworm, Orange Pi, etc.)
+
+`./build.sh` detects the host architecture automatically and selects the `arm64-dev` or `arm64-release` preset.
+
+```bash
+# Install dependencies (Raspberry Pi OS Bookworm / Debian 12 arm64)
+sudo apt-get install -y \
+    build-essential cmake ninja-build git pkg-config \
+    qt6-base-dev qt6-charts-dev qt6-serialbus-dev qt6-serialport-dev \
+    liburing-dev \
+    lua5.4 liblua5.4-dev \
+    can-utils
+
+# Build (debug)
+bash build.sh
+
+# Release build
+bash build.sh --release
+```
+
+Binary locations: `build/arm64-dev/gui/socketspy` / `build/arm64-release/gui/socketspy`
+
+### 2. Cross-compilation from x86 to aarch64
+
+```bash
+# Install cross-compiler
+sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+# Configure and build
+cmake --preset arm64-cross
+cmake --build build/arm64-cross
+```
+
+The toolchain file is at `cmake/toolchains/aarch64-linux-gnu.cmake`.
+
+> **Note**: io_uring is available on ARM Linux since kernel 5.1. Raspberry Pi OS Bookworm ships kernel 6.1+, so it is fully supported.
+
+---
+
 ## CAN hardware setup
 
 ### Virtual interface (no hardware needed)

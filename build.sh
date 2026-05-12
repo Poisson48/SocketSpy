@@ -6,13 +6,20 @@ set -e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT_DIR}"
 
-PRESET="dev"
+ARCH=$(uname -m)
+case "${ARCH}" in
+    aarch64) DEFAULT_DEV="arm64-dev"; DEFAULT_REL="arm64-release" ;;
+    armv7l)  DEFAULT_DEV="arm64-dev"; DEFAULT_REL="arm64-release" ;;
+    *)       DEFAULT_DEV="dev";       DEFAULT_REL="release" ;;
+esac
+
+PRESET="${DEFAULT_DEV}"
 CLEAN=0
 
 for arg in "$@"; do
     case "${arg}" in
         --clean)   CLEAN=1 ;;
-        --release) PRESET="release" ;;
+        --release) PRESET="${DEFAULT_REL}" ;;
     esac
 done
 

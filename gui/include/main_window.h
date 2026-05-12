@@ -5,13 +5,14 @@
 #include <QComboBox>
 #include <QToolBar>
 #include <QDockWidget>
+#include <QFileSystemWatcher>
+#include <QTimer>
 #include <QString>
 #include <QStringList>
 #include <memory>
 #include "filter_panel.h"
+#include "trigger_panel.h"
 
-// Temporarily suppress the Qt `signals` keyword macro so that
-// socketspy::dbc::Message::signals (a data member) parses correctly.
 #pragma push_macro("signals")
 #undef signals
 #include "dbc_types.h"
@@ -27,6 +28,8 @@ class MonitorPanel;
 class TransmitPanel;
 class SignalGraphPanel;
 class StatsPanel;
+class Elm327Panel;
+class SimulatorPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -45,34 +48,47 @@ private slots:
     void onToggleGraph(bool visible);
     void onIfaceChanged(const QString& iface);
     void onRefreshIfaces();
+    void onNetChanged(const QString& path);
     void onStartRecording();
     void onStopRecording();
+    void onTriggerFired();
+    void onStatusTimeout();
 
 private:
     void setupUi();
     void setupMenuBar();
     void setupToolBar();
     void setupCapture(const QString& iface);
-    static QStringList scanCanIfaces();
+    void setConnStatus(bool active);
 
-    QTabWidget*       m_tabs{nullptr};
-    QLabel*           m_statusLabel{nullptr};
+    QTabWidget*          m_tabs{nullptr};
+    QLabel*              m_statusLabel{nullptr};
+    QLabel*              m_connStatusLabel{nullptr};
 
-    MonitorPanel*     m_monitor{nullptr};
-    TransmitPanel*    m_transmit{nullptr};
-    SignalGraphPanel* m_graph{nullptr};
-    ReplayPanel*      m_replay{nullptr};
-    FilterPanel*      m_filterPanel{nullptr};
-    QDockWidget*      m_filterDock{nullptr};
-    StatsPanel*       m_stats{nullptr};
+    MonitorPanel*        m_monitor{nullptr};
+    TransmitPanel*       m_transmit{nullptr};
+    SignalGraphPanel*    m_graph{nullptr};
+    ReplayPanel*         m_replay{nullptr};
+    FilterPanel*         m_filterPanel{nullptr};
+    QDockWidget*         m_filterDock{nullptr};
+    TriggerPanel*        m_triggerPanel{nullptr};
+    QDockWidget*         m_triggerDock{nullptr};
+    StatsPanel*          m_stats{nullptr};
+    Elm327Panel*         m_elm327Panel{nullptr};
+    SimulatorPanel*      m_simulator{nullptr};
 
-    CanCapture*       m_capture{nullptr};
-    QComboBox*        m_ifaceCombo{nullptr};
+    CanCapture*          m_capture{nullptr};
+    QComboBox*           m_ifaceCombo{nullptr};
+    QFileSystemWatcher*  m_netWatcher{nullptr};
+    QTimer*              m_statusTimer{nullptr};
 
     std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;
-    QString m_iface{"vcan0"};
+    QString     m_iface{"vcan0"};
+    QStringList m_knownIfaces;
+    bool        m_userPicked{false};
 
-    LogRecorder m_recorder;
+    LogRecorder   m_recorder;
+    TriggerConfig m_lastTriggerCfg;
 };
 
 } // namespace socketspy::gui

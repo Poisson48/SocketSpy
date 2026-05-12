@@ -27,6 +27,12 @@ void CanCapture::stop() {
     m_stop.store(true, std::memory_order_relaxed);
 }
 
+void CanCapture::setTrigger(TriggerConfig cfg) {
+    std::lock_guard<std::mutex> lk(m_triggerMutex);
+    m_trigger = cfg;
+    m_triggerArmed.store(cfg.enabled, std::memory_order_relaxed);
+}
+
 void CanCapture::run() {
     IfaceHandle h = can_open(m_iface.toStdString());
     if (!h.valid()) {
@@ -64,6 +70,18 @@ void CanCapture::run() {
             std::memcpy(f.data, raw.data, raw.can_dlc);
             ++frame_count;
             emit frameReceived(f);
+
+            if (m_triggerArmed.load(std::memory_order_relaxed)) {
+                TriggerConfig snap;
+                {
+                    std::lock_guard<std::mutex> lk(m_triggerMutex);
+                    snap = m_trigger;
+                }
+                if (snap.match(f)) {
+                    m_triggerArmed.store(false, std::memory_order_relaxed);
+                    emit triggerFired();
+                }
+            }
         }
         // n < 0 on EAGAIN/timeout is expected — just loop
 

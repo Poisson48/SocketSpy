@@ -1,0 +1,132 @@
+{
+  "tests": 11,
+  "failures": 0,
+  "disabled": 0,
+  "errors": 0,
+  "timestamp": "2026-05-12T16:09:55Z",
+  "time": "0.101s",
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "LuaEngine",
+      "tests": 11,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-05-12T16:09:55Z",
+      "time": "0.101s",
+      "testsuite": [
+        {
+          "name": "SimpleArithmetic",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 22,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "LogPrintOutput",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 31,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "ScriptError",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 48,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "WatchdogKillsInfiniteLoop",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 58,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0.1s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "BitExtract",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 72,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "HexFromBytes",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 84,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "SandboxOsExecute",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 95,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "SandboxRequireNil",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 107,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "TimeNowUs",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 118,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "HexRoundTrip",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 130,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        },
+        {
+          "name": "CanOpenReturnsNil",
+          "file": "\/home\/leo\/Documents\/github\/SocketSpy\/scripting\/tests\/lua_engine_test.cpp",
+          "line": 145,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-05-12T16:09:55Z",
+          "time": "0s",
+          "classname": "LuaEngine"
+        }
+      ]
+    }
+  ]
+}

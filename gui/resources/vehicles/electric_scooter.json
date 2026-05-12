@@ -1,0 +1,112 @@
+{
+  "name": "Electric Scooter",
+  "description": "Scooter électrique avec BMS, moteur et afficheur",
+  "nodes": [
+    {
+      "name": "BMS",
+      "messages": [
+        {
+          "id": "0x300",
+          "period_ms": 100,
+          "dlc": 5,
+          "signals": [
+            {
+              "name": "BatteryVoltage",
+              "start_bit": 0,
+              "length": 16,
+              "factor": 0.1,
+              "offset": 0,
+              "min": 30,
+              "max": 84,
+              "default": 67.2
+            },
+            {
+              "name": "BatteryCurrent",
+              "start_bit": 16,
+              "length": 16,
+              "factor": 0.1,
+              "offset": -3276.8,
+              "min": -3276.8,
+              "max": 3276.7,
+              "default": 0
+            },
+            {
+              "name": "StateOfCharge",
+              "start_bit": 32,
+              "length": 8,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 100,
+              "default": 80
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Motor",
+      "messages": [
+        {
+          "id": "0x201",
+          "period_ms": 50,
+          "dlc": 3,
+          "signals": [
+            {
+              "name": "MotorRPM",
+              "start_bit": 0,
+              "length": 16,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 6000,
+              "default": 0
+            },
+            {
+              "name": "MotorTemp",
+              "start_bit": 16,
+              "length": 8,
+              "factor": 1.0,
+              "offset": -40,
+              "min": 0,
+              "max": 150,
+              "default": 25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Display",
+      "messages": [
+        {
+          "id": "0x400",
+          "period_ms": 500,
+          "dlc": 3,
+          "signals": [
+            {
+              "name": "Speed",
+              "start_bit": 0,
+              "length": 8,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 120,
+              "default": 0
+            },
+            {
+              "name": "TripDistance",
+              "start_bit": 8,
+              "length": 16,
+              "factor": 0.1,
+              "offset": 0,
+              "min": 0,
+              "max": 6553.5,
+              "default": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

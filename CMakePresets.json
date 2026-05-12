@@ -47,6 +47,40 @@
         "SOCKETSPY_FUZZ":        "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
+    },
+    {
+      "name": "arm64-dev",
+      "displayName": "ARM64 Development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":      "Debug",
+        "SOCKETSPY_BUILD_TESTS": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "arm64-release",
+      "displayName": "ARM64 Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":      "Release",
+        "SOCKETSPY_BUILD_TESTS": "OFF",
+        "BUILD_SHARED_LIBS":     "OFF",
+        "CMAKE_FIND_LIBRARY_SUFFIXES": ".a"
+      }
+    },
+    {
+      "name": "arm64-cross",
+      "displayName": "Cross-compile for ARM64 (requires aarch64-linux-gnu-g++)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-linux-gnu.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":      "Release",
+        "SOCKETSPY_BUILD_TESTS": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -64,6 +98,21 @@
       "name": "ci",
       "configurePreset": "ci",
       "jobs": 0
+    },
+    {
+      "name": "arm64-dev",
+      "configurePreset": "arm64-dev",
+      "jobs": 0
+    },
+    {
+      "name": "arm64-release",
+      "configurePreset": "arm64-release",
+      "jobs": 0
+    },
+    {
+      "name": "arm64-cross",
+      "configurePreset": "arm64-cross",
+      "jobs": 0
     }
   ],
   "testPresets": [
@@ -76,6 +125,12 @@
     {
       "name": "ci",
       "configurePreset": "ci",
+      "output": { "outputOnFailure": true },
+      "execution": { "stopOnFailure": false }
+    },
+    {
+      "name": "arm64-dev",
+      "configurePreset": "arm64-dev",
       "output": { "outputOnFailure": true },
       "execution": { "stopOnFailure": false }
     }

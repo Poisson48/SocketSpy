@@ -3,4 +3,8 @@
 <qresource prefix="/">
     <file>theme.qss</file>
 </qresource>
+<qresource prefix="/vehicles">
+    <file alias="generic_car.json">vehicles/generic_car.json</file>
+    <file alias="electric_scooter.json">vehicles/electric_scooter.json</file>
+</qresource>
 </RCC>

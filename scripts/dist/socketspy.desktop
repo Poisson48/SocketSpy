@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=SocketSpy
+Comment=Linux CAN bus analysis platform
+Exec=socketspy
+Icon=socketspy
+Type=Application
+Categories=Development;Electronics;
+Keywords=CAN;bus;automotive;CANopen;J1939;DBC;
+StartupNotify=true

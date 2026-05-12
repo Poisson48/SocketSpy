@@ -21,6 +21,7 @@ class CanCapture;
 class MonitorPanel;
 class TransmitPanel;
 class SignalGraphPanel;
+class StatsPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -53,6 +54,7 @@ private:
     MonitorPanel*     m_monitor{nullptr};
     TransmitPanel*    m_transmit{nullptr};
     SignalGraphPanel* m_graph{nullptr};
+    StatsPanel*       m_stats{nullptr};
 
     CanCapture*       m_capture{nullptr};
     QComboBox*        m_ifaceCombo{nullptr};

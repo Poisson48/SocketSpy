@@ -21,5 +21,10 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="0bfd", \
 SUBSYSTEM=="usb", ATTRS{idVendor}=="08d8", \
     RUN+="/sbin/modprobe -b ems_usb"
 
+# Auto-bring-up CAN interfaces at 500 kbit/s when they appear
+# (most common automotive bitrate; change if your bus runs at 250k or 1000k)
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", \
+    RUN+="/bin/ip link set %k up type can bitrate 500000"
+
 # Permissions: allow plugdev group to access CAN network interfaces
 SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"

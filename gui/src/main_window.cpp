@@ -3,6 +3,7 @@
 #include "monitor_panel.h"
 #include "transmit_panel.h"
 #include "signal_graph.h"
+#include "filter_panel.h"
 
 // Include DBC parser after Qt headers but with signals macro suppressed.
 #pragma push_macro("signals")
@@ -20,6 +21,8 @@
 #include <QTextStream>
 #include <QDir>
 #include <QPushButton>
+#include <QDockWidget>
+#include <QKeySequence>
 
 using namespace socketspy::dbc;
 
@@ -60,6 +63,16 @@ void MainWindow::setupUi() {
 
     connect(m_monitor, &MonitorPanel::signalDoubleClicked,
             m_graph,   &SignalGraphPanel::addSignal);
+
+    m_filterPanel = new FilterPanel(this);
+    m_filterDock = new QDockWidget("Filter", this);
+    m_filterDock->setWidget(m_filterPanel);
+    m_filterDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
+    addDockWidget(Qt::RightDockWidgetArea, m_filterDock);
+    m_filterDock->hide();
+
+    connect(m_filterPanel, &FilterPanel::filterChanged,
+            m_monitor,     &MonitorPanel::onFilterChanged);
 }
 
 void MainWindow::setupMenuBar() {
@@ -90,6 +103,15 @@ void MainWindow::setupMenuBar() {
     graphAct->setCheckable(true);
     graphAct->setChecked(true);
     connect(graphAct, &QAction::toggled, this, &MainWindow::onToggleGraph);
+
+    viewMenu->addSeparator();
+
+    auto* filterAct = viewMenu->addAction("Show Filter Panel");
+    filterAct->setShortcut(QKeySequence("Ctrl+F"));
+    filterAct->setCheckable(true);
+    filterAct->setChecked(false);
+    connect(filterAct, &QAction::toggled, m_filterDock, &QDockWidget::setVisible);
+    connect(m_filterDock, &QDockWidget::visibilityChanged, filterAct, &QAction::setChecked);
 }
 
 void MainWindow::setupCapture(const QString& iface) {

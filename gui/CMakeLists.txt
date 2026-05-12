@@ -6,20 +6,33 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+set(GUI_HEADERS
+    include/can_capture.h
+    include/main_window.h
+    include/monitor_panel.h
+    include/transmit_panel.h
+    include/signal_graph.h
+)
+
 add_executable(socketspy
     src/main.cpp
+    src/main_window.cpp
+    src/can_capture.cpp
+    src/monitor_panel.cpp
+    src/transmit_panel.cpp
+    src/signal_graph.cpp
+    src/dbc_helper.cpp
+    resources/resources.qrc
+    ${GUI_HEADERS}
 )
 
 target_include_directories(socketspy
     PRIVATE include
-            src/monitor
-            src/graphs
-            src/transmit
-            src/replay
-            src/editor
-            src/re
-            src/scripting
-            src/settings
+            ../core/include
+            ../dbc/include
+            ../protocols/include
+            ../scripting/include
+            ../api/src/mcp
 )
 
 target_link_libraries(socketspy

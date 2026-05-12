@@ -1,10 +1,18 @@
-// Agent 4 placeholder — Qt GUI main entry point.
 #include <QApplication>
-#include <QLabel>
+#include <QFile>
+#include "main_window.h"
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    QLabel label("SocketSpy — GUI under construction");
-    label.show();
+    app.setApplicationName("SocketSpy");
+    app.setApplicationVersion("0.1.0");
+
+    QFile qss(":/theme.qss");
+    if (qss.open(QFile::ReadOnly))
+        app.setStyleSheet(QString::fromUtf8(qss.readAll()));
+
+    socketspy::gui::MainWindow window;
+    window.show();
+
     return app.exec();
 }

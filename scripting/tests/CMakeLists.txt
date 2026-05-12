@@ -1,1 +1,11 @@
-# Agent 5 tests — pending Lua scripting implementation
+find_package(GTest QUIET)
+if(NOT GTest_FOUND)
+    message(WARNING "GTest not found — skipping scripting tests")
+    return()
+endif()
+
+add_executable(scripting-test lua_engine_test.cpp)
+target_link_libraries(scripting-test PRIVATE scripting GTest::gtest_main)
+target_compile_options(scripting-test PRIVATE -Wall -Wextra)
+include(GoogleTest)
+gtest_discover_tests(scripting-test)

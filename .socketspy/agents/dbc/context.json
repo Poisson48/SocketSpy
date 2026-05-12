@@ -1,19 +1,62 @@
 {
   "agent": "dbc",
   "last_updated": "2026-05-12T00:00:00Z",
-  "status": "waiting",
-  "completed": [],
+  "status": "complete",
+  "completed": [
+    "dbc/include/dbc_types.h — Signal, Message, DbcDatabase structs",
+    "dbc/include/dbc_parser.h — parse_dbc() API with std::expected",
+    "dbc/include/dbc_writer.h — write_dbc() API",
+    "dbc/include/dbc_signal.h — extract_signal, extract_raw, pack_signal",
+    "dbc/include/dbc_validator.h — validate() API",
+    "dbc/src/dbc_lexer.h — internal line-oriented lexer (private header)",
+    "dbc/src/dbc_types.cpp — parse_error_string and enum helpers",
+    "dbc/src/dbc_parser.cpp — full DBC lexer+parser, fuzz-safe",
+    "dbc/src/dbc_writer.cpp — lossless DBC serializer",
+    "dbc/src/dbc_signal.cpp — LE and BE bit extraction engine + pack",
+    "dbc/src/dbc_validator.cpp — overlap/range/factor validation",
+    "dbc/tests/dbc_parser_test.cpp — 14 GTest parser tests",
+    "dbc/tests/dbc_signal_test.cpp — 17 GTest signal extraction tests",
+    "dbc/tests/dbc_roundtrip_test.cpp — 9 GTest round-trip tests",
+    "dbc/tests/fuzz/fuzz_dbc_parser.cpp — AFL++/libfuzzer target",
+    "dbc/tests/fuzz/fuzz_eds_parser.cpp — stub EDS fuzz target",
+    "dbc/corpus/minimal.dbc — minimal valid DBC corpus file",
+    "dbc/corpus/signals.dbc — DBC with LE/BE/extended/VAL_ corpus file",
+    "dbc/CMakeLists.txt — updated to real sources",
+    "dbc/tests/CMakeLists.txt — full GTest discovery",
+    "dbc/tests/fuzz/CMakeLists.txt — AFL++ fuzz targets"
+  ],
   "in_progress": [],
   "blocked_on": null,
-  "next_steps": [
-    "implement DBC lexer",
-    "implement DBC parser"
+  "next_steps": [],
+  "decisions": [
+    "Internal lexer moved to dbc/src/dbc_lexer.h (private, not installed) to keep dbc_parser.cpp under 300 lines",
+    "msg_index uses canonical IDs (id | 0x80000000 for extended) to prevent duplicate keys",
+    "current message tracked by index (not pointer) to survive vector reallocation",
+    "parse_signal_line returns std::nullopt on any structural parse failure — signals with bad syntax are skipped gracefully",
+    "VAL_ parsing terminates on ';' or gracefully at EOF",
+    "Big-endian bit extraction follows DBC Motorola MSB convention"
   ],
-  "decisions": [],
   "open_questions": [
     "Support Vector CAPL extensions in DBC? (defer to v0.2)",
     "EDS (CANopen Electronic Data Sheet) parser: separate module or inside dbc/?"
   ],
   "dependencies_on": [],
-  "file_sizes": {}
+  "file_sizes": {
+    "dbc/include/dbc_types.h": 58,
+    "dbc/include/dbc_parser.h": 26,
+    "dbc/include/dbc_writer.h": 11,
+    "dbc/include/dbc_signal.h": 25,
+    "dbc/include/dbc_validator.h": 20,
+    "dbc/src/dbc_lexer.h": 115,
+    "dbc/src/dbc_types.cpp": 27,
+    "dbc/src/dbc_parser.cpp": 223,
+    "dbc/src/dbc_writer.cpp": 163,
+    "dbc/src/dbc_signal.cpp": 163,
+    "dbc/src/dbc_validator.cpp": 102,
+    "dbc/tests/dbc_parser_test.cpp": 186,
+    "dbc/tests/dbc_signal_test.cpp": 193,
+    "dbc/tests/dbc_roundtrip_test.cpp": 147,
+    "dbc/tests/fuzz/fuzz_dbc_parser.cpp": 10,
+    "dbc/tests/fuzz/fuzz_eds_parser.cpp": 3
+  }
 }

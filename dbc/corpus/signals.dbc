@@ -1,0 +1,27 @@
+VERSION "1.0"
+
+NS_ :
+
+BU_: ECU TCU GW
+
+BO_ 100 LittleEndianMsg: 8 ECU
+ SG_ Speed : 0|8@1+ (1,0) [0|255] "km/h" GW
+
+BO_ 200 SignedLEMsg: 8 ECU
+ SG_ Temperature : 8|16@1- (0.1,-40) [-40|215] "degC" GW
+
+BO_ 300 BigEndianMsg: 8 TCU
+ SG_ Pressure : 7|16@0+ (0.01,0) [0|655.35] "bar" GW
+
+BO_ 2566853172 ExtendedIdMsg: 8 GW
+ SG_ RPM : 0|16@1+ (0.25,0) [0|16383.75] "rpm" ECU
+
+BO_ 400 GearMsg: 8 TCU
+ SG_ GearPos : 0|4@1+ (1,0) [0|15] "" ECU
+
+CM_ BO_ 100 "Vehicle speed message";
+CM_ BO_ 2566853172 "Engine RPM extended frame";
+CM_ SG_ 100 Speed "Current vehicle speed in km/h";
+
+VAL_ 400 GearPos 0 "Park" 1 "Reverse" 2 "Neutral" 3 "Drive" 4 "Sport" ;
+

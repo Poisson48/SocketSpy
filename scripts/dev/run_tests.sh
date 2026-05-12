@@ -55,10 +55,11 @@ elif [ ! -x "${CORE_TEST}" ]; then
 else
     SUPP_FLAG=""
     [ -f "${ROOT_DIR}/.valgrind.supp" ] && SUPP_FLAG="--suppressions=${ROOT_DIR}/.valgrind.supp"
-    # Skip VcanTest in valgrind: vcan loopback adds false positives from kernel code paths.
+    # Skip VcanTest (kernel paths) and *Stress* (100k-iteration loops are 100x slower under Valgrind).
+    # Timeout 120s guards against any future slow test added to the binary.
     run_step "valgrind core_tests" \
-        valgrind --error-exitcode=1 --leak-check=full ${SUPP_FLAG} \
-            "${CORE_TEST}" --gtest_brief=1 --gtest_filter="-VcanTest*"
+        timeout 120 valgrind --error-exitcode=1 --leak-check=full ${SUPP_FLAG} \
+            "${CORE_TEST}" --gtest_brief=1 --gtest_filter="-VcanTest*:*Stress*"
 fi
 
 echo ""

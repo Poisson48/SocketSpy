@@ -1,0 +1,9 @@
+VERSION ""
+
+NS_ :
+
+BU_:
+
+BO_ 100 TestMsg: 8 Vector__XXX
+ SG_ Signal1 : 0|8@1+ (1,0) [0|255] "rpm" Vector__XXX
+

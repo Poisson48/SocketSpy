@@ -1,19 +1,61 @@
 {
   "agent": "scripting",
   "last_updated": "2026-05-12T00:00:00Z",
-  "status": "waiting",
-  "completed": [],
+  "status": "complete",
+  "completed": [
+    "scripting/include/lua_engine.h",
+    "scripting/include/lua_can_api.h",
+    "scripting/include/lua_log_api.h",
+    "scripting/include/lua_bit_api.h",
+    "scripting/include/lua_time_api.h",
+    "scripting/src/lua_engine.cpp",
+    "scripting/src/lua_sandbox.cpp",
+    "scripting/src/lua_can_api.cpp",
+    "scripting/src/lua_log_api.cpp",
+    "scripting/src/lua_bit_api.cpp",
+    "scripting/src/lua_time_api.cpp",
+    "scripting/tests/lua_engine_test.cpp",
+    "scripting/tests/CMakeLists.txt",
+    "scripting/CMakeLists.txt",
+    "scripts/tools/canopen_node_scan.lua",
+    "scripts/tools/delta_detector.lua",
+    "scripts/demos/ligier_pulse3/battery_scan.lua",
+    "scripts/demos/ligier_pulse3/contactor_boot.lua"
+  ],
   "in_progress": [],
-  "blocked_on": "core",
+  "blocked_on": null,
   "next_steps": [
-    "wait for cancore.h",
-    "implement Lua binding scaffold"
+    "Wire LuaEngine into the GUI scripting panel",
+    "Connect can.* stubs to real SocketCAN core when core interface is stable",
+    "Add sdo.write stub to register_protocol_api (currently only read/write exist)"
   ],
-  "decisions": [],
-  "open_questions": [
-    "LuaJIT vs Lua 5.4: default to 5.4, LuaJIT as cmake option?",
-    "CPU time limit enforcement: debug hook per-instruction or SIGALRM?"
+  "decisions": [
+    "Lua 5.4 by default; LuaJIT selectable via -DSOCKETSPY_LUAJIT=ON",
+    "Watchdog uses a background thread + debug hook (LUA_MASKCOUNT/1000) — no SIGALRM",
+    "Sandbox removes: os.execute/exit/getenv/remove/rename/tmpname, io.popen, require, load, loadfile, dofile, package, collectgarbage",
+    "log.print callback stored as a full Lua userdata with __gc for safe cleanup",
+    "EngineState is a plain TU-local struct; LuaEngine::Impl inherits it to satisfy the pimpl forward declaration while allowing free-function hook access"
   ],
+  "open_questions": [],
   "dependencies_on": ["core"],
-  "file_sizes": {}
+  "file_sizes": {
+    "lua_engine.h":      49,
+    "lua_can_api.h":     15,
+    "lua_log_api.h":     16,
+    "lua_bit_api.h":     11,
+    "lua_time_api.h":    10,
+    "lua_engine.cpp":   159,
+    "lua_sandbox.cpp":   78,
+    "lua_can_api.cpp":  177,
+    "lua_log_api.cpp":  132,
+    "lua_bit_api.cpp":  141,
+    "lua_time_api.cpp":  56,
+    "lua_engine_test.cpp": 151,
+    "scripting_CMakeLists.txt": 35,
+    "tests_CMakeLists.txt": 11,
+    "canopen_node_scan.lua": 39,
+    "delta_detector.lua": 67,
+    "battery_scan.lua": 54,
+    "contactor_boot.lua": 57
+  }
 }

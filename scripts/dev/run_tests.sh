@@ -48,13 +48,17 @@ run_step "fuzz targets" \
 
 # Valgrind on core unit test binary
 CORE_TEST="${ROOT_DIR}/build/dev/core/tests/cancore-test"
-if [ -x "${CORE_TEST}" ]; then
-    run_step "valgrind core_tests" \
-        valgrind --error-exitcode=1 --leak-check=full \
-            --suppressions="${ROOT_DIR}/.valgrind.supp" \
-            "${CORE_TEST}" --gtest_brief=1 2>/dev/null
-else
+if ! command -v valgrind &>/dev/null; then
+    echo "[SKIP] valgrind not installed"
+elif [ ! -x "${CORE_TEST}" ]; then
     echo "[SKIP] core_tests binary not found (not built yet)"
+else
+    SUPP_FLAG=""
+    [ -f "${ROOT_DIR}/.valgrind.supp" ] && SUPP_FLAG="--suppressions=${ROOT_DIR}/.valgrind.supp"
+    # Skip VcanTest in valgrind: vcan loopback adds false positives from kernel code paths.
+    run_step "valgrind core_tests" \
+        valgrind --error-exitcode=1 --leak-check=full ${SUPP_FLAG} \
+            "${CORE_TEST}" --gtest_brief=1 --gtest_filter="-VcanTest*"
 fi
 
 echo ""

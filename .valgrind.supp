@@ -1,0 +1,43 @@
+# Valgrind suppressions for SocketSpy
+# Suppresses known false-positives from glibc, libstdc++, and GTest.
+
+# glibc one-time pthread init
+{
+   glibc_pthread_init
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+}
+
+# libstdc++ iostream init (executed once at program start)
+{
+   libstdcxx_iostream_init
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:std::ios_base::Init::Init*
+}
+
+# GTest internal registration
+{
+   gtest_unit_registration
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:testing::internal::MakeAndRegisterTestInfo*
+}
+
+# dlopen/dlclose reachable blocks (dynamic linker)
+{
+   dl_open_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libdl*
+}

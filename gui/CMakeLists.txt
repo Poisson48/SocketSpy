@@ -16,6 +16,7 @@ set(GUI_HEADERS
     include/replay_panel.h
     include/filter_model.h
     include/filter_panel.h
+    include/stats_panel.h
 )
 
 add_executable(socketspy
@@ -25,6 +26,7 @@ add_executable(socketspy
     src/monitor_panel.cpp
     src/transmit_panel.cpp
     src/signal_graph.cpp
+    src/stats_panel.cpp
     src/dbc_helper.cpp
     src/log_recorder.cpp
     src/replay_panel.cpp

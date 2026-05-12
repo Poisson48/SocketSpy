@@ -26,6 +26,7 @@ class CanCapture;
 class MonitorPanel;
 class TransmitPanel;
 class SignalGraphPanel;
+class StatsPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -63,6 +64,7 @@ private:
     ReplayPanel*      m_replay{nullptr};
     FilterPanel*      m_filterPanel{nullptr};
     QDockWidget*      m_filterDock{nullptr};
+    StatsPanel*       m_stats{nullptr};
 
     CanCapture*       m_capture{nullptr};
     QComboBox*        m_ifaceCombo{nullptr};

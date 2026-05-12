@@ -6,6 +6,7 @@
 #include "log_recorder.h"
 #include "replay_panel.h"
 #include "filter_panel.h"
+#include "stats_panel.h"
 
 // Include DBC parser after Qt headers but with signals macro suppressed.
 #pragma push_macro("signals")
@@ -55,6 +56,7 @@ void MainWindow::setupUi() {
     m_monitor  = new MonitorPanel(this);
     m_transmit = new TransmitPanel(this);
     m_graph    = new SignalGraphPanel(this);
+    m_stats    = new StatsPanel(this);
 
     m_replay = new ReplayPanel(this);
 
@@ -62,6 +64,7 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_transmit, "Transmit");
     m_tabs->addTab(m_graph,    "Signal Graph");
     m_tabs->addTab(m_replay,   "Replay");
+    m_tabs->addTab(m_stats,    "Statistics");
 
     m_statusLabel = new QLabel("Interface: " + m_iface + "  |  0 fps", this);
     statusBar()->addPermanentWidget(m_statusLabel);
@@ -134,6 +137,8 @@ void MainWindow::setupCapture(const QString& iface) {
             m_monitor, &MonitorPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived,
             m_graph,   &SignalGraphPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived,
+            m_stats,   &StatsPanel::onFrameReceived);
     connect(m_capture, &CanCapture::statsUpdated,
             this,      &MainWindow::onStatsUpdated);
     connect(m_capture, &CanCapture::errorOccurred,
@@ -165,6 +170,7 @@ void MainWindow::onOpenDbc() {
     *m_dbc = *result;
     m_monitor->onDbcLoaded(*m_dbc);
     m_graph->onDbcLoaded(*m_dbc);
+    m_stats->onDbcLoaded(*m_dbc);
     statusBar()->showMessage(
         "DBC loaded: "
         + QString::number(m_dbc->messages.size()) + " messages", 5000);

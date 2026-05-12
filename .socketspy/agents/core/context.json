@@ -1,0 +1,67 @@
+{
+  "agent": "core",
+  "last_updated": "2026-05-12T00:00:00Z",
+  "status": "in_progress",
+  "completed": [
+    "core/include/cancore.h",
+    "core/src/ring_buffer.h",
+    "core/src/ring_buffer.cpp",
+    "core/src/can_socket.cpp",
+    "core/CMakeLists.txt",
+    "core/tests/CMakeLists.txt",
+    "core/tests/ring_buffer_test.cpp",
+    "core/tests/can_socket_test.cpp"
+  ],
+  "in_progress": [],
+  "blocked_on": null,
+  "next_steps": [
+    "implement io_uring capture pipeline (core/src/io_uring_capture.h + .cpp)",
+    "implement multi-interface manager (core/src/iface_manager.h + .cpp)",
+    "implement Unix socket IPC for GUI <-> core (core/src/ipc.h + .cpp)",
+    "implement CAN_BCM periodic TX (core/src/bcm_tx.h + .cpp)",
+    "freeze cancore.h interface so Agent 2 (protocols) can start",
+    "add integration test: 1M frame replay through ring buffer"
+  ],
+  "decisions": [
+    {
+      "what": "chose SPSC over MPSC ring buffer",
+      "why": "one capture thread per interface; SPSC is simpler and has lower overhead — no CAS retry loops",
+      "date": "2026-05-12T00:00:00Z"
+    },
+    {
+      "what": "mmap-backed ring buffer storage",
+      "why": "page-aligned, sparse (OS does not allocate physical pages until written), avoids heap fragmentation at 10M frame scale",
+      "date": "2026-05-12T00:00:00Z"
+    },
+    {
+      "what": "CacheLinePadded atomics for head and tail",
+      "why": "prevents false sharing between producer (writes head) and consumer (writes tail) which would cause cache-line ping-pong and destroy throughput",
+      "date": "2026-05-12T00:00:00Z"
+    },
+    {
+      "what": "CanFrame alignas(64) with 64-byte data field",
+      "why": "CAN FD max payload is 64 bytes; aligning to cache line ensures efficient copies; total size 80 bytes fits in 2 cache lines",
+      "date": "2026-05-12T00:00:00Z"
+    },
+    {
+      "what": "forward-declare struct msghdr in cancore.h",
+      "why": "extract_timestamp_us needs msghdr but forcing callers to include sys/socket.h just to include cancore.h is poor API hygiene",
+      "date": "2026-05-12T00:00:00Z"
+    }
+  ],
+  "open_questions": [
+    "io_uring: use fixed buffers (IORING_OP_RECVMSG) or registered files? Fixed buffers reduce copies but complicate buffer lifecycle.",
+    "multi-interface timestamp merge: CLOCK_TAI or CLOCK_MONOTONIC? CLOCK_TAI avoids leap-second discontinuities."
+  ],
+  "dependencies_on": [],
+  "file_sizes": {
+    "core/include/cancore.h": 132,
+    "core/src/ring_buffer.h": 35,
+    "core/src/ring_buffer.cpp": 145,
+    "core/src/can_socket.cpp": 167,
+    "core/CMakeLists.txt": 24,
+    "core/tests/CMakeLists.txt": 17,
+    "core/tests/ring_buffer_test.cpp": 101,
+    "core/tests/can_socket_test.cpp": 84
+  }
+}

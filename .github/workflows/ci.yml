@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            cmake ninja-build git pkg-config liburing-dev \
+            qt6-base-dev qt6-charts-dev qt6-declarative-dev qt6-serialbus-dev \
+            lua5.4 liblua5.4-dev libgl1-mesa-dev \
+            valgrind strace can-utils \
+            nlohmann-json3-dev libspdlog-dev libgtest-dev
+
+      - name: Install cpp-httplib
+        run: |
+          git clone --depth 1 https://github.com/yhirose/cpp-httplib.git /tmp/cpp-httplib
+          sudo cp /tmp/cpp-httplib/httplib.h /usr/local/include/httplib.h
+
+      - name: Setup vcan interfaces
+        run: |
+          sudo modprobe vcan
+          sudo ip link add dev vcan0 type vcan 2>/dev/null || true
+          sudo ip link add dev vcan1 type vcan 2>/dev/null || true
+          sudo ip link set up vcan0
+          sudo ip link set up vcan1
+          ip link show vcan0
+          ip link show vcan1
+
+      - name: CMake configure (ci preset)
+        run: cmake --preset ci
+
+      - name: CMake build (ci preset)
+        run: cmake --build --preset ci --parallel $(nproc)
+
+      - name: Run tests (ctest ci preset)
+        run: ctest --preset ci --output-on-failure
+
+      - name: Verify zero non-loopback network syscalls
+        run: |
+          if [ -x build/ci/socketspy ]; then
+            timeout 5 strace -e trace=network \
+              build/ci/socketspy --iface vcan0 --headless --exit-after 2 \
+              2>&1 | grep -v '127\.0\.0\.1\|lo\|AF_UNIX\|AF_NETLINK\|AF_CAN' \
+              | grep -E 'connect|bind|sendto|sendmsg' && \
+              { echo "FAIL: non-loopback network syscall detected"; exit 1; } || \
+              echo "PASS: no non-loopback network syscalls"
+          else
+            echo "SKIP: socketspy binary not present (GUI not built in CI)"
+          fi
+
+      - name: Valgrind core tests
+        run: |
+          if [ -x build/ci/core/tests/core_tests ]; then
+            valgrind --error-exitcode=1 --leak-check=full \
+              --track-origins=yes \
+              build/ci/core/tests/core_tests --gtest_brief=1
+          else
+            echo "SKIP: core_tests binary not present"
+          fi
+
+      - name: Check file size limits
+        run: |
+          FAIL=0
+          while IFS= read -r f; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 300 ]; then
+              echo "FAIL: $f has $lines lines (limit 300 for .cpp/.c)"
+              FAIL=$((FAIL+1))
+            fi
+          done < <(find . -path ./build -prune -o -name '*.cpp' -print -o -name '*.c' -print)
+          while IFS= read -r f; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 150 ]; then
+              echo "FAIL: $f has $lines lines (limit 150 for .h/.hpp)"
+              FAIL=$((FAIL+1))
+            fi
+          done < <(find . -path ./build -prune -o -name '*.h' -print -o -name '*.hpp' -print)
+          [ "$FAIL" -eq 0 ] && echo "PASS: all file sizes within limits" || exit 1

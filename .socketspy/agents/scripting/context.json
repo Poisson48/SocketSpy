@@ -1,0 +1,19 @@
+{
+  "agent": "scripting",
+  "last_updated": "2026-05-12T00:00:00Z",
+  "status": "waiting",
+  "completed": [],
+  "in_progress": [],
+  "blocked_on": "core",
+  "next_steps": [
+    "wait for cancore.h",
+    "implement Lua binding scaffold"
+  ],
+  "decisions": [],
+  "open_questions": [
+    "LuaJIT vs Lua 5.4: default to 5.4, LuaJIT as cmake option?",
+    "CPU time limit enforcement: debug hook per-instruction or SIGALRM?"
+  ],
+  "dependencies_on": ["core"],
+  "file_sizes": {}
+}

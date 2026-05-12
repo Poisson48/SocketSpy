@@ -1,0 +1,19 @@
+{
+  "agent": "gui",
+  "last_updated": "2026-05-12T00:00:00Z",
+  "status": "in_progress",
+  "completed": [],
+  "in_progress": [],
+  "blocked_on": null,
+  "next_steps": [
+    "implement main window scaffold",
+    "implement monitor panel with mock data"
+  ],
+  "decisions": [],
+  "open_questions": [
+    "Docking framework: QDockWidget or ads (Qt-Advanced-Docking-System)?",
+    "Dark theme: QSS stylesheet or QPalette + system theme?"
+  ],
+  "dependencies_on": [],
+  "file_sizes": {}
+}

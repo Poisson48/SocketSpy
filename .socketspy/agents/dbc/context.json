@@ -1,0 +1,19 @@
+{
+  "agent": "dbc",
+  "last_updated": "2026-05-12T00:00:00Z",
+  "status": "waiting",
+  "completed": [],
+  "in_progress": [],
+  "blocked_on": null,
+  "next_steps": [
+    "implement DBC lexer",
+    "implement DBC parser"
+  ],
+  "decisions": [],
+  "open_questions": [
+    "Support Vector CAPL extensions in DBC? (defer to v0.2)",
+    "EDS (CANopen Electronic Data Sheet) parser: separate module or inside dbc/?"
+  ],
+  "dependencies_on": [],
+  "file_sizes": {}
+}

@@ -1,0 +1,83 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Development (Debug, tests on, vcan assumed)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":          "Debug",
+        "SOCKETSPY_BUILD_TESTS":     "ON",
+        "SOCKETSPY_QML":             "OFF",
+        "SOCKETSPY_LUAJIT":          "OFF",
+        "SOCKETSPY_COVERAGE":        "OFF",
+        "SOCKETSPY_FUZZ":            "OFF",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (static Qt, AppImage output)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":      "Release",
+        "SOCKETSPY_BUILD_TESTS": "OFF",
+        "SOCKETSPY_QML":         "OFF",
+        "SOCKETSPY_LUAJIT":      "OFF",
+        "SOCKETSPY_COVERAGE":    "OFF",
+        "SOCKETSPY_FUZZ":        "OFF",
+        "BUILD_SHARED_LIBS":     "OFF",
+        "CMAKE_FIND_LIBRARY_SUFFIXES": ".a"
+      }
+    },
+    {
+      "name": "ci",
+      "displayName": "CI (Debug + coverage + fuzz)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ci",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":      "Debug",
+        "SOCKETSPY_BUILD_TESTS": "ON",
+        "SOCKETSPY_QML":         "OFF",
+        "SOCKETSPY_LUAJIT":      "OFF",
+        "SOCKETSPY_COVERAGE":    "ON",
+        "SOCKETSPY_FUZZ":        "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "jobs": 0
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "jobs": 0
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci",
+      "jobs": 0
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "execution": { "stopOnFailure": false }
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci",
+      "output": { "outputOnFailure": true },
+      "execution": { "stopOnFailure": false }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "last_updated": "2026-05-12T00:00:00Z",
+  "agents": {
+    "core":      {"status": "in_progress", "blocker": null},
+    "protocols": {"status": "waiting",     "blocker": "core"},
+    "dbc":       {"status": "waiting",     "blocker": "core"},
+    "gui":       {"status": "in_progress", "blocker": null},
+    "scripting": {"status": "waiting",     "blocker": "core"},
+    "api":       {"status": "in_progress", "blocker": null},
+    "build":     {"status": "in_progress", "blocker": null}
+  },
+  "global_blockers": [],
+  "pending_human_actions": [
+    "Run: bash scripts/dev/bootstrap.sh"
+  ],
+  "next_session_start": "read orchestrator.json first"
+}

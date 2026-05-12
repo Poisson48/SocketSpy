@@ -1,0 +1,81 @@
+{
+  "agent": "api",
+  "last_updated": "2026-05-12T00:00:00Z",
+  "status": "in_progress",
+  "completed": [
+    "api/src/mcp/mcp_server.h",
+    "api/src/mcp/mcp_server.cpp",
+    "api/src/mcp/mcp_server_register.cpp",
+    "api/src/mcp/tools/can_monitor.h",
+    "api/src/mcp/tools/can_monitor.cpp",
+    "api/src/mcp/tools/can_send.h",
+    "api/src/mcp/tools/can_send.cpp",
+    "api/src/mcp/tools/can_stop.h",
+    "api/src/mcp/tools/can_stop.cpp",
+    "api/src/mcp/tools/can_decode.h",
+    "api/src/mcp/tools/can_decode.cpp",
+    "api/src/mcp/tools/can_replay.h",
+    "api/src/mcp/tools/can_replay.cpp",
+    "api/src/mcp/tools/can_script.h",
+    "api/src/mcp/tools/can_script.cpp",
+    "api/src/mcp/tools/canopen_sdo_read.h",
+    "api/src/mcp/tools/canopen_sdo_read.cpp",
+    "api/src/mcp/tools/canopen_sdo_write.h",
+    "api/src/mcp/tools/canopen_sdo_write.cpp",
+    "api/src/mcp/tools/canopen_scan.h",
+    "api/src/mcp/tools/canopen_scan.cpp",
+    "api/src/mcp/tools/can_diff.h",
+    "api/src/mcp/tools/can_diff.cpp",
+    "api/src/mcp/tools/get_stats.h",
+    "api/src/mcp/tools/get_stats.cpp",
+    "api/mcp_config_example.json"
+  ],
+  "in_progress": ["api/src/rest/rest_server.h"],
+  "blocked_on": null,
+  "next_steps": [
+    "implement REST server with cpp-httplib",
+    "implement WebSocket stream endpoint",
+    "wire core ring buffer to MCP can_monitor tool"
+  ],
+  "decisions": [
+    {
+      "what": "stdio + TCP transports, no HTTP for MCP",
+      "why": "MCP protocol spec uses stdio for Claude Desktop, TCP for direct access",
+      "date": "2026-05-12T00:00:00Z"
+    },
+    {
+      "what": "127.0.0.1 enforced in source code for TCP bind",
+      "why": "security: REST/MCP must never be reachable outside localhost",
+      "date": "2026-05-12T00:00:00Z"
+    }
+  ],
+  "open_questions": [],
+  "dependencies_on": ["core"],
+  "file_sizes": {
+    "api/src/mcp/mcp_server.h": 51,
+    "api/src/mcp/mcp_server.cpp": 189,
+    "api/src/mcp/mcp_server_register.cpp": 24,
+    "api/src/mcp/tools/can_monitor.h": 13,
+    "api/src/mcp/tools/can_monitor.cpp": 45,
+    "api/src/mcp/tools/can_send.h": 12,
+    "api/src/mcp/tools/can_send.cpp": 46,
+    "api/src/mcp/tools/can_stop.h": 11,
+    "api/src/mcp/tools/can_stop.cpp": 30,
+    "api/src/mcp/tools/can_decode.h": 11,
+    "api/src/mcp/tools/can_decode.cpp": 43,
+    "api/src/mcp/tools/can_replay.h": 12,
+    "api/src/mcp/tools/can_replay.cpp": 47,
+    "api/src/mcp/tools/can_script.h": 12,
+    "api/src/mcp/tools/can_script.cpp": 44,
+    "api/src/mcp/tools/canopen_sdo_read.h": 12,
+    "api/src/mcp/tools/canopen_sdo_read.cpp": 52,
+    "api/src/mcp/tools/canopen_sdo_write.h": 13,
+    "api/src/mcp/tools/canopen_sdo_write.cpp": 57,
+    "api/src/mcp/tools/canopen_scan.h": 11,
+    "api/src/mcp/tools/canopen_scan.cpp": 43,
+    "api/src/mcp/tools/can_diff.h": 12,
+    "api/src/mcp/tools/can_diff.cpp": 43,
+    "api/src/mcp/tools/get_stats.h": 11,
+    "api/src/mcp/tools/get_stats.cpp": 41
+  }
+}

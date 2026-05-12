@@ -1,0 +1,19 @@
+{
+  "agent": "protocols",
+  "last_updated": "2026-05-12T00:00:00Z",
+  "status": "waiting",
+  "completed": [],
+  "in_progress": [],
+  "blocked_on": "core",
+  "next_steps": [
+    "wait for cancore.h interface freeze",
+    "implement canopen NMT state machine"
+  ],
+  "decisions": [],
+  "open_questions": [
+    "Should ISO-TP live in protocols/ or core/?",
+    "J1939 address claiming — implement full spec or decode-only?"
+  ],
+  "dependencies_on": ["core"],
+  "file_sizes": {}
+}

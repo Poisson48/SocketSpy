@@ -2,6 +2,17 @@
 
 100% local, no telemetry, no network calls. Built on Linux SocketCAN.
 
+## Download
+
+**[→ SocketSpy-x86_64.AppImage](https://github.com/Poisson48/SocketSpy/releases/latest)** — self-contained, no installation required.
+
+```bash
+chmod +x SocketSpy-x86_64.AppImage
+./SocketSpy-x86_64.AppImage
+```
+
+Requires Linux x86_64, kernel ≥ 5.4 with SocketCAN support.
+
 ## Features
 
 - **Live frame monitor** — real-time scrolling table, 500-row circular buffer, pause/clear

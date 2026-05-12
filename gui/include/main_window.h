@@ -55,6 +55,7 @@ private slots:
     void onTriggerFired();
     void onStatusTimeout();
     void onInstallUdevRules();
+    void onGrantCanPermissions();
 
 private:
     void setupUi();

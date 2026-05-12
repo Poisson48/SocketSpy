@@ -133,9 +133,11 @@ void MainWindow::setupMenuBar() {
     addDockToggle("Show Filter Panel",  "Ctrl+F", m_filterDock);
     addDockToggle("Show Trigger Panel", "Ctrl+T", m_triggerDock);
 
-    auto* toolsMenu = menuBar()->addMenu("&Outils");
-    auto* rulesAct  = toolsMenu->addAction("Installer les règles udev…");
-    connect(rulesAct, &QAction::triggered, this, &MainWindow::onInstallUdevRules);
+    auto* toolsMenu  = menuBar()->addMenu("&Outils");
+    auto* rulesAct   = toolsMenu->addAction("Installer les règles udev…");
+    auto* permsAct   = toolsMenu->addAction("Configurer les droits CAN (une seule fois)…");
+    connect(rulesAct,  &QAction::triggered, this, &MainWindow::onInstallUdevRules);
+    connect(permsAct,  &QAction::triggered, this, &MainWindow::onGrantCanPermissions);
 }
 
 void MainWindow::setupCapture(const QString& iface) {

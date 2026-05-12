@@ -4,6 +4,8 @@
 
 namespace socketspy::gui {
 
+static const QString kHelper = "/usr/local/bin/socketspy-can-setup";
+
 bool canIfaceIsVirtual(const QString& iface) {
     return iface.startsWith("vcan") || iface.startsWith("slcan:");
 }
@@ -14,21 +16,26 @@ int canIfaceReadBitrate(const QString& iface) {
     return f.readAll().trimmed().toInt();
 }
 
-// Runs a shell command, with pkexec elevation if requested.
-// Batching both ip-link commands into one sh invocation means a single auth prompt.
-static bool runSh(const QString& cmd, bool use_pkexec) {
+// Tries the NOPASSWD helper first (no prompt), then pkexec as fallback (one prompt).
+static bool runPrivileged(const QString& shellCmd, const QStringList& helperArgs) {
+    if (QFile::exists(kHelper)) {
+        QProcess p;
+        p.start("sudo", QStringList{"-n", kHelper} + helperArgs);
+        p.waitForFinished(8000);
+        if (p.exitCode() == 0) return true;
+    }
     QProcess p;
-    if (use_pkexec) p.start("pkexec", {"sh", "-c", cmd});
-    else            p.start("sh",     {"-c", cmd});
+    p.start("pkexec", {"sh", "-c", shellCmd});
     p.waitForFinished(8000);
     return p.exitCode() == 0;
 }
 
 bool canIfaceApply(const QString& iface, int bitrate_bps) {
     if (canIfaceIsVirtual(iface)) return true;
-    const QString cmd = QString("ip link set %1 down; ip link set %1 up type can bitrate %2")
-                            .arg(iface).arg(bitrate_bps);
-    return runSh(cmd, false) || runSh(cmd, true);
+    return runPrivileged(
+        QString("ip link set %1 down; ip link set %1 up type can bitrate %2")
+            .arg(iface).arg(bitrate_bps),
+        {"apply", iface, QString::number(bitrate_bps)});
 }
 
 static int bitrateToSlcanSpeed(int bps) {
@@ -46,10 +53,10 @@ static int bitrateToSlcanSpeed(int bps) {
 std::pair<bool, QString> canSlcanSetup(const QString& devPath, int bitrate_bps) {
     QProcess::execute("pkill", {"slcand"});
     const QString speed = QString::number(bitrateToSlcanSpeed(bitrate_bps));
-    const QString cmd = QString("slcand -o -c -s%1 %2 && ip link set slcan0 up")
-                            .arg(speed, devPath);
-    if (!runSh(cmd, false) && !runSh(cmd, true)) return {false, {}};
-    return {true, "slcan0"};
+    bool ok = runPrivileged(
+        QString("slcand -o -c -s%1 %2 && ip link set slcan0 up").arg(speed, devPath),
+        {"slcan", devPath, speed});
+    return ok ? std::pair{true, QString("slcan0")} : std::pair{false, QString{}};
 }
 
 } // namespace socketspy::gui

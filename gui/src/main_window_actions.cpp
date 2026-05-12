@@ -17,6 +17,7 @@
 #include <QTextStream>
 #include <QTemporaryFile>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QStatusBar>
 
 using namespace socketspy::dbc;
@@ -114,6 +115,55 @@ void MainWindow::setConnStatus(bool active) {
         m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
         m_connStatusLabel->setToolTip("Aucun trafic reçu");
     }
+}
+
+void MainWindow::onGrantCanPermissions() {
+    const QString user = QProcessEnvironment::systemEnvironment().value("USER");
+    if (user.isEmpty()) {
+        QMessageBox::critical(this, "Erreur", "Impossible de déterminer le nom d'utilisateur.");
+        return;
+    }
+
+    static const char* kScript =
+        "#!/bin/sh\n"
+        "case \"$1\" in\n"
+        "  apply) ip link set \"$2\" down; ip link set \"$2\" up type can bitrate \"$3\" ;;\n"
+        "  slcan) pkill slcand 2>/dev/null; slcand -o -c \"-s$3\" \"$2\"; ip link set slcan0 up ;;\n"
+        "  *) exit 1 ;;\n"
+        "esac\n";
+
+    QTemporaryFile tmpScript, tmpSudoers;
+    tmpScript.setAutoRemove(false);
+    tmpSudoers.setAutoRemove(false);
+    if (!tmpScript.open() || !tmpSudoers.open()) {
+        QMessageBox::critical(this, "Erreur", "Impossible de créer les fichiers temporaires.");
+        return;
+    }
+    tmpScript.write(kScript);
+    tmpScript.close();
+    tmpSudoers.write((user + " ALL=(root) NOPASSWD: /usr/local/bin/socketspy-can-setup\n").toUtf8());
+    tmpSudoers.close();
+
+    const QString cmd = QString(
+        "install -m 755 %1 /usr/local/bin/socketspy-can-setup && "
+        "install -m 440 %2 /etc/sudoers.d/socketspy-can && "
+        "visudo -c -f /etc/sudoers.d/socketspy-can")
+        .arg(tmpScript.fileName(), tmpSudoers.fileName());
+
+    QProcess p;
+    p.start("pkexec", {"sh", "-c", cmd});
+    p.waitForFinished(15000);
+    QFile::remove(tmpScript.fileName());
+    QFile::remove(tmpSudoers.fileName());
+
+    if (p.exitCode() == 0)
+        QMessageBox::information(this, "Droits CAN configurés",
+            "Succès ! Les interfaces CAN peuvent maintenant être configurées\n"
+            "sans saisir de mot de passe.");
+    else
+        QMessageBox::critical(this, "Erreur",
+            "Impossible de configurer les droits.\n"
+            "Vérifiez que pkexec, sudo et visudo sont installés.");
 }
 
 void MainWindow::onInstallUdevRules() {

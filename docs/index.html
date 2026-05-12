@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SocketSpy — Linux CAN bus analysis platform</title>
+  <meta name="description" content="100% local Linux CAN bus analyser. Live frame monitor, DBC decoding, Lua scripting, protocol decoders, MCP server. No telemetry, no cloud." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1623;
+      --card:    #1a2235;
+      --input:   #111827;
+      --hover:   #232f45;
+      --border:  #2a3a55;
+      --accent:  #6366f1;
+      --accent2: #818cf8;
+      --green:   #22c55e;
+      --text:    #f1f5f9;
+      --muted:   #7c8fa6;
+      --radius:  10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,22,35,.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .75rem 2rem;
+    }
+    .nav-logo { display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 1.05rem; text-decoration: none; color: var(--text); }
+    .nav-logo svg { flex-shrink: 0; }
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .9rem; transition: color .15s; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 6rem 1.5rem 5rem;
+      max-width: 820px; margin: 0 auto;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.35);
+      color: var(--accent2); border-radius: 99px;
+      padding: .25rem .85rem; font-size: .78rem; font-weight: 600;
+      margin-bottom: 1.5rem; letter-spacing: .04em;
+    }
+    .badge::before { content: "●"; color: var(--green); font-size: .6rem; }
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      font-weight: 800; line-height: 1.15;
+      background: linear-gradient(135deg, #f1f5f9 30%, var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.1rem;
+    }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--muted);
+      max-width: 580px; margin: 0 auto 2.5rem;
+    }
+    .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .75rem 1.75rem; border-radius: var(--radius);
+      font-size: .95rem; font-weight: 600; text-decoration: none;
+      transition: filter .15s, transform .1s;
+      cursor: pointer; border: none;
+    }
+    .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost   { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn svg { flex-shrink: 0; }
+
+    /* ── SCREEN MOCK ── */
+    .screen-wrap {
+      max-width: 900px; margin: 0 auto 5rem;
+      padding: 0 1.5rem;
+    }
+    .screen-mock {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+    .mock-titlebar {
+      background: var(--input);
+      padding: .6rem 1rem;
+      display: flex; align-items: center; gap: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red   { background: #ef4444; }
+    .dot-yel   { background: #eab308; }
+    .dot-grn   { background: #22c55e; }
+    .mock-title { margin-left: .5rem; font-size: .82rem; color: var(--muted); }
+    .mock-body  { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+
+    /* toolbar */
+    .mock-toolbar {
+      display: flex; align-items: center; gap: .75rem;
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 8px; padding: .45rem .75rem; font-size: .8rem; color: var(--muted);
+    }
+    .mock-select {
+      background: var(--hover); border: 1px solid var(--border);
+      border-radius: 6px; padding: .25rem .6rem; color: var(--text); font-size: .8rem;
+    }
+    .mock-btn-sm {
+      background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      padding: .25rem .65rem; font-size: .78rem; font-weight: 600; cursor: default;
+    }
+    .mock-btn-stop {
+      background: #ef4444; color: #fff; border: none; border-radius: 6px;
+      padding: .25rem .65rem; font-size: .78rem; font-weight: 600; cursor: default;
+    }
+
+    /* table */
+    .mock-table { width: 100%; border-collapse: collapse; font-size: .78rem; font-family: monospace; }
+    .mock-table th {
+      text-align: left; color: var(--muted); font-weight: 600; font-family: sans-serif;
+      padding: .35rem .6rem; border-bottom: 1px solid var(--border);
+    }
+    .mock-table td { padding: .3rem .6rem; border-bottom: 1px solid rgba(42,58,85,.4); }
+    .mock-table tr:hover td { background: var(--hover); }
+    .hex  { color: #7dd3fc; }
+    .ts   { color: var(--muted); }
+    .iface{ color: var(--green); }
+    .sig  { color: #a78bfa; }
+    .ext  { color: #f59e0b; }
+
+    /* ── FEATURES ── */
+    section { padding: 5rem 1.5rem; max-width: 1060px; margin: 0 auto; }
+    .section-label {
+      text-transform: uppercase; letter-spacing: .1em; font-size: .72rem;
+      color: var(--accent2); font-weight: 700; margin-bottom: .75rem;
+    }
+    h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700; margin-bottom: .5rem; }
+    .section-sub { color: var(--muted); max-width: 520px; margin-bottom: 3rem; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 1.25rem;
+    }
+    .feat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.4rem 1.5rem;
+      transition: border-color .2s, transform .15s;
+    }
+    .feat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .feat-icon {
+      width: 40px; height: 40px; border-radius: 9px;
+      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.25);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem; font-size: 1.2rem;
+    }
+    .feat-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .35rem; }
+    .feat-card p  { font-size: .83rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── DOWNLOAD ── */
+    .download-section {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 3rem 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 2rem; flex-wrap: wrap;
+    }
+    .dl-left h2 { font-size: 1.7rem; margin-bottom: .5rem; }
+    .dl-left p  { color: var(--muted); font-size: .9rem; max-width: 460px; }
+    .dl-meta { display: flex; gap: 1.2rem; margin-top: 1.25rem; flex-wrap: wrap; }
+    .dl-pill {
+      background: var(--hover); border: 1px solid var(--border);
+      border-radius: 99px; padding: .25rem .9rem;
+      font-size: .78rem; color: var(--muted);
+    }
+    .dl-pill span { color: var(--text); font-weight: 600; }
+    .dl-right { display: flex; flex-direction: column; gap: .75rem; min-width: 220px; }
+    .code-block {
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 8px; padding: .75rem 1rem;
+      font-family: monospace; font-size: .8rem; color: #7dd3fc;
+    }
+
+    /* ── ADAPTERS ── */
+    .adapters-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;
+    }
+    .adapter-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.2rem;
+    }
+    .adapter-card h4 { font-size: .88rem; font-weight: 700; margin-bottom: .25rem; }
+    .adapter-card p  { font-size: .78rem; color: var(--muted); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 1.5rem; text-align: center;
+      color: var(--muted); font-size: .82rem;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+    .footer-links { display: flex; gap: 1.5rem; justify-content: center; margin-bottom: .75rem; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      nav { padding: .75rem 1rem; }
+      .nav-links { display: none; }
+      .download-section { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────────── -->
+<nav>
+  <a class="nav-logo" href="#">
+    <svg width="28" height="28" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="12" fill="#0f1623"/>
+      <line x1="8" y1="32" x2="56" y2="32" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="16" cy="32" r="5" fill="#6366f1"/>
+      <circle cx="32" cy="32" r="5" fill="#6366f1"/>
+      <circle cx="48" cy="32" r="5" fill="#6366f1"/>
+      <path d="M26 20 Q28 15 30 20 Q32 25 34 20 Q36 15 38 20" stroke="#22c55e" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <rect x="4" y="28" width="4" height="8" rx="1" fill="#3d5270"/>
+      <rect x="56" y="28" width="4" height="8" rx="1" fill="#3d5270"/>
+      <line x1="16" y1="32" x2="16" y2="44" stroke="#3d5270" stroke-width="2"/>
+      <line x1="32" y1="32" x2="32" y2="44" stroke="#3d5270" stroke-width="2"/>
+      <line x1="48" y1="32" x2="48" y2="44" stroke="#3d5270" stroke-width="2"/>
+      <rect x="11" y="44" width="10" height="8" rx="2" fill="#1a2235" stroke="#3d5270" stroke-width="1"/>
+      <rect x="27" y="44" width="10" height="8" rx="2" fill="#1a2235" stroke="#6366f1" stroke-width="1"/>
+      <rect x="43" y="44" width="10" height="8" rx="2" fill="#1a2235" stroke="#3d5270" stroke-width="1"/>
+    </svg>
+    SocketSpy
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#download">Download</a></li>
+    <li><a href="#adapters">Hardware</a></li>
+    <li><a href="https://github.com/Poisson48/SocketSpy/wiki">Docs</a></li>
+    <li><a href="https://github.com/Poisson48/SocketSpy">GitHub</a></li>
+  </ul>
+</nav>
+
+<!-- ── HERO ──────────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="badge">v0.0.1 — Linux x86_64 AppImage available</div>
+  <h1>CAN bus analysis,<br/>built for Linux</h1>
+  <p class="hero-sub">
+    Live frame monitor, DBC signal decoding, Lua scripting, protocol decoders
+    and Claude MCP integration — 100% local, no telemetry, no cloud.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/Poisson48/SocketSpy/releases/latest">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download AppImage
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/Poisson48/SocketSpy">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+</div>
+
+<!-- ── UI MOCK ────────────────────────────────────────────────────── -->
+<div class="screen-wrap">
+  <div class="screen-mock">
+    <div class="mock-titlebar">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yel"></div>
+      <div class="dot dot-grn"></div>
+      <span class="mock-title">SocketSpy — vcan0</span>
+    </div>
+    <div class="mock-body">
+      <div class="mock-toolbar">
+        <span>Interface:</span>
+        <div class="mock-select">vcan0 ▾</div>
+        <div class="mock-btn-sm">▶ Start</div>
+        <div class="mock-btn-stop">■ Stop</div>
+        <span style="margin-left:auto;color:#22c55e;font-size:.78rem;">● 1 247 frames/s</span>
+      </div>
+      <table class="mock-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Interface</th>
+            <th>ID</th>
+            <th>DLC</th>
+            <th>Data</th>
+            <th>Signal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="ts">1716.482130</td>
+            <td class="iface">vcan0</td>
+            <td class="hex">0x18FF0100</td>
+            <td>8</td>
+            <td class="hex">FE 52 03 00 00 00 00 00</td>
+            <td class="sig">BattVoltage = 85.8 V</td>
+          </tr>
+          <tr>
+            <td class="ts">1716.482204</td>
+            <td class="iface">vcan0</td>
+            <td class="hex ext">0x18FEF121</td>
+            <td>8</td>
+            <td class="hex">00 FA 00 FA 00 FA 00 FA</td>
+            <td class="sig">EngineSpeed = 0 rpm</td>
+          </tr>
+          <tr>
+            <td class="ts">1716.482318</td>
+            <td class="iface">vcan0</td>
+            <td class="hex">0x701</td>
+            <td>1</td>
+            <td class="hex">05</td>
+            <td class="sig">CANopen NMT — Node 1 OPERATIONAL</td>
+          </tr>
+          <tr>
+            <td class="ts">1716.482511</td>
+            <td class="iface">vcan0</td>
+            <td class="hex">0x18FF0200</td>
+            <td>8</td>
+            <td class="hex">A2 12 00 00 3C 00 00 00</td>
+            <td class="sig">CellTemp = 18.5 °C</td>
+          </tr>
+          <tr>
+            <td class="ts">1716.482709</td>
+            <td class="iface">vcan0</td>
+            <td class="hex ext">0x0CF00400</td>
+            <td>8</td>
+            <td class="hex">F0 1C 00 FF FF FF 00 FF</td>
+            <td class="sig">ActualTorque = 57 Nm</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── FEATURES ──────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="section-label">What's inside</div>
+  <h2>Everything you need to analyse a CAN bus</h2>
+  <p class="section-sub">No account, no server, no subscription. Everything runs on your machine.</p>
+
+  <div class="features-grid">
+
+    <div class="feat-card">
+      <div class="feat-icon">📡</div>
+      <h3>Live Frame Monitor</h3>
+      <p>Real-time scrolling table with 500-row circular buffer. Pause, clear, and filter on the fly. Hardware timestamps via io_uring.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">📄</div>
+      <h3>DBC Signal Decoding</h3>
+      <p>Load a <code>.dbc</code> file and decoded signal values appear inline in the frame table. Full round-trip lossless parser — VERSION, BU_, BO_, SG_, VAL_, CM_.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">📈</div>
+      <h3>Signal Graphs</h3>
+      <p>Up to 4 live traces on a rolling 10-second QChart window. Watch voltages, temperatures and speeds in real time.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">📤</div>
+      <h3>Frame Transmit</h3>
+      <p>Send standard, extended or FD frames with input validation. Perfect for testing ECU responses.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🔌</div>
+      <h3>Interface Auto-detect</h3>
+      <p>Scans <code>/sys/class/net</code> for all ARPHRD_CAN interfaces. Hot-swap adapters without restarting the app.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🧩</div>
+      <h3>Protocol Decoders</h3>
+      <p>Built-in stateless decoders for CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II and NMEA 2000.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🌙</div>
+      <h3>Lua 5.4 Scripting</h3>
+      <p>Automate bus interactions with a sandboxed Lua engine. Watchdog thread prevents runaway scripts. CAN, SDO and log APIs built in.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🤖</div>
+      <h3>Claude MCP Integration</h3>
+      <p>JSON-RPC 2.0 server (stdio or TCP on 127.0.0.1) exposing 11 tools to Claude Desktop and Claude Code. Ask Claude to decode frames, send commands, or run scripts.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <h3>io_uring Capture</h3>
+      <p>High-throughput frame capture pipeline with hardware timestamps and a lock-free SPSC ring buffer — no frames dropped at high bus loads.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── DOWNLOAD ───────────────────────────────────────────────────── -->
+<section id="download" style="padding-top:0">
+  <div class="download-section">
+    <div class="dl-left">
+      <h2>Download SocketSpy</h2>
+      <p>Self-contained AppImage — Qt6 fully bundled. Runs on any x86_64 Linux with SocketCAN support. No installation, no root required.</p>
+      <div class="dl-meta">
+        <div class="dl-pill">Version <span>0.0.1</span></div>
+        <div class="dl-pill">Size <span>~29 MB</span></div>
+        <div class="dl-pill">Arch <span>x86_64</span></div>
+        <div class="dl-pill">License <span>GPL-3.0</span></div>
+      </div>
+    </div>
+    <div class="dl-right">
+      <a class="btn btn-primary" href="https://github.com/Poisson48/SocketSpy/releases/latest" style="justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download AppImage
+      </a>
+      <div class="code-block">chmod +x SocketSpy-x86_64.AppImage<br>./SocketSpy-x86_64.AppImage</div>
+      <a class="btn btn-ghost" href="https://github.com/Poisson48/SocketSpy" style="justify-content:center;font-size:.85rem">Build from source →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── ADAPTERS ───────────────────────────────────────────────────── -->
+<section id="adapters">
+  <div class="section-label">Hardware</div>
+  <h2>Works with any SocketCAN adapter</h2>
+  <p class="section-sub">If the Linux kernel knows about it, SocketSpy will detect it automatically.</p>
+
+  <div class="adapters-grid">
+    <div class="adapter-card">
+      <h4>CANable 2.0 / Pro</h4>
+      <p>gs_usb driver</p>
+    </div>
+    <div class="adapter-card">
+      <h4>Seeed USB-CAN</h4>
+      <p>gs_usb driver</p>
+    </div>
+    <div class="adapter-card">
+      <h4>PEAK PCAN-USB / FD</h4>
+      <p>peak_usb driver</p>
+    </div>
+    <div class="adapter-card">
+      <h4>Kvaser Leaf / USBcan</h4>
+      <p>kvaser_usb driver</p>
+    </div>
+    <div class="adapter-card">
+      <h4>Ixxat USB-to-CAN</h4>
+      <p>ixxat_usb2can driver</p>
+    </div>
+    <div class="adapter-card">
+      <h4>Virtual vcan0</h4>
+      <p>No hardware needed — test locally</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/Poisson48/SocketSpy">GitHub</a>
+    <a href="https://github.com/Poisson48/SocketSpy/releases">Releases</a>
+    <a href="https://github.com/Poisson48/SocketSpy/wiki">Documentation</a>
+    <a href="https://github.com/Poisson48/SocketSpy/blob/main/LICENSE">GPL-3.0 License</a>
+  </div>
+  <p>SocketSpy — 100% local, no telemetry, no cloud.</p>
+</footer>
+
+</body>
+</html>

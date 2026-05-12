@@ -59,7 +59,7 @@ QT6_QMAKE=$(command -v qmake6 2>/dev/null || \
 echo "  Using qmake: ${QT6_QMAKE}"
 
 export QMAKE="${QT6_QMAKE}"
-export EXTRA_QT_PLUGINS="charts;serialbus"
+export EXTRA_QT_PLUGINS="charts;serialbus;serialport"
 
 "${LINUXDEPLOY}" --appimage-extract-and-run \
     --appdir "${APPDIR}" \

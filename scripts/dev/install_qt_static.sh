@@ -6,7 +6,7 @@ set -e
 QT_VERSION="6.6.3"
 QT_ARCH="linux_gcc_64"
 QT_INSTALL_DIR="${HOME}/Qt"
-MODULES="qtcharts qtserialbus qtdeclarative"
+MODULES="qtcharts qtserialbus qtserialport qtdeclarative"
 
 echo "=== Installing Qt ${QT_VERSION} (static) via aqtinstall ==="
 

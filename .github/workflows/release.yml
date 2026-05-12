@@ -58,6 +58,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           DESTDIR=/tmp/appdir cmake --install build/release
           QMAKE="${HOME}/Qt/6.6.3/gcc_64/bin/qmake" \
+          EXTRA_QT_PLUGINS="charts;serialbus;serialport" \
           /tmp/linuxdeploy \
             --appdir /tmp/appdir \
             --plugin qt \

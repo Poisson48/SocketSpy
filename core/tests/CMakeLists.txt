@@ -1,4 +1,9 @@
-find_package(GTest REQUIRED)
+find_package(GTest QUIET)
+
+if(NOT GTest_FOUND)
+    message(WARNING "GTest not found — skipping cancore-test. Install libgtest-dev.")
+    return()
+endif()
 
 add_executable(cancore-test
     ring_buffer_test.cpp

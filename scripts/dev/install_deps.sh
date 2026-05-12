@@ -21,6 +21,7 @@ case "${ID}" in
             lua5.4 liblua5.4-dev luajit libluajit-5.1-dev \
             libgl1-mesa-dev libcurl4-openssl-dev \
             nlohmann-json3-dev libspdlog-dev libcpp-httplib-dev \
+            libgtest-dev \
             afl++ valgrind clang-format clang-tidy can-utils
         ;;
     fedora|rhel|centos|rocky|alma)

@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="${SCRIPT_DIR}/../../"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 INTEGRATION_DIR="${ROOT_DIR}/tests/integration"
 BUILD_BIN="${ROOT_DIR}/build/dev/socketspy"
 PASS=0

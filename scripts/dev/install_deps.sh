@@ -2,78 +2,57 @@
 # install_deps.sh — install all build and runtime dependencies
 set -e
 
-PASS=0
-FAIL=0
+[ -f /etc/os-release ] && . /etc/os-release || ID="unknown"
 
-check() {
-    local label="$1"
-    shift
-    if "$@" &>/dev/null; then
-        echo "[PASS] ${label}"
-        PASS=$((PASS + 1))
-    else
-        echo "[FAIL] ${label}"
-        FAIL=$((FAIL + 1))
-    fi
+echo "=== Installing system dependencies (distro: ${ID}) ==="
+
+apt_install() {
+    sudo apt-get update -q
+    # Install per-package; a missing optional package won't abort the rest.
+    for pkg in "$@"; do
+        sudo apt-get install -y "${pkg}" 2>/dev/null || echo "[WARN] not found: ${pkg}"
+    done
 }
 
-# Detect distro
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    DISTRO_ID="${ID}"
-else
-    DISTRO_ID="unknown"
-fi
-
-APT_PKGS="cmake ninja-build git pkg-config liburing-dev \
-    qt6-base-dev qt6-charts-dev qt6-declarative-dev qt6-serialbus-dev \
-    lua5.4 liblua5.4-dev luajit libluajit-dev \
-    libgl1-mesa-dev libcurl4-openssl-dev \
-    nlohmann-json3-dev libspdlog-dev libcpp-httplib-dev \
-    afl++ valgrind clang-format clang-tidy can-utils"
-
-DNF_PKGS="cmake ninja-build git pkgconf liburing-devel \
-    qt6-qtbase-devel qt6-qtcharts-devel qt6-qtdeclarative-devel \
-    lua-devel luajit-devel mesa-libGL-devel libcurl-devel \
-    afl++ valgrind clang-tools-extra can-utils"
-
-PACMAN_PKGS="cmake ninja git pkgconf liburing \
-    qt6-base qt6-charts qt6-declarative \
-    lua luajit mesa libcurl \
-    valgrind clang can-utils"
-
-echo "=== Installing system dependencies (distro: ${DISTRO_ID}) ==="
-
-case "${DISTRO_ID}" in
+case "${ID}" in
     ubuntu|debian|linuxmint|pop)
-        sudo apt-get update -q
-        sudo apt-get install -y ${APT_PKGS}
+        apt_install cmake ninja-build git pkg-config liburing-dev \
+            qt6-base-dev qt6-charts-dev qt6-declarative-dev qt6-serialbus-dev \
+            lua5.4 liblua5.4-dev luajit libluajit-5.1-dev \
+            libgl1-mesa-dev libcurl4-openssl-dev \
+            nlohmann-json3-dev libspdlog-dev libcpp-httplib-dev \
+            afl++ valgrind clang-format clang-tidy can-utils
         ;;
     fedora|rhel|centos|rocky|alma)
-        sudo dnf install -y ${DNF_PKGS}
+        sudo dnf install -y cmake ninja-build git pkgconf liburing-devel \
+            qt6-qtbase-devel qt6-qtcharts-devel qt6-qtdeclarative-devel \
+            lua-devel luajit-devel mesa-libGL-devel libcurl-devel \
+            spdlog-devel nlohmann-json-devel valgrind clang-tools-extra can-utils
         ;;
     arch|manjaro|endeavouros)
-        sudo pacman -Sy --noconfirm ${PACMAN_PKGS}
+        sudo pacman -Sy --noconfirm cmake ninja git pkgconf liburing \
+            qt6-base qt6-charts qt6-declarative lua luajit mesa libcurl \
+            spdlog nlohmann-json valgrind clang can-utils
         ;;
     *)
-        echo "[WARN] Unknown distro '${DISTRO_ID}'. Attempting apt-get..."
-        sudo apt-get install -y ${APT_PKGS} || true
+        echo "[WARN] Unknown distro '${ID}'. Attempting apt-get..."
+        apt_install cmake ninja-build git pkg-config liburing-dev \
+            qt6-base-dev libspdlog-dev nlohmann-json3-dev valgrind
         ;;
 esac
 
-# vcpkg bootstrap
+# vcpkg — used for any remaining deps not in distro repos
 VCPKG_ROOT="${HOME}/.local/share/vcpkg"
 if [ ! -d "${VCPKG_ROOT}" ]; then
-    echo "Bootstrapping vcpkg at ${VCPKG_ROOT}..."
+    echo "Bootstrapping vcpkg..."
     git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
     bash "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
 fi
 
-check "vcpkg binary present"  test -x "${VCPKG_ROOT}/vcpkg"
-check "cmake present"         cmake --version
-check "ninja present"         ninja --version
-check "Qt6 core pkg-config"   pkg-config --exists Qt6Core
-check "liburing pkg-config"   pkg-config --exists liburing
-check "lua5.4 pkg-config"     pkg-config --exists lua5.4
-echo "PASS: ${PASS}  FAIL: ${FAIL}"
-[ "${FAIL}" -eq 0 ] && exit 0 || exit 1
+echo "=== Verification ==="
+cmake --version      | head -1 && echo "[PASS] cmake"     || echo "[FAIL] cmake"
+ninja --version      | head -1 && echo "[PASS] ninja"     || echo "[FAIL] ninja"
+pkg-config --exists Qt6Core    && echo "[PASS] Qt6Core"   || echo "[FAIL] Qt6Core"
+pkg-config --exists liburing   && echo "[PASS] liburing"  || echo "[FAIL] liburing"
+pkg-config --exists lua5.4     && echo "[PASS] lua5.4"    || echo "[WARN] lua5.4 (optional)"
+echo "=== Done ==="

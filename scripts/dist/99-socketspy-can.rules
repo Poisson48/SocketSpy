@@ -1,0 +1,25 @@
+# SocketSpy — udev rules for USB CAN adapters
+# Install: sudo cp 99-socketspy-can.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+
+# gs_usb: CANable, CANable Pro, bytewerk candleLight, Geschwister Schneider, and clones
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="606f", \
+    RUN+="/sbin/modprobe -b gs_usb"
+
+# gs_usb: CANable 2.0 Pro (alternate PID)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="5070", \
+    RUN+="/sbin/modprobe -b gs_usb"
+
+# PEAK PCAN-USB (peak_usb driver)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0c72", \
+    RUN+="/sbin/modprobe -b peak_usb"
+
+# Kvaser USB (kvaser_usb driver)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bfd", \
+    RUN+="/sbin/modprobe -b kvaser_usb"
+
+# Ixxat USB-to-CAN
+SUBSYSTEM=="usb", ATTRS{idVendor}=="08d8", \
+    RUN+="/sbin/modprobe -b ems_usb"
+
+# Permissions: allow plugdev group to access CAN network interfaces
+SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"

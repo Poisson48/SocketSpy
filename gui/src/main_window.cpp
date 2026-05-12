@@ -11,6 +11,7 @@
 #include "elm327_panel.h"
 #include "simulator_panel.h"
 #include "iface_detector.h"
+#include "can_iface_config.h"
 
 #pragma push_macro("signals")
 #undef signals
@@ -131,6 +132,10 @@ void MainWindow::setupMenuBar() {
     };
     addDockToggle("Show Filter Panel",  "Ctrl+F", m_filterDock);
     addDockToggle("Show Trigger Panel", "Ctrl+T", m_triggerDock);
+
+    auto* toolsMenu = menuBar()->addMenu("&Outils");
+    auto* rulesAct  = toolsMenu->addAction("Installer les règles udev…");
+    connect(rulesAct, &QAction::triggered, this, &MainWindow::onInstallUdevRules);
 }
 
 void MainWindow::setupCapture(const QString& iface) {
@@ -172,6 +177,18 @@ void MainWindow::setupToolBar() {
     refreshBtn->setFixedWidth(28);
     refreshBtn->setToolTip("Refresh interface list");
     tb->addWidget(refreshBtn);
+    tb->addSeparator();
+
+    tb->addWidget(new QLabel("Bitrate: ", this));
+    m_bitrateCombo = new QComboBox(this);
+    m_bitrateCombo->addItem("125 kbit/s",  125000);
+    m_bitrateCombo->addItem("250 kbit/s",  250000);
+    m_bitrateCombo->addItem("500 kbit/s",  500000);
+    m_bitrateCombo->addItem("1000 kbit/s", 1000000);
+    m_bitrateCombo->setCurrentIndex(2); // 500k default
+    m_bitrateCombo->setToolTip("CAN bus bitrate — applied when interface changes or on manual selection");
+    tb->addWidget(m_bitrateCombo);
+    tb->addSeparator();
 
     m_connStatusLabel = new QLabel("●", this);
     m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
@@ -179,8 +196,9 @@ void MainWindow::setupToolBar() {
     tb->addWidget(m_connStatusLabel);
     tb->addSeparator();
 
-    connect(m_ifaceCombo, &QComboBox::currentTextChanged, this, &MainWindow::onIfaceChanged);
-    connect(refreshBtn,   &QPushButton::clicked,          this, &MainWindow::onRefreshIfaces);
+    connect(m_ifaceCombo,   &QComboBox::currentTextChanged,            this, &MainWindow::onIfaceChanged);
+    connect(m_bitrateCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onBitrateChanged);
+    connect(refreshBtn,     &QPushButton::clicked,                     this, &MainWindow::onRefreshIfaces);
 
     m_netWatcher = new QFileSystemWatcher(this);
     m_netWatcher->addPath("/sys/class/net");
@@ -210,16 +228,6 @@ void MainWindow::setupToolBar() {
     });
 }
 
-void MainWindow::setConnStatus(bool active) {
-    if (active) {
-        m_connStatusLabel->setStyleSheet("color: #33aa33; font-size: 14px;");
-        m_connStatusLabel->setToolTip("Interface active");
-    } else {
-        m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
-        m_connStatusLabel->setToolTip("Aucun trafic reçu");
-    }
-}
-
 void MainWindow::onNetChanged(const QString&) {
     const QStringList before = m_knownIfaces;
     onRefreshIfaces();
@@ -234,18 +242,32 @@ void MainWindow::onNetChanged(const QString&) {
     }
 }
 
+void MainWindow::onBitrateChanged(int index) {
+    m_bitrate = m_bitrateCombo->itemData(index).toInt();
+    if (!canIfaceIsVirtual(m_iface) && !m_iface.startsWith("slcan:")) {
+        if (canIfaceApply(m_iface, m_bitrate)) setupCapture(m_iface);
+        else statusBar()->showMessage("Erreur : impossible de configurer " + m_iface, 5000);
+    }
+    m_bitrateCombo->setEnabled(!canIfaceIsVirtual(m_iface));
+}
+
 void MainWindow::onIfaceChanged(const QString& iface) {
     if (iface == m_iface) return;
     m_userPicked = (iface != "vcan0");
     m_iface = iface;
     m_statusLabel->setText("Interface: " + m_iface + "  |  0 fps");
     setConnStatus(false);
+    m_bitrateCombo->setEnabled(!canIfaceIsVirtual(iface));
+
     if (iface.startsWith("slcan:")) {
-        statusBar()->showMessage(
-            "Adaptateur slcan — configurez avec : slcand -o -c -s6 "
-            + QString(iface).remove(0, 6) + " && ip link set slcan0 up", 0);
+        statusBar()->showMessage("Configuration slcan sur " + iface.mid(6) + "…", 0);
+        auto [ok, slIface] = canSlcanSetup(iface.mid(6), m_bitrate);
+        if (ok) { m_iface = slIface; setupCapture(m_iface); }
+        else    { statusBar()->showMessage("Erreur : impossible de configurer " + iface.mid(6), 8000); }
         return;
     }
+    if (!canIfaceIsVirtual(iface))
+        canIfaceApply(iface, m_bitrate);
     setupCapture(m_iface);
 }
 

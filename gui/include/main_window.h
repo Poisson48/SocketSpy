@@ -47,12 +47,14 @@ private slots:
     void onToggleTransmit(bool visible);
     void onToggleGraph(bool visible);
     void onIfaceChanged(const QString& iface);
+    void onBitrateChanged(int index);
     void onRefreshIfaces();
     void onNetChanged(const QString& path);
     void onStartRecording();
     void onStopRecording();
     void onTriggerFired();
     void onStatusTimeout();
+    void onInstallUdevRules();
 
 private:
     void setupUi();
@@ -79,8 +81,10 @@ private:
 
     CanCapture*          m_capture{nullptr};
     QComboBox*           m_ifaceCombo{nullptr};
+    QComboBox*           m_bitrateCombo{nullptr};
     QFileSystemWatcher*  m_netWatcher{nullptr};
     QTimer*              m_statusTimer{nullptr};
+    int                  m_bitrate{500000};
 
     std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;
     QString     m_iface{"vcan0"};

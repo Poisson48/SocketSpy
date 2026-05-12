@@ -15,6 +15,8 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QTextStream>
+#include <QTemporaryFile>
+#include <QProcess>
 #include <QStatusBar>
 
 using namespace socketspy::dbc;
@@ -102,6 +104,63 @@ void MainWindow::onStopRecording() {
             m_monitor, &MonitorPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived,
             m_graph,   &SignalGraphPanel::onFrameReceived);
+}
+
+void MainWindow::setConnStatus(bool active) {
+    if (active) {
+        m_connStatusLabel->setStyleSheet("color: #33aa33; font-size: 14px;");
+        m_connStatusLabel->setToolTip("Interface active");
+    } else {
+        m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
+        m_connStatusLabel->setToolTip("Aucun trafic reçu");
+    }
+}
+
+void MainWindow::onInstallUdevRules() {
+    static const char* kRules = R"(# SocketSpy — udev rules for USB CAN adapters
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="606f", \
+    RUN+="/sbin/modprobe -b gs_usb"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="5070", \
+    RUN+="/sbin/modprobe -b gs_usb"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0c72", \
+    RUN+="/sbin/modprobe -b peak_usb"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bfd", \
+    RUN+="/sbin/modprobe -b kvaser_usb"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="08d8", \
+    RUN+="/sbin/modprobe -b ems_usb"
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", \
+    RUN+="/bin/ip link set %k up type can bitrate 500000"
+SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"
+)";
+
+    QTemporaryFile tmp;
+    tmp.setAutoRemove(false);
+    if (!tmp.open()) {
+        QMessageBox::critical(this, "Erreur", "Impossible de créer un fichier temporaire.");
+        return;
+    }
+    tmp.write(kRules);
+    tmp.close();
+
+    auto run = [&](const QStringList& args) -> bool {
+        QProcess p;
+        p.start("pkexec", args);
+        p.waitForFinished(10000);
+        return p.exitCode() == 0;
+    };
+
+    bool ok = run({"cp", tmp.fileName(), "/etc/udev/rules.d/99-socketspy-can.rules"})
+           && run({"udevadm", "control", "--reload"})
+           && run({"udevadm", "trigger"});
+
+    QFile::remove(tmp.fileName());
+
+    if (ok)
+        QMessageBox::information(this, "Succès",
+            "Règles udev installées.\nReconnectez votre adaptateur CAN USB — il sera détecté automatiquement.");
+    else
+        QMessageBox::critical(this, "Erreur",
+            "Impossible d'installer les règles udev.\nVérifiez que pkexec est installé.");
 }
 
 } // namespace socketspy::gui

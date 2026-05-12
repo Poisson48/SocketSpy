@@ -14,29 +14,21 @@ int canIfaceReadBitrate(const QString& iface) {
     return f.readAll().trimmed().toInt();
 }
 
-static bool runIpLink(const QString& iface, int bitrate, bool use_pkexec) {
-    auto run = [&](const QStringList& args) -> bool {
-        QProcess p;
-        if (use_pkexec) {
-            p.start("pkexec", QStringList{"ip"} + args);
-        } else {
-            p.start("ip", args);
-        }
-        p.waitForFinished(5000);
-        return p.exitCode() == 0;
-    };
-
-    run({"link", "set", iface, "down"});
-    return run({"link", "set", iface, "up", "type", "can",
-                "bitrate", QString::number(bitrate)});
+// Runs a shell command, with pkexec elevation if requested.
+// Batching both ip-link commands into one sh invocation means a single auth prompt.
+static bool runSh(const QString& cmd, bool use_pkexec) {
+    QProcess p;
+    if (use_pkexec) p.start("pkexec", {"sh", "-c", cmd});
+    else            p.start("sh",     {"-c", cmd});
+    p.waitForFinished(8000);
+    return p.exitCode() == 0;
 }
 
 bool canIfaceApply(const QString& iface, int bitrate_bps) {
     if (canIfaceIsVirtual(iface)) return true;
-
-    if (runIpLink(iface, bitrate_bps, false)) return true;
-    // Permission denied — try again with pkexec (shows a GUI auth dialog)
-    return runIpLink(iface, bitrate_bps, true);
+    const QString cmd = QString("ip link set %1 down; ip link set %1 up type can bitrate %2")
+                            .arg(iface).arg(bitrate_bps);
+    return runSh(cmd, false) || runSh(cmd, true);
 }
 
 static int bitrateToSlcanSpeed(int bps) {
@@ -53,28 +45,10 @@ static int bitrateToSlcanSpeed(int bps) {
 
 std::pair<bool, QString> canSlcanSetup(const QString& devPath, int bitrate_bps) {
     QProcess::execute("pkill", {"slcand"});
-
-    const QString speedArg = "-s" + QString::number(bitrateToSlcanSpeed(bitrate_bps));
-    auto trySlcand = [&](bool usePkexec) -> bool {
-        QProcess p;
-        QStringList args = {"-o", "-c", speedArg, devPath};
-        if (usePkexec) p.start("pkexec", QStringList{"slcand"} + args);
-        else           p.start("slcand", args);
-        p.waitForFinished(5000);
-        return p.exitCode() == 0;
-    };
-    if (!trySlcand(false) && !trySlcand(true)) return {false, {}};
-
-    auto tryIfUp = [&](bool usePkexec) -> bool {
-        QProcess p;
-        QStringList args = {"link", "set", "slcan0", "up"};
-        if (usePkexec) p.start("pkexec", QStringList{"ip"} + args);
-        else           p.start("ip", args);
-        p.waitForFinished(3000);
-        return p.exitCode() == 0;
-    };
-    if (!tryIfUp(false) && !tryIfUp(true)) return {false, {}};
-
+    const QString speed = QString::number(bitrateToSlcanSpeed(bitrate_bps));
+    const QString cmd = QString("slcand -o -c -s%1 %2 && ip link set slcan0 up")
+                            .arg(speed, devPath);
+    if (!runSh(cmd, false) && !runSh(cmd, true)) return {false, {}};
     return {true, "slcan0"};
 }
 

@@ -92,4 +92,4 @@ All traffic stays local — TCP transport binds only to `127.0.0.1`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-3.0 — see [LICENSE](LICENSE).

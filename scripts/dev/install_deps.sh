@@ -29,6 +29,7 @@ APT_PKGS="cmake ninja-build git pkg-config liburing-dev \
     qt6-base-dev qt6-charts-dev qt6-declarative-dev qt6-serialbus-dev \
     lua5.4 liblua5.4-dev luajit libluajit-dev \
     libgl1-mesa-dev libcurl4-openssl-dev \
+    nlohmann-json3-dev libspdlog-dev libcpp-httplib-dev \
     afl++ valgrind clang-format clang-tidy can-utils"
 
 DNF_PKGS="cmake ninja-build git pkgconf liburing-devel \
@@ -74,7 +75,5 @@ check "ninja present"         ninja --version
 check "Qt6 core pkg-config"   pkg-config --exists Qt6Core
 check "liburing pkg-config"   pkg-config --exists liburing
 check "lua5.4 pkg-config"     pkg-config --exists lua5.4
-
-echo ""
 echo "PASS: ${PASS}  FAIL: ${FAIL}"
 [ "${FAIL}" -eq 0 ] && exit 0 || exit 1

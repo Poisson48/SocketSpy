@@ -16,9 +16,11 @@ option(SOCKETSPY_COVERAGE    "Enable coverage instrumentation"      OFF)
 option(SOCKETSPY_FUZZ        "Build AFL++ fuzz targets"             OFF)
 
 # --------------------------------------------------------------------------- #
-# Dependencies
+# Dependencies — root only finds what every subdir needs.
+# GUI-only (Charts, SerialBus, Widgets) → gui/CMakeLists.txt
+# API-only (spdlog, httplib)            → api/CMakeLists.txt
 # --------------------------------------------------------------------------- #
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Charts SerialBus)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup()
 
 find_package(PkgConfig REQUIRED)
@@ -30,9 +32,7 @@ else()
     pkg_check_modules(LUA REQUIRED lua5.4)
 endif()
 
-find_package(spdlog REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(httplib REQUIRED)
 
 # --------------------------------------------------------------------------- #
 # Global compile options
@@ -41,6 +41,15 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 if(SOCKETSPY_COVERAGE)
     add_compile_options(--coverage -O0 -g)
     add_link_options(--coverage)
+endif()
+
+# --------------------------------------------------------------------------- #
+# Tests — enable_testing() must precede add_subdirectory() so that
+# gtest_discover_tests() in subdirs can register test targets.
+# --------------------------------------------------------------------------- #
+if(SOCKETSPY_BUILD_TESTS)
+    include(CTest)
+    enable_testing()
 endif()
 
 # --------------------------------------------------------------------------- #
@@ -54,20 +63,9 @@ add_subdirectory(api)
 add_subdirectory(gui)
 
 # --------------------------------------------------------------------------- #
-# Tests
-# --------------------------------------------------------------------------- #
-if(SOCKETSPY_BUILD_TESTS)
-    include(CTest)
-    enable_testing()
-endif()
-
-# --------------------------------------------------------------------------- #
 # Install rules
 # --------------------------------------------------------------------------- #
 include(GNUInstallDirs)
-install(TARGETS socketspy
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
 install(FILES ${CMAKE_SOURCE_DIR}/resources/socketspy.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
     OPTIONAL

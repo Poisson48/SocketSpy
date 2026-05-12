@@ -1,5 +1,7 @@
 # Agent 4 — Qt 6.6+ GUI
 
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)

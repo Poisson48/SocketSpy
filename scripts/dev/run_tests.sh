@@ -3,7 +3,10 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="${SCRIPT_DIR}/../../"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# cmake --build --preset requires CMakePresets.json in the working directory.
+cd "${ROOT_DIR}"
 PASS=0
 FAIL=0
 
@@ -44,7 +47,7 @@ run_step "fuzz targets" \
     bash "${SCRIPT_DIR}/run_fuzz.sh"
 
 # Valgrind on core unit test binary
-CORE_TEST="${ROOT_DIR}/build/dev/core/tests/core_tests"
+CORE_TEST="${ROOT_DIR}/build/dev/core/tests/cancore-test"
 if [ -x "${CORE_TEST}" ]; then
     run_step "valgrind core_tests" \
         valgrind --error-exitcode=1 --leak-check=full \

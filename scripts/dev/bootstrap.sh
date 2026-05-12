@@ -3,8 +3,12 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 PASS=0
 FAIL=0
+
+# cmake --build --preset requires CMakePresets.json in the working directory.
+cd "${ROOT_DIR}"
 
 run_step() {
     local label="$1"
@@ -25,7 +29,7 @@ run_step "install dependencies" bash "${SCRIPT_DIR}/install_deps.sh"
 run_step "setup vcan interfaces" bash "${SCRIPT_DIR}/setup_vcan.sh"
 
 run_step "cmake configure (dev preset)" \
-    cmake --preset dev -S "${SCRIPT_DIR}/../../" 2>&1
+    cmake --preset dev
 
 run_step "cmake build (dev preset)" \
     cmake --build --preset dev 2>&1

@@ -115,6 +115,29 @@ TriggerConfig TriggerPanel::buildConfig() const {
     return cfg;
 }
 
+TriggerConfig TriggerPanel::currentConfig() const { return buildConfig(); }
+
+void TriggerPanel::applyConfig(const TriggerConfig& cfg) {
+    auto toHex = [](uint32_t v) { return QString("0x%1").arg(v, 0, 16).toUpper(); };
+    auto toBytes = [](const uint8_t* buf, int len) {
+        QStringList s;
+        for (int i = 0; i < len; ++i) s << QString("%1").arg(buf[i], 2, 16, QChar('0')).toUpper();
+        return s.join(' ');
+    };
+    const auto blk = [](QObject* o) { return QSignalBlocker(o); };
+    auto b1=blk(m_enable); auto b2=blk(m_id);          auto b3=blk(m_idMask);
+    auto b4=blk(m_dataPattern); auto b5=blk(m_dataMask); auto b6=blk(m_action);
+    m_enable->setChecked(cfg.enabled);
+    m_id->setText(toHex(cfg.id));
+    m_idMask->setText(toHex(cfg.id_mask));
+    m_dataPattern->setText(toBytes(cfg.data, cfg.data_len));
+    m_dataMask->setText(toBytes(cfg.data_mask, cfg.data_len));
+    m_action->setCurrentIndex((int)cfg.action);
+    m_armBtn->setEnabled(!cfg.enabled);
+    m_disarmBtn->setEnabled(cfg.enabled);
+    emit triggerConfigChanged(cfg);
+}
+
 void TriggerPanel::onArm() {
     TriggerConfig cfg = buildConfig();
     cfg.enabled = true;

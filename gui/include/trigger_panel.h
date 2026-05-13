@@ -13,6 +13,8 @@ class TriggerPanel : public QWidget {
 
 public:
     explicit TriggerPanel(QWidget* parent = nullptr);
+    TriggerConfig currentConfig() const;
+    void applyConfig(const TriggerConfig& cfg);
 
 signals:
     void triggerConfigChanged(socketspy::gui::TriggerConfig cfg);

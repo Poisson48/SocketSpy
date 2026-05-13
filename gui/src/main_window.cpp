@@ -74,6 +74,8 @@ void MainWindow::setupUi() {
 
     connect(m_monitor, &MonitorPanel::signalDoubleClicked,
             m_graph,   &SignalGraphPanel::addSignal);
+    connect(m_monitor, &MonitorPanel::frameGraphRequested,
+            m_graph,   &SignalGraphPanel::addFrameSignals);
     connect(m_replay,  &ReplayPanel::replayFrame,
             m_monitor, &MonitorPanel::onFrameReceived);
 
@@ -104,23 +106,27 @@ void MainWindow::setupUi() {
 
 void MainWindow::setupMenuBar() {
     auto* fileMenu = menuBar()->addMenu("&File");
-    auto* openDbc  = fileMenu->addAction("&Open DBC...");
-    connect(openDbc, &QAction::triggered, this, &MainWindow::onOpenDbc);
+    auto addF = [&](const QString& lbl, auto slot, QKeySequence k = {}) {
+        auto* a = fileMenu->addAction(lbl); if (!k.isEmpty()) a->setShortcut(k);
+        connect(a, &QAction::triggered, this, slot);
+    };
+    addF("&Open DBC…",         &MainWindow::onOpenDbc);
     fileMenu->addSeparator();
-    auto* exitAct = fileMenu->addAction("E&xit");
-    exitAct->setShortcut(QKeySequence::Quit);
-    connect(exitAct, &QAction::triggered, this, &MainWindow::onExit);
+    addF("&New Project",       &MainWindow::onNewProject,     QKeySequence::New);
+    addF("&Open Project…",     &MainWindow::onOpenProject,    QKeySequence::Open);
+    addF("&Save Project",      &MainWindow::onSaveProject,    QKeySequence::Save);
+    addF("Save Project &As…",  &MainWindow::onSaveProjectAs);
+    fileMenu->addSeparator();
+    addF("E&xit",              &MainWindow::onExit,           QKeySequence::Quit);
 
     auto* viewMenu = menuBar()->addMenu("&View");
-    auto* monAct   = viewMenu->addAction("Monitor Panel");
-    monAct->setCheckable(true); monAct->setChecked(true);
-    connect(monAct, &QAction::toggled, this, &MainWindow::onToggleMonitor);
-    auto* txAct    = viewMenu->addAction("Transmit Panel");
-    txAct->setCheckable(true); txAct->setChecked(true);
-    connect(txAct, &QAction::toggled, this, &MainWindow::onToggleTransmit);
-    auto* graphAct = viewMenu->addAction("Signal Graph");
-    graphAct->setCheckable(true); graphAct->setChecked(true);
-    connect(graphAct, &QAction::toggled, this, &MainWindow::onToggleGraph);
+    auto addV = [&](const QString& lbl, auto slot) {
+        auto* a = viewMenu->addAction(lbl); a->setCheckable(true); a->setChecked(true);
+        connect(a, &QAction::toggled, this, slot);
+    };
+    addV("Monitor Panel",  &MainWindow::onToggleMonitor);
+    addV("Transmit Panel", &MainWindow::onToggleTransmit);
+    addV("Signal Graph",   &MainWindow::onToggleGraph);
     viewMenu->addSeparator();
 
     auto addDockToggle = [&](const QString& label, const QString& shortcut, QDockWidget* dock) {
@@ -168,35 +174,27 @@ void MainWindow::setupToolBar() {
 
     m_ifaceCombo = new QComboBox(this);
     m_ifaceCombo->setMinimumWidth(120);
-    m_ifaceCombo->setToolTip("Select CAN interface");
     m_knownIfaces = IfaceDetector::scanCanIfaces();
     m_ifaceCombo->addItems(m_knownIfaces);
     int idx = m_ifaceCombo->findText(m_iface);
     if (idx >= 0) m_ifaceCombo->setCurrentIndex(idx);
     tb->addWidget(m_ifaceCombo);
-
     auto* refreshBtn = new QPushButton("↺", this);
-    refreshBtn->setFixedWidth(28);
-    refreshBtn->setToolTip("Refresh interface list");
-    tb->addWidget(refreshBtn);
-    tb->addSeparator();
+    refreshBtn->setFixedWidth(28); refreshBtn->setToolTip("Refresh interface list");
+    tb->addWidget(refreshBtn); tb->addSeparator();
 
     tb->addWidget(new QLabel("Bitrate: ", this));
     m_bitrateCombo = new QComboBox(this);
-    m_bitrateCombo->addItem("125 kbit/s",  125000);
-    m_bitrateCombo->addItem("250 kbit/s",  250000);
-    m_bitrateCombo->addItem("500 kbit/s",  500000);
-    m_bitrateCombo->addItem("1000 kbit/s", 1000000);
-    m_bitrateCombo->setCurrentIndex(2); // 500k default
-    m_bitrateCombo->setToolTip("CAN bus bitrate — applied when interface changes or on manual selection");
-    tb->addWidget(m_bitrateCombo);
-    tb->addSeparator();
+    for (auto [label, val] : {std::pair{"125 kbit/s",125000},{"250 kbit/s",250000},
+                                         {"500 kbit/s",500000},{"1000 kbit/s",1000000}})
+        m_bitrateCombo->addItem(label, val);
+    m_bitrateCombo->setCurrentIndex(2);
+    tb->addWidget(m_bitrateCombo); tb->addSeparator();
 
     m_connStatusLabel = new QLabel("●", this);
     m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
     m_connStatusLabel->setToolTip("Aucun trafic reçu");
-    tb->addWidget(m_connStatusLabel);
-    tb->addSeparator();
+    tb->addWidget(m_connStatusLabel); tb->addSeparator();
 
     connect(m_ifaceCombo,   &QComboBox::currentTextChanged, this,        &MainWindow::onIfaceChanged);
     connect(m_ifaceCombo,   &QComboBox::currentTextChanged, m_transmit, &TransmitPanel::setCurrentIface);

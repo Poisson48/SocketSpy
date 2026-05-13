@@ -26,6 +26,7 @@ set(GUI_HEADERS
     include/can_simulator.h
     include/simulator_panel.h
     include/can_iface_config.h
+    include/project.h
 )
 
 add_executable(socketspy
@@ -50,6 +51,7 @@ add_executable(socketspy
     src/can_simulator.cpp
     src/simulator_panel.cpp
     src/can_iface_config.cpp
+    src/project.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

@@ -96,26 +96,39 @@ bool FilterPanel::parseHex(const QString& s, uint32_t& out) {
     return ok;
 }
 
-void FilterPanel::onAnyFieldChanged() {
+FrameFilter FilterPanel::currentFilter() const {
     FrameFilter f;
     f.enabled  = m_enable->isChecked();
     f.show_std = m_showStd->isChecked();
     f.show_ext = m_showExt->isChecked();
     f.show_fd  = m_showFd->isChecked();
     f.show_err = m_showErr->isChecked();
-
     uint32_t v = 0;
     if (parseHex(m_idMin->text(), v))  f.id_min  = v;
     if (parseHex(m_idMax->text(), v))  f.id_max  = v;
     if (parseHex(m_idMask->text(), v)) f.id_mask = v;
-
     bool ok = false;
-    int iv = m_dlcMin->text().toInt(&ok);
-    if (ok) f.dlc_min = iv;
-    iv = m_dlcMax->text().toInt(&ok);
-    if (ok) f.dlc_max = iv;
+    int iv = m_dlcMin->text().toInt(&ok); if (ok) f.dlc_min = iv;
+    iv = m_dlcMax->text().toInt(&ok);     if (ok) f.dlc_max = iv;
+    return f;
+}
 
-    emit filterChanged(f);
+void FilterPanel::onAnyFieldChanged() { emit filterChanged(currentFilter()); }
+
+void FilterPanel::applyFilter(const FrameFilter& f) {
+    const auto blk = [](QObject* o) { return QSignalBlocker(o); };
+    auto b1=blk(m_enable); auto b2=blk(m_idMin);  auto b3=blk(m_idMax);
+    auto b4=blk(m_idMask); auto b5=blk(m_dlcMin); auto b6=blk(m_dlcMax);
+    auto b7=blk(m_showStd); auto b8=blk(m_showExt); auto b9=blk(m_showFd); auto b10=blk(m_showErr);
+    m_enable->setChecked(f.enabled);
+    m_idMin->setText(QString("0x%1").arg(f.id_min, 0, 16).toUpper());
+    m_idMax->setText(QString("0x%1").arg(f.id_max, 0, 16).toUpper());
+    m_idMask->setText(QString("0x%1").arg(f.id_mask, 0, 16).toUpper());
+    m_dlcMin->setText(QString::number(f.dlc_min));
+    m_dlcMax->setText(QString::number(f.dlc_max));
+    m_showStd->setChecked(f.show_std); m_showExt->setChecked(f.show_ext);
+    m_showFd->setChecked(f.show_fd);   m_showErr->setChecked(f.show_err);
+    emit filterChanged(currentFilter());
 }
 
 void FilterPanel::onClear() {

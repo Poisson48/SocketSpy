@@ -12,6 +12,8 @@ class FilterPanel : public QWidget {
 
 public:
     explicit FilterPanel(QWidget* parent = nullptr);
+    FrameFilter currentFilter() const;
+    void applyFilter(const FrameFilter& f);
 
 signals:
     void filterChanged(socketspy::gui::FrameFilter filter);

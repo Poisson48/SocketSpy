@@ -31,10 +31,12 @@ public slots:
 
 signals:
     void signalDoubleClicked(QString signalName, uint32_t msgId);
+    void frameGraphRequested(uint32_t id);
 
 private slots:
     void onClear();
     void onCellDoubleClicked(int row, int col);
+    void onContextMenu(const QPoint& pos);
 
 private:
     void setupUi();

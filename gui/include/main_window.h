@@ -20,6 +20,7 @@
 
 #include "log_recorder.h"
 #include "replay_panel.h"
+#include "project.h"
 
 namespace socketspy::gui {
 
@@ -56,6 +57,10 @@ private slots:
     void onStatusTimeout();
     void onInstallUdevRules();
     void onGrantCanPermissions();
+    void onNewProject();
+    void onOpenProject();
+    void onSaveProject();
+    void onSaveProjectAs();
 
 private:
     void setupUi();
@@ -63,6 +68,8 @@ private:
     void setupToolBar();
     void setupCapture(const QString& iface);
     void setConnStatus(bool active);
+    ProjectData collectProject() const;
+    void applyProject(const ProjectData& p);
 
     QTabWidget*          m_tabs{nullptr};
     QLabel*              m_statusLabel{nullptr};
@@ -94,6 +101,8 @@ private:
 
     LogRecorder   m_recorder;
     TriggerConfig m_lastTriggerCfg;
+    QString       m_projectPath;
+    QString       m_dbcPath;
 };
 
 } // namespace socketspy::gui

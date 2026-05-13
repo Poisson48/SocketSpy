@@ -6,13 +6,13 @@
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
 #include <QTimer>
+#include <QList>
 #include <vector>
 #include <string>
 #include <memory>
 #include "cancore.h"
+#include "project.h"
 
-// Temporarily suppress the Qt `signals` keyword macro so that
-// socketspy::dbc::Message::signals (a data member) parses correctly.
 #pragma push_macro("signals")
 #undef signals
 #include "dbc_types.h"
@@ -26,23 +26,30 @@ struct TrackedSignal {
     QLineSeries* series{nullptr};
     double       lastValue{0.0};
     double       minVal{0.0};
-    double       maxVal{1.0};
+    double       maxVal{255.0};
+    bool         isRaw{false};
+    int          rawByteIdx{0};
 };
 
 class SignalGraphPanel : public QWidget {
     Q_OBJECT
 
 public:
-    static constexpr int    kMaxTraces = 4;
+    static constexpr int    kMaxTraces = 8;
     static constexpr double kWindowSec = 10.0;
 
     explicit SignalGraphPanel(QWidget* parent = nullptr);
     ~SignalGraphPanel() override;
 
+    QList<GraphSignalConfig> trackedSignals() const;
+    void restoreSignals(const QList<GraphSignalConfig>& list);
+
 public slots:
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);
     void onFrameReceived(socketspy::core::CanFrame frame);
     void addSignal(QString signalName, uint32_t msgId);
+    void addRawSignal(uint32_t msgId, int byteIdx);
+    void addFrameSignals(uint32_t id);
 
 private slots:
     void onClearAll();
@@ -51,6 +58,7 @@ private slots:
 private:
     void setupUi();
     void rescaleY();
+    void addTrace(TrackedSignal t);
 
     QChart*      m_chart{nullptr};
     QChartView*  m_view{nullptr};

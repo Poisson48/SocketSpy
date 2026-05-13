@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QTableWidgetItem>
+#include <QMenu>
 #include <QString>
 
 using namespace socketspy::core;
@@ -34,6 +35,9 @@ void MonitorPanel::setupUi() {
 
     connect(m_table, &QTableWidget::cellDoubleClicked,
             this,    &MonitorPanel::onCellDoubleClicked);
+    m_table->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_table, &QTableWidget::customContextMenuRequested,
+            this,    &MonitorPanel::onContextMenu);
 
     m_clear = new QPushButton("Clear", this);
     m_pause = new QCheckBox("Pause", this);
@@ -98,6 +102,22 @@ void MonitorPanel::onCellDoubleClicked(int row, int /*col*/) {
     std::string name = dbc_helper::first_signal_name(*m_dbc, id);
     if (!name.empty())
         emit signalDoubleClicked(QString::fromStdString(name), id);
+}
+
+void MonitorPanel::onContextMenu(const QPoint& pos) {
+    const QModelIndex idx = m_table->indexAt(pos);
+    if (!idx.isValid()) return;
+    auto* idItem = m_table->item(idx.row(), 1);
+    if (!idItem) return;
+    bool ok = false;
+    uint32_t id = idItem->text().toUInt(&ok, 16);
+    if (!ok) return;
+
+    QMenu menu(this);
+    auto* graphAct = menu.addAction(
+        QString("Ajouter 0x%1 au graphe").arg(id, 0, 16).toUpper());
+    if (menu.exec(m_table->viewport()->mapToGlobal(pos)) == graphAct)
+        emit frameGraphRequested(id);
 }
 
 QString MonitorPanel::decodeFrame(const CanFrame& f) const {

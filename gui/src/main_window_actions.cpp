@@ -5,6 +5,9 @@
 #include "stats_panel.h"
 #include "can_capture.h"
 #include "trigger_config.h"
+#include "filter_panel.h"
+#include "trigger_panel.h"
+#include "project.h"
 
 #pragma push_macro("signals")
 #undef signals
@@ -12,6 +15,7 @@
 #pragma pop_macro("signals")
 
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QFile>
 #include <QTextStream>
@@ -19,6 +23,11 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QStatusBar>
+
+#pragma push_macro("signals")
+#undef signals
+#include "dbc_parser.h"
+#pragma pop_macro("signals")
 
 using namespace socketspy::dbc;
 
@@ -54,36 +63,27 @@ void MainWindow::onOpenDbc() {
         return;
     }
     *m_dbc = *result;
+    m_dbcPath = path;
     m_monitor->onDbcLoaded(*m_dbc);
     m_graph->onDbcLoaded(*m_dbc);
     m_stats->onDbcLoaded(*m_dbc);
-    statusBar()->showMessage(
-        "DBC loaded: "
-        + QString::number(m_dbc->messages.size()) + " messages", 5000);
+    statusBar()->showMessage("DBC: " + QString::number(m_dbc->messages.size()) + " messages", 5000);
 }
 
-void MainWindow::onToggleMonitor(bool visible) {
-    int idx = m_tabs->indexOf(m_monitor);
-    if (visible && idx == -1)
-        m_tabs->insertTab(0, m_monitor, "Monitor");
-    else if (!visible && idx != -1)
-        m_tabs->removeTab(idx);
+void MainWindow::onToggleMonitor(bool v) {
+    int i = m_tabs->indexOf(m_monitor);
+    if (v && i==-1) m_tabs->insertTab(0, m_monitor, "Monitor");
+    else if (!v && i!=-1) m_tabs->removeTab(i);
 }
-
-void MainWindow::onToggleTransmit(bool visible) {
-    int idx = m_tabs->indexOf(m_transmit);
-    if (visible && idx == -1)
-        m_tabs->addTab(m_transmit, "Transmit");
-    else if (!visible && idx != -1)
-        m_tabs->removeTab(idx);
+void MainWindow::onToggleTransmit(bool v) {
+    int i = m_tabs->indexOf(m_transmit);
+    if (v && i==-1) m_tabs->addTab(m_transmit, "Transmit");
+    else if (!v && i!=-1) m_tabs->removeTab(i);
 }
-
-void MainWindow::onToggleGraph(bool visible) {
-    int idx = m_tabs->indexOf(m_graph);
-    if (visible && idx == -1)
-        m_tabs->addTab(m_graph, "Signal Graph");
-    else if (!visible && idx != -1)
-        m_tabs->removeTab(idx);
+void MainWindow::onToggleGraph(bool v) {
+    int i = m_tabs->indexOf(m_graph);
+    if (v && i==-1) m_tabs->addTab(m_graph, "Signal Graph");
+    else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 
 void MainWindow::onStartRecording() {
@@ -105,6 +105,72 @@ void MainWindow::onStopRecording() {
             m_monitor, &MonitorPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived,
             m_graph,   &SignalGraphPanel::onFrameReceived);
+}
+
+ProjectData MainWindow::collectProject() const {
+    ProjectData p;
+    p.iface = m_iface; p.bitrate = m_bitrate; p.dbcPath = m_dbcPath;
+    p.graphSignals = m_graph->trackedSignals();
+    p.filter  = m_filterPanel->currentFilter();
+    p.trigger = m_triggerPanel->currentConfig();
+    return p;
+}
+
+void MainWindow::applyProject(const ProjectData& p) {
+    m_bitrate = p.bitrate;
+    int bIdx = m_bitrateCombo->findData(p.bitrate);
+    if (bIdx >= 0) m_bitrateCombo->setCurrentIndex(bIdx);
+    if (!p.iface.isEmpty()) m_ifaceCombo->setCurrentText(p.iface);
+    m_filterPanel->applyFilter(p.filter);
+    m_triggerPanel->applyConfig(p.trigger);
+    m_graph->restoreSignals(p.graphSignals);
+    if (!p.dbcPath.isEmpty()) {
+        QFile f(p.dbcPath);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            auto res = socketspy::dbc::parse_dbc(QTextStream(&f).readAll().toStdString());
+            if (res) { *m_dbc = *res; m_dbcPath = p.dbcPath;
+                m_monitor->onDbcLoaded(*m_dbc); m_graph->onDbcLoaded(*m_dbc); m_stats->onDbcLoaded(*m_dbc); }
+        }
+    }
+}
+
+void MainWindow::onNewProject() {
+    m_projectPath.clear();
+    m_graph->restoreSignals({});
+    m_filterPanel->applyFilter({});
+    m_triggerPanel->applyConfig({});
+    setWindowTitle("SocketSpy");
+}
+
+void MainWindow::onOpenProject() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, "Ouvrir un projet", {}, "SocketSpy Projects (*.spyproj);;All Files (*)");
+    if (path.isEmpty()) return;
+    ProjectData p;
+    QString err;
+    if (!projectLoad(p, path, err)) {
+        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le projet :\n" + err);
+        return;
+    }
+    m_projectPath = path;
+    applyProject(p);
+    setWindowTitle("SocketSpy — " + QFileInfo(path).baseName());
+}
+
+void MainWindow::onSaveProject() {
+    if (m_projectPath.isEmpty()) { onSaveProjectAs(); return; }
+    QString err;
+    if (!projectSave(collectProject(), m_projectPath, err))
+        QMessageBox::critical(this, "Erreur", "Impossible de sauvegarder :\n" + err);
+}
+
+void MainWindow::onSaveProjectAs() {
+    const QString path = QFileDialog::getSaveFileName(
+        this, "Sauvegarder le projet", {}, "SocketSpy Projects (*.spyproj);;All Files (*)");
+    if (path.isEmpty()) return;
+    m_projectPath = path.endsWith(".spyproj") ? path : path + ".spyproj";
+    onSaveProject();
+    setWindowTitle("SocketSpy — " + QFileInfo(m_projectPath).baseName());
 }
 
 void MainWindow::setConnStatus(bool active) {

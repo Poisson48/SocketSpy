@@ -2,6 +2,8 @@
 #include <QWidget>
 #include <QComboBox>
 #include <QPushButton>
+#include <QLabel>
+#include <QProgressBar>
 #include <QTreeWidget>
 #include <QDoubleSpinBox>
 #include <vector>
@@ -31,22 +33,27 @@ private:
         int ni, mi, si;
         QDoubleSpinBox* spin;
         bool animated;
+        QPushButton* waveBtn{nullptr}; // "configure waveform" button
     };
 
     void setupUi();
     void populateProfiles();
     void populateTree();
-    void connectSignalWidgets();
     void updateDeleteButton();
+    void updateRunningState(bool running);
+    void openWaveformConfig(int ni, int mi, int si);
 
-    QComboBox*   m_profileCombo{nullptr};
-    QPushButton* m_startBtn{nullptr};
-    QPushButton* m_newBtn{nullptr};
-    QPushButton* m_deleteBtn{nullptr};
-    QTreeWidget* m_tree{nullptr};
+    QComboBox*    m_profileCombo{nullptr};
+    QPushButton*  m_startBtn{nullptr};
+    QPushButton*  m_resetBtn{nullptr};
+    QPushButton*  m_newBtn{nullptr};
+    QPushButton*  m_deleteBtn{nullptr};
+    QLabel*       m_descLabel{nullptr};
+    QProgressBar* m_progressBar{nullptr};
+    QTreeWidget*  m_tree{nullptr};
 
-    CanSimulator*            m_simulator{nullptr};
-    SimProfile               m_currentProfile;
+    CanSimulator*             m_simulator{nullptr};
+    SimProfile                m_currentProfile;
     std::vector<SignalWidget> m_signalWidgets;
 };
 

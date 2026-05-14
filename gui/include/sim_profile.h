@@ -10,6 +10,14 @@ struct SimScenarioPoint {
     double  value;
 };
 
+enum class WaveformType {
+    None,    // static / manual (no animation)
+    Sine,
+    Ramp,    // sawtooth up
+    Square,
+    Random
+};
+
 struct SimSignal {
     QString name;
     int     start_bit;
@@ -20,6 +28,11 @@ struct SimSignal {
     double  max;
     double  current_value;
     std::vector<SimScenarioPoint> scenario; // empty = static/manual
+
+    // Runtime-configurable waveform (overrides/supplements scenario)
+    WaveformType waveform   {WaveformType::None};
+    int          num_points {100};   // points per cycle
+    int          step_ms    {50};    // ms between steps (= update rate)
 };
 
 struct SimMessage {

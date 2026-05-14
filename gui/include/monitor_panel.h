@@ -1,9 +1,16 @@
 #pragma once
 #include <QWidget>
+#include <QDialog>
 #include <QTableWidget>
 #include <QPushButton>
 #include <QCheckBox>
 #include <QLineEdit>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <memory>
+#include <unordered_map>
+#include <set>
+#include <vector>
 #include "cancore.h"
 #include "filter_model.h"
 
@@ -15,6 +22,48 @@
 #pragma pop_macro("signals")
 
 namespace socketspy::gui {
+
+// ---------------------------------------------------------------------------
+// All monitor-specific filter state (distinct from FrameFilter which is the
+// global hardware/protocol filter applied upstream).
+struct MonitorFilter {
+    bool     changedOnly   = false;   // Track: hide IDs that never change;
+                                      // Log:   skip duplicate data per ID
+    int      dlc           = 0;       // 0 = any, 1-64 = exact match
+    bool     useTimestamp  = false;   // enable min/max timestamp gate
+    double   tsMin         = 0.0;     // seconds (µs / 1e6)
+    double   tsMax         = 0.0;
+};
+
+// ---------------------------------------------------------------------------
+// Non-modal dialog that exposes MonitorFilter controls.
+// The dialog is created once and shown/hidden by the "Filters…" button.
+class MonitorFilterDialog : public QDialog {
+    Q_OBJECT
+public:
+    explicit MonitorFilterDialog(QWidget* parent = nullptr);
+
+    // Read the current filter state.
+    MonitorFilter filter() const;
+
+    // Push a filter into the UI (for initialisation).
+    void setFilter(const MonitorFilter& f);
+
+signals:
+    void filterChanged(const socketspy::gui::MonitorFilter& f);
+
+private slots:
+    void onAnyChanged();
+
+private:
+    QCheckBox*     m_changedOnly{nullptr};
+    QSpinBox*      m_dlc{nullptr};
+    QCheckBox*     m_useTs{nullptr};
+    QDoubleSpinBox* m_tsMin{nullptr};
+    QDoubleSpinBox* m_tsMax{nullptr};
+};
+
+// ---------------------------------------------------------------------------
 
 class MonitorPanel : public QWidget {
     Q_OBJECT
@@ -39,20 +88,45 @@ private slots:
     void onCellDoubleClicked(int row, int col);
     void onContextMenu(const QPoint& pos);
     void onSearchChanged(const QString& text);
+    void onTrackModeToggled(bool checked);
+    void onMonitorFilterChanged(const socketspy::gui::MonitorFilter& f);
+    void onFiltersButtonClicked();
 
 private:
     void setupUi();
     QString decodeFrame(const socketspy::core::CanFrame& f) const;
+    void appendLogRow(const socketspy::core::CanFrame& frame);
+    void updateTrackingRow(const socketspy::core::CanFrame& frame);
+    void applyRowVisibility(int row, uint32_t id);
+    bool passesMonitorFilter(const socketspy::core::CanFrame& frame) const;
 
-    QTableWidget*  m_table{nullptr};
-    QPushButton*   m_clear{nullptr};
-    QCheckBox*     m_pause{nullptr};
-    QLineEdit*     m_search{nullptr};
+    QTableWidget*        m_table{nullptr};
+    QPushButton*         m_clear{nullptr};
+    QCheckBox*           m_pause{nullptr};
+    QCheckBox*           m_trackMode{nullptr};
+    QPushButton*         m_filterBtn{nullptr};      // replaces m_changedOnly
+    QCheckBox*           m_autoScrollChk{nullptr};
+    QLineEdit*           m_search{nullptr};
+    MonitorFilterDialog* m_filterDlg{nullptr};
 
-    socketspy::dbc::DbcDatabase* m_dbc{nullptr};
+    std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;
     bool m_dbcLoaded{false};
 
-    socketspy::gui::FrameFilter m_filter;
+    socketspy::gui::FrameFilter  m_filter;
+    MonitorFilter                m_monFilter;   // persisted filter state
+
+    // Tracking mode: one row per CAN ID
+    struct TrackEntry {
+        int row{-1};
+        std::vector<uint8_t> lastData;
+        int lastDlc{0};
+        bool everChanged{false};
+    };
+    std::unordered_map<uint32_t, TrackEntry> m_tracked;
+    std::set<uint32_t> m_pinned;
+
+    // Log mode: last seen data per ID (for changed-only deduplication)
+    std::unordered_map<uint32_t, std::pair<std::vector<uint8_t>, int>> m_logLastSeen;
 };
 
 } // namespace socketspy::gui

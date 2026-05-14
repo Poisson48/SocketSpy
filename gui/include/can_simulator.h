@@ -19,8 +19,18 @@ public:
     void stop();
     bool isRunning() const;
 
-    void   setSignalValue(int node_idx, int msg_idx, int sig_idx, double value);
-    double signalValue(int node_idx, int msg_idx, int sig_idx) const;
+    void    setSignalValue(int node_idx, int msg_idx, int sig_idx, double value);
+    double  signalValue(int node_idx, int msg_idx, int sig_idx) const;
+    int64_t elapsedMs() const { return m_elapsed_ms; }
+    int64_t scenarioDuration() const;
+    void    resetElapsed();
+
+    // Runtime waveform configuration (effective immediately, even while running)
+    void setSignalWaveform(int node_idx, int msg_idx, int sig_idx,
+                           WaveformType waveform, double min, double max,
+                           int num_points, int step_ms);
+
+    const SimSignal* signalAt(int ni, int mi, int si) const;
 
 signals:
     void frameGenerated(socketspy::core::CanFrame frame);
@@ -33,6 +43,9 @@ private:
     void encodeAndEmit(int node_idx, int msg_idx);
     static void encodeSignal(uint8_t* data, const SimSignal& sig);
     static double interpolateScenario(const std::vector<SimScenarioPoint>& pts, int64_t t_ms);
+    static std::vector<SimScenarioPoint> generateWaveform(WaveformType waveform,
+                                                          double min, double max,
+                                                          int num_points, int step_ms);
 
     SimProfile           m_profile;
     std::vector<QTimer*> m_timers;

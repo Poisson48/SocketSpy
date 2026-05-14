@@ -153,7 +153,7 @@ void SignalGraphPanel::onFrameReceived(CanFrame frame) {
         }
         trace.lastValue = val;
         trace.series->append(relT, val);
-        while (trace.series->count() > 1200) {
+        while (trace.series->count() > kMaxSeriesPts) {
             auto pts = trace.series->points();
             trace.series->remove(pts.first());
         }

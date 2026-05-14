@@ -24,11 +24,6 @@
 #include <QProcessEnvironment>
 #include <QStatusBar>
 
-#pragma push_macro("signals")
-#undef signals
-#include "dbc_parser.h"
-#pragma pop_macro("signals")
-
 using namespace socketspy::dbc;
 
 namespace socketspy::gui {
@@ -38,26 +33,26 @@ void MainWindow::onTriggerFired() {
         case TriggerConfig::Action::StartRecord: onStartRecording(); break;
         case TriggerConfig::Action::StopRecord:  onStopRecording();  break;
         case TriggerConfig::Action::Bookmark:
-            statusBar()->showMessage("Trigger fired — bookmark set", 5000); break;
+            statusBar()->showMessage(tr("Trigger fired — bookmark set"), 5000); break;
     }
 }
 
 void MainWindow::onOpenDbc() {
     QString path = QFileDialog::getOpenFileName(
-        this, "Open DBC File", {}, "DBC Files (*.dbc);;All Files (*)");
+        this, tr("Open DBC File"), {}, tr("DBC Files (*.dbc);;All Files (*)"));
     if (path.isEmpty()) return;
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::critical(this, "Error",
-            "Cannot open file: " + file.errorString());
+        QMessageBox::critical(this, tr("Error"),
+            tr("Cannot open file: %1").arg(file.errorString()));
         return;
     }
     QString content = QTextStream(&file).readAll();
 
     auto result = parse_dbc(content.toStdString());
     if (!result) {
-        QMessageBox::critical(this, "DBC Parse Error",
+        QMessageBox::critical(this, tr("DBC Parse Error"),
             QString::fromStdString(
                 std::string(parse_error_string(result.error()))));
         return;
@@ -72,23 +67,23 @@ void MainWindow::onOpenDbc() {
 
 void MainWindow::onToggleMonitor(bool v) {
     int i = m_tabs->indexOf(m_monitor);
-    if (v && i==-1) m_tabs->insertTab(0, m_monitor, "Monitor");
+    if (v && i==-1) m_tabs->insertTab(0, m_monitor, tr("Monitor"));
     else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 void MainWindow::onToggleTransmit(bool v) {
     int i = m_tabs->indexOf(m_transmit);
-    if (v && i==-1) m_tabs->addTab(m_transmit, "Transmit");
+    if (v && i==-1) m_tabs->addTab(m_transmit, tr("Transmit"));
     else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 void MainWindow::onToggleGraph(bool v) {
     int i = m_tabs->indexOf(m_graph);
-    if (v && i==-1) m_tabs->addTab(m_graph, "Signal Graph");
+    if (v && i==-1) m_tabs->addTab(m_graph, tr("Signal Graph"));
     else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 
 void MainWindow::onStartRecording() {
     QString path = QFileDialog::getSaveFileName(
-        this, "Save CAN Log", {}, "CAN Log Files (*.log);;All Files (*)");
+        this, tr("Save CAN Log"), {}, tr("CAN Log Files (*.log);;All Files (*)"));
     if (path.isEmpty()) return;
     m_recorder.open(path);
     if (!m_recorder.isOpen()) return;
@@ -144,12 +139,12 @@ void MainWindow::onNewProject() {
 
 void MainWindow::onOpenProject() {
     const QString path = QFileDialog::getOpenFileName(
-        this, "Ouvrir un projet", {}, "SocketSpy Projects (*.spyproj);;All Files (*)");
+        this, tr("Open project"), {}, tr("SocketSpy Projects (*.spyproj);;All Files (*)"));
     if (path.isEmpty()) return;
     ProjectData p;
     QString err;
     if (!projectLoad(p, path, err)) {
-        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le projet :\n" + err);
+        QMessageBox::critical(this, tr("Error"), tr("Cannot open project: %1").arg(err));
         return;
     }
     m_projectPath = path;
@@ -161,12 +156,12 @@ void MainWindow::onSaveProject() {
     if (m_projectPath.isEmpty()) { onSaveProjectAs(); return; }
     QString err;
     if (!projectSave(collectProject(), m_projectPath, err))
-        QMessageBox::critical(this, "Erreur", "Impossible de sauvegarder :\n" + err);
+        QMessageBox::critical(this, tr("Error"), tr("Cannot save: %1").arg(err));
 }
 
 void MainWindow::onSaveProjectAs() {
     const QString path = QFileDialog::getSaveFileName(
-        this, "Sauvegarder le projet", {}, "SocketSpy Projects (*.spyproj);;All Files (*)");
+        this, tr("Save project"), {}, tr("SocketSpy Projects (*.spyproj);;All Files (*)"));
     if (path.isEmpty()) return;
     m_projectPath = path.endsWith(".spyproj") ? path : path + ".spyproj";
     onSaveProject();
@@ -176,17 +171,17 @@ void MainWindow::onSaveProjectAs() {
 void MainWindow::setConnStatus(bool active) {
     if (active) {
         m_connStatusLabel->setStyleSheet("color: #33aa33; font-size: 14px;");
-        m_connStatusLabel->setToolTip("Interface active");
+        m_connStatusLabel->setToolTip(tr("Interface active"));
     } else {
         m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
-        m_connStatusLabel->setToolTip("Aucun trafic reçu");
+        m_connStatusLabel->setToolTip(tr("No traffic received"));
     }
 }
 
 void MainWindow::onGrantCanPermissions() {
     const QString user = QProcessEnvironment::systemEnvironment().value("USER");
     if (user.isEmpty()) {
-        QMessageBox::critical(this, "Erreur", "Impossible de déterminer le nom d'utilisateur.");
+        QMessageBox::critical(this, tr("Error"), tr("Cannot determine the username."));
         return;
     }
 
@@ -202,7 +197,7 @@ void MainWindow::onGrantCanPermissions() {
     tmpScript.setAutoRemove(false);
     tmpSudoers.setAutoRemove(false);
     if (!tmpScript.open() || !tmpSudoers.open()) {
-        QMessageBox::critical(this, "Erreur", "Impossible de créer les fichiers temporaires.");
+        QMessageBox::critical(this, tr("Error"), tr("Cannot create temporary files."));
         return;
     }
     tmpScript.write(kScript);
@@ -223,13 +218,11 @@ void MainWindow::onGrantCanPermissions() {
     QFile::remove(tmpSudoers.fileName());
 
     if (p.exitCode() == 0)
-        QMessageBox::information(this, "Droits CAN configurés",
-            "Succès ! Les interfaces CAN peuvent maintenant être configurées\n"
-            "sans saisir de mot de passe.");
+        QMessageBox::information(this, tr("CAN permissions configured"),
+            tr("Success! CAN interfaces can now be configured without a password."));
     else
-        QMessageBox::critical(this, "Erreur",
-            "Impossible de configurer les droits.\n"
-            "Vérifiez que pkexec, sudo et visudo sont installés.");
+        QMessageBox::critical(this, tr("Error"),
+            "Cannot configure permissions.\nCheck that pkexec, sudo, and visudo are installed.");
 }
 
 void MainWindow::onInstallUdevRules() {
@@ -252,7 +245,7 @@ SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"
     QTemporaryFile tmp;
     tmp.setAutoRemove(false);
     if (!tmp.open()) {
-        QMessageBox::critical(this, "Erreur", "Impossible de créer un fichier temporaire.");
+        QMessageBox::critical(this, tr("Error"), tr("Cannot create a temporary file."));
         return;
     }
     tmp.write(kRules);
@@ -272,11 +265,12 @@ SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"
     QFile::remove(tmp.fileName());
 
     if (ok)
-        QMessageBox::information(this, "Succès",
-            "Règles udev installées.\nReconnectez votre adaptateur CAN USB — il sera détecté automatiquement.");
+        QMessageBox::information(this, tr("Success"),
+            tr("udev rules installed.") + "\n" +
+            "Reconnect your CAN USB adapter — it will be detected automatically.");
     else
-        QMessageBox::critical(this, "Erreur",
-            "Impossible d'installer les règles udev.\nVérifiez que pkexec est installé.");
+        QMessageBox::critical(this, tr("Error"),
+            "Cannot install udev rules.\nCheck that pkexec is installed.");
 }
 
 } // namespace socketspy::gui

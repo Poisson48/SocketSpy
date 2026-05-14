@@ -35,8 +35,9 @@ class SignalGraphPanel : public QWidget {
     Q_OBJECT
 
 public:
-    static constexpr int    kMaxTraces = 8;
-    static constexpr double kWindowSec = 10.0;
+    static constexpr int    kMaxTraces      = 8;
+    static constexpr double kWindowSec      = 10.0;
+    static constexpr int    kMaxSeriesPts   = 1200;  // cap per-series point count
 
     explicit SignalGraphPanel(QWidget* parent = nullptr);
     ~SignalGraphPanel() override;

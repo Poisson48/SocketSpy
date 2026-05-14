@@ -126,8 +126,9 @@ void StatsPanel::onTick() {
     const int existingRows = m_table->rowCount();
     const int needed       = m_stats.size();
     m_table->setRowCount(needed);
+    const int colCount = m_table->columnCount();
     for (int r = existingRows; r < needed; ++r) {
-        for (int c = 0; c < 6; ++c)
+        for (int c = 0; c < colCount; ++c)
             m_table->setItem(r, c, new QTableWidgetItem);
     }
 

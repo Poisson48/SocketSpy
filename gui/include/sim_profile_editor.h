@@ -6,6 +6,7 @@
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include <QComboBox>
 #include <QStackedWidget>
 #include <QGroupBox>
 #include "sim_profile.h"
@@ -37,10 +38,16 @@ private:
     enum DataRole {
         IdRole = Qt::UserRole, PeriodRole, DlcRole,
         StartBitRole, LengthRole, FactorRole, OffsetRole,
-        MinRole, MaxRole, DefaultRole, ScenarioRole
+        MinRole, MaxRole, DefaultRole, ScenarioRole,
+        WaveformRole, NumPointsRole, StepMsRole
     };
 
     void setupUi();
+    QWidget* createNodePage();
+    QWidget* createMsgPage();
+    QWidget* createSignalPage();  // wrapped in a QScrollArea by setupUi
+    void     setupConnections();
+
     QTreeWidgetItem* addNodeItem(const QString& name);
     QTreeWidgetItem* addMessageItem(QTreeWidgetItem* parent, uint32_t id, int period, uint8_t dlc);
     QTreeWidgetItem* addSignalItem(QTreeWidgetItem* parent, const SimSignal& s);
@@ -74,6 +81,11 @@ private:
     QDoubleSpinBox* m_sigMinSpin{nullptr};
     QDoubleSpinBox* m_sigMaxSpin{nullptr};
     QDoubleSpinBox* m_sigDefaultSpin{nullptr};
+
+    // Waveform section (inside signal form)
+    QComboBox*    m_waveformCombo{nullptr};
+    QSpinBox*     m_numPointsSpin{nullptr};
+    QSpinBox*     m_stepMsSpin{nullptr};
 
     // Scenario section (inside signal form)
     QTableWidget* m_scenarioTable{nullptr};

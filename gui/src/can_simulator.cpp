@@ -2,6 +2,8 @@
 #include <chrono>
 #include <algorithm>
 #include <cstring>
+#include <cmath>
+#include <random>
 
 namespace socketspy::gui {
 
@@ -15,12 +17,83 @@ CanSimulator::CanSimulator(QObject* parent) : QObject(parent) {}
 
 CanSimulator::~CanSimulator() { stop(); }
 
+// ── Waveform generation ───────────────────────────────────────────────────────
+
+std::vector<SimScenarioPoint> CanSimulator::generateWaveform(
+        WaveformType waveform, double min_val, double max_val,
+        int num_points, int step_ms)
+{
+    std::vector<SimScenarioPoint> pts;
+    if (num_points <= 0 || step_ms <= 0) return pts;
+    pts.reserve(static_cast<size_t>(num_points) + 1);
+
+    const double range  = max_val - min_val;
+    const double mid    = (min_val + max_val) / 2.0;
+    const double amp    = range / 2.0;
+
+    static std::mt19937 rng{std::random_device{}()};
+    std::uniform_real_distribution<double> dist(min_val, max_val);
+
+    for (int i = 0; i < num_points; ++i) {
+        double phase = static_cast<double>(i) / static_cast<double>(num_points); // [0, 1)
+        double value = 0.0;
+        switch (waveform) {
+        case WaveformType::Sine:
+            value = mid + amp * std::sin(2.0 * M_PI * phase);
+            break;
+        case WaveformType::Ramp:
+            value = min_val + range * phase;
+            break;
+        case WaveformType::Square:
+            value = phase < 0.5 ? max_val : min_val;
+            break;
+        case WaveformType::Random:
+            value = dist(rng);
+            break;
+        default:
+            value = min_val;
+            break;
+        }
+        SimScenarioPoint p;
+        p.t_ms  = static_cast<int64_t>(i) * step_ms;
+        p.value = std::clamp(value, min_val, max_val);
+        pts.push_back(p);
+    }
+
+    // Add loop-back sentinel so interpolation wraps cleanly
+    if (!pts.empty()) {
+        SimScenarioPoint sentinel;
+        sentinel.t_ms  = static_cast<int64_t>(num_points) * step_ms;
+        sentinel.value = pts.front().value;
+        pts.push_back(sentinel);
+    }
+    return pts;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 void CanSimulator::load(const SimProfile& profile) {
     stop();
     m_profile = profile;
+    // Generate waveform scenarios for signals that have a waveform type set
+    for (auto& node : m_profile.nodes)
+        for (auto& msg : node.messages)
+            for (auto& sig : msg.sigs) {
+                if (sig.waveform != WaveformType::None) {
+                    sig.scenario = generateWaveform(
+                        sig.waveform, sig.min, sig.max, sig.num_points, sig.step_ms);
+                }
+                // Ensure scenario points are sorted by t_ms
+                if (sig.scenario.size() > 1)
+                    std::sort(sig.scenario.begin(), sig.scenario.end(),
+                              [](const SimScenarioPoint& a, const SimScenarioPoint& b) {
+                                  return a.t_ms < b.t_ms;
+                              });
+            }
 }
 
 double CanSimulator::interpolateScenario(const std::vector<SimScenarioPoint>& pts, int64_t t_ms) {
+    if (pts.empty()) return 0.0;
     if (pts.size() == 1) return pts[0].value;
     int64_t loop_ms = pts.back().t_ms;
     if (loop_ms <= 0) return pts.back().value;
@@ -44,6 +117,20 @@ void CanSimulator::tickAnimations() {
                 if (!sig.scenario.empty())
                     sig.current_value = interpolateScenario(sig.scenario, m_elapsed_ms);
     emit animationTick();
+}
+
+int64_t CanSimulator::scenarioDuration() const {
+    int64_t max = 0;
+    for (const auto& node : m_profile.nodes)
+        for (const auto& msg : node.messages)
+            for (const auto& sig : msg.sigs)
+                if (!sig.scenario.empty() && sig.scenario.back().t_ms > max)
+                    max = sig.scenario.back().t_ms;
+    return max > 0 ? max : 1000;
+}
+
+void CanSimulator::resetElapsed() {
+    m_elapsed_ms = 0;
 }
 
 double CanSimulator::signalValue(int ni, int mi, int si) const {
@@ -160,6 +247,38 @@ void CanSimulator::setSignalValue(int node_idx, int msg_idx, int sig_idx, double
     auto& msg = node.messages[msg_idx];
     if (sig_idx < 0 || sig_idx >= (int)msg.sigs.size()) return;
     msg.sigs[sig_idx].current_value = value;
+}
+
+void CanSimulator::setSignalWaveform(int ni, int mi, int si,
+                                     WaveformType waveform, double min_val, double max_val,
+                                     int num_points, int step_ms)
+{
+    if (ni < 0 || ni >= (int)m_profile.nodes.size()) return;
+    auto& node = m_profile.nodes[ni];
+    if (mi < 0 || mi >= (int)node.messages.size()) return;
+    auto& msg = node.messages[mi];
+    if (si < 0 || si >= (int)msg.sigs.size()) return;
+    auto& sig = msg.sigs[si];
+
+    sig.waveform   = waveform;
+    sig.min        = min_val;
+    sig.max        = max_val;
+    sig.num_points = num_points;
+    sig.step_ms    = step_ms;
+
+    if (waveform != WaveformType::None)
+        sig.scenario = generateWaveform(waveform, min_val, max_val, num_points, step_ms);
+    else
+        sig.scenario.clear();
+}
+
+const SimSignal* CanSimulator::signalAt(int ni, int mi, int si) const {
+    if (ni < 0 || ni >= (int)m_profile.nodes.size()) return nullptr;
+    const auto& node = m_profile.nodes[ni];
+    if (mi < 0 || mi >= (int)node.messages.size()) return nullptr;
+    const auto& msg = node.messages[mi];
+    if (si < 0 || si >= (int)msg.sigs.size()) return nullptr;
+    return &msg.sigs[si];
 }
 
 } // namespace socketspy::gui

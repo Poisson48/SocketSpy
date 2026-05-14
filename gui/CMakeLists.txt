@@ -1,6 +1,6 @@
 # Agent 4 — Qt 6.6+ GUI
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus SerialPort)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus SerialPort LinguistTools)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -90,6 +90,21 @@ target_link_libraries(socketspy
 )
 
 install(TARGETS socketspy RUNTIME DESTINATION bin)
+
+# ---------------------------------------------------------------------------
+# Internationalization (i18n)
+# ---------------------------------------------------------------------------
+# qt_add_translations() generates .qm files from the .ts stubs and embeds
+# them into the socketspy binary as Qt resources under :/i18n/.
+# Run lupdate against the socketspy target to refresh the .ts files whenever
+# new tr()-wrapped strings are added.
+qt_add_translations(socketspy
+    TS_FILES
+        translations/socketspy_en.ts
+        translations/socketspy_fr.ts
+    RESOURCE_PREFIX "/i18n"
+    QM_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/translations"
+)
 
 if(SOCKETSPY_BUILD_TESTS)
     add_subdirectory(tests)

@@ -66,17 +66,17 @@ void MainWindow::setupUi() {
     m_scriptPanel   = new ScriptingPanel(this);
     m_protocolPanel = new ProtocolPanel(this);
 
-    m_tabs->addTab(m_monitor,    "Monitor");
-    m_tabs->addTab(m_transmit,   "Transmit");
-    m_tabs->addTab(m_graph,      "Signal Graph");
-    m_tabs->addTab(m_replay,     "Replay");
-    m_tabs->addTab(m_stats,      "Statistics");
-    m_tabs->addTab(m_elm327Panel,   "OBD2/BT");
-    m_tabs->addTab(m_simulator,     "Simulator");
-    m_tabs->addTab(m_scriptPanel,   "Scripts");
-    m_tabs->addTab(m_protocolPanel, "Protocols");
+    m_tabs->addTab(m_monitor,    tr("Monitor"));
+    m_tabs->addTab(m_transmit,   tr("Transmit"));
+    m_tabs->addTab(m_graph,      tr("Signal Graph"));
+    m_tabs->addTab(m_replay,     tr("Replay"));
+    m_tabs->addTab(m_stats,      tr("Statistics"));
+    m_tabs->addTab(m_elm327Panel,   tr("OBD2/BT"));
+    m_tabs->addTab(m_simulator,     tr("Simulator"));
+    m_tabs->addTab(m_scriptPanel,   tr("Scripts"));
+    m_tabs->addTab(m_protocolPanel, tr("Protocols"));
 
-    m_statusLabel = new QLabel("Interface: " + m_iface + "  |  0 fps", this);
+    m_statusLabel = new QLabel(tr("Interface: ") + m_iface + "  |  0 fps", this);
     statusBar()->addPermanentWidget(m_statusLabel);
 
     connect(m_monitor, &MonitorPanel::signalDoubleClicked,
@@ -96,7 +96,7 @@ void MainWindow::setupUi() {
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
 
     m_filterPanel = new FilterPanel(this);
-    m_filterDock  = new QDockWidget("Filter", this);
+    m_filterDock  = new QDockWidget(tr("Filter"), this);
     m_filterDock->setWidget(m_filterPanel);
     m_filterDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
     addDockWidget(Qt::RightDockWidgetArea, m_filterDock);
@@ -105,7 +105,7 @@ void MainWindow::setupUi() {
             m_monitor,     &MonitorPanel::onFilterChanged);
 
     m_triggerPanel = new TriggerPanel(this);
-    m_triggerDock  = new QDockWidget("Trigger Capture", this);
+    m_triggerDock  = new QDockWidget(tr("Trigger Capture"), this);
     m_triggerDock->setWidget(m_triggerPanel);
     m_triggerDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
     addDockWidget(Qt::RightDockWidgetArea, m_triggerDock);
@@ -113,28 +113,28 @@ void MainWindow::setupUi() {
 }
 
 void MainWindow::setupMenuBar() {
-    auto* fileMenu = menuBar()->addMenu("&File");
+    auto* fileMenu = menuBar()->addMenu(tr("&File"));
     auto addF = [&](const QString& lbl, auto slot, QKeySequence k = {}) {
         auto* a = fileMenu->addAction(lbl); if (!k.isEmpty()) a->setShortcut(k);
         connect(a, &QAction::triggered, this, slot);
     };
-    addF("&Open DBC…",         &MainWindow::onOpenDbc);
+    addF(tr("&Open DBC…"),         &MainWindow::onOpenDbc);
     fileMenu->addSeparator();
-    addF("&New Project",       &MainWindow::onNewProject,     QKeySequence::New);
-    addF("&Open Project…",     &MainWindow::onOpenProject,    QKeySequence::Open);
-    addF("&Save Project",      &MainWindow::onSaveProject,    QKeySequence::Save);
-    addF("Save Project &As…",  &MainWindow::onSaveProjectAs);
+    addF(tr("&New Project"),       &MainWindow::onNewProject,     QKeySequence::New);
+    addF(tr("&Open Project…"),     &MainWindow::onOpenProject,    QKeySequence::Open);
+    addF(tr("&Save Project"),      &MainWindow::onSaveProject,    QKeySequence::Save);
+    addF(tr("Save Project &As…"),  &MainWindow::onSaveProjectAs);
     fileMenu->addSeparator();
-    addF("E&xit",              &MainWindow::onExit,           QKeySequence::Quit);
+    addF(tr("E&xit"),              &MainWindow::onExit,           QKeySequence::Quit);
 
-    auto* viewMenu = menuBar()->addMenu("&View");
+    auto* viewMenu = menuBar()->addMenu(tr("&View"));
     auto addV = [&](const QString& lbl, auto slot) {
         auto* a = viewMenu->addAction(lbl); a->setCheckable(true); a->setChecked(true);
         connect(a, &QAction::toggled, this, slot);
     };
-    addV("Monitor Panel",  &MainWindow::onToggleMonitor);
-    addV("Transmit Panel", &MainWindow::onToggleTransmit);
-    addV("Signal Graph",   &MainWindow::onToggleGraph);
+    addV(tr("Monitor Panel"),  &MainWindow::onToggleMonitor);
+    addV(tr("Transmit Panel"), &MainWindow::onToggleTransmit);
+    addV(tr("Signal Graph"),   &MainWindow::onToggleGraph);
     viewMenu->addSeparator();
 
     auto addDockToggle = [&](const QString& label, const QString& shortcut, QDockWidget* dock) {
@@ -144,25 +144,27 @@ void MainWindow::setupMenuBar() {
         connect(act,  &QAction::toggled,           dock, &QDockWidget::setVisible);
         connect(dock, &QDockWidget::visibilityChanged, act, &QAction::setChecked);
     };
-    addDockToggle("Show Filter Panel",  "Ctrl+F", m_filterDock);
-    addDockToggle("Show Trigger Panel", "Ctrl+T", m_triggerDock);
+    addDockToggle(tr("Show Filter Panel"),  "Ctrl+F", m_filterDock);
+    addDockToggle(tr("Show Trigger Panel"), "Ctrl+T", m_triggerDock);
 
-    auto* toolsMenu  = menuBar()->addMenu("&Outils");
-    auto* rulesAct   = toolsMenu->addAction("Installer les règles udev…");
-    auto* permsAct   = toolsMenu->addAction("Configurer les droits CAN (une seule fois)…");
+    auto* toolsMenu  = menuBar()->addMenu(tr("&Tools"));
+    auto* rulesAct   = toolsMenu->addAction(tr("Install udev rules…"));
+    auto* permsAct   = toolsMenu->addAction(tr("Configure CAN permissions (one-time)…"));
     connect(rulesAct,  &QAction::triggered, this, &MainWindow::onInstallUdevRules);
     connect(permsAct,  &QAction::triggered, this, &MainWindow::onGrantCanPermissions);
 
-    auto* helpMenu = menuBar()->addMenu("&Help");
-    auto* aboutAct = helpMenu->addAction("About SocketSpy");
+    auto* helpMenu = menuBar()->addMenu(tr("&Help"));
+    auto* aboutAct = helpMenu->addAction(tr("About SocketSpy"));
     connect(aboutAct, &QAction::triggered, this, [this]() {
         QMessageBox::about(this,
-            "About SocketSpy",
+            tr("About SocketSpy"),
             QString("<b>SocketSpy v%1</b><br>"
-                    "Linux CAN bus analysis platform<br><br>"
-                    "100% local · no telemetry · MIT license<br>"
+                    "%2<br><br>"
+                    "%3<br>"
                     "Built on Linux SocketCAN")
-            .arg(APP_VERSION));
+            .arg(APP_VERSION,
+                 tr("Linux CAN bus analysis platform"),
+                 tr("100% local · no telemetry · MIT license")));
     });
 }
 
@@ -189,9 +191,9 @@ void MainWindow::setupCapture(const QString& iface) {
 }
 
 void MainWindow::setupToolBar() {
-    auto* tb = addToolBar("Interface");
+    auto* tb = addToolBar(tr("Interface"));
     tb->setMovable(false);
-    tb->addWidget(new QLabel("  Interface: ", this));
+    tb->addWidget(new QLabel("  " + tr("Interface: "), this));
 
     m_ifaceCombo = new QComboBox(this);
     m_ifaceCombo->setMinimumWidth(120);
@@ -201,10 +203,10 @@ void MainWindow::setupToolBar() {
     if (idx >= 0) m_ifaceCombo->setCurrentIndex(idx);
     tb->addWidget(m_ifaceCombo);
     auto* refreshBtn = new QPushButton("↺", this);
-    refreshBtn->setFixedWidth(28); refreshBtn->setToolTip("Refresh interface list");
+    refreshBtn->setFixedWidth(28); refreshBtn->setToolTip(tr("Refresh interface list"));
     tb->addWidget(refreshBtn); tb->addSeparator();
 
-    tb->addWidget(new QLabel("Bitrate: ", this));
+    tb->addWidget(new QLabel(tr("Bitrate: "), this));
     m_bitrateCombo = new QComboBox(this);
     for (auto [label, val] : {std::pair{"125 kbit/s",125000},{"250 kbit/s",250000},
                                          {"500 kbit/s",500000},{"1000 kbit/s",1000000}})
@@ -214,7 +216,7 @@ void MainWindow::setupToolBar() {
 
     m_connStatusLabel = new QLabel("●", this);
     m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
-    m_connStatusLabel->setToolTip("Aucun trafic reçu");
+    m_connStatusLabel->setToolTip(tr("No traffic received"));
     tb->addWidget(m_connStatusLabel); tb->addSeparator();
 
     connect(m_ifaceCombo,   &QComboBox::currentTextChanged, this,        &MainWindow::onIfaceChanged);
@@ -232,10 +234,10 @@ void MainWindow::setupToolBar() {
     m_statusTimer->setInterval(2000);
     connect(m_statusTimer, &QTimer::timeout, this, &MainWindow::onStatusTimeout);
 
-    auto* recordBtn  = new QPushButton("Record",   this);
-    auto* stopRecBtn = new QPushButton("Stop Rec", this);
-    recordBtn->setToolTip("Start recording to .log file");
-    stopRecBtn->setToolTip("Stop recording");
+    auto* recordBtn  = new QPushButton(tr("Record"),   this);
+    auto* stopRecBtn = new QPushButton(tr("Stop Rec"), this);
+    recordBtn->setToolTip(tr("Start recording to .log file"));
+    stopRecBtn->setToolTip(tr("Stop recording"));
     stopRecBtn->setEnabled(false);
     tb->addWidget(recordBtn);
     tb->addWidget(stopRecBtn);
@@ -277,7 +279,7 @@ void MainWindow::onIfaceChanged(const QString& iface) {
     if (iface == m_iface) return;
     m_userPicked = (iface != "vcan0");
     m_iface = iface;
-    m_statusLabel->setText("Interface: " + m_iface + "  |  0 fps");
+    m_statusLabel->setText(tr("Interface: ") + m_iface + "  |  0 fps");
     setConnStatus(false);
     m_bitrateCombo->setEnabled(!canIfaceIsVirtual(iface));
 
@@ -307,13 +309,13 @@ void MainWindow::onRefreshIfaces() {
 }
 
 void MainWindow::onStatsUpdated(uint64_t fps) {
-    m_statusLabel->setText("Interface: " + m_iface + "  |  " + QString::number(fps) + " fps");
+    m_statusLabel->setText(tr("Interface: ") + m_iface + "  |  " + QString::number(fps) + " fps");
     if (fps > 0) { m_statusTimer->stop(); setConnStatus(true); }
     else if (!m_statusTimer->isActive()) { m_statusTimer->start(); }
 }
 
 void MainWindow::onStatusTimeout()               { setConnStatus(false); }
-void MainWindow::onCaptureError(QString message) { statusBar()->showMessage("Capture error: " + message, 8000); }
+void MainWindow::onCaptureError(QString message) { statusBar()->showMessage(tr("Capture error: ") + message, 8000); }
 void MainWindow::onExit()                        { close(); }
 
 } // namespace socketspy::gui

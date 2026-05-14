@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QFrame>
 #include <QHeaderView>
+#include <QScrollArea>
 #include <QDialogButtonBox>
 #include <QStandardPaths>
 #include <QDir>
@@ -12,12 +13,33 @@
 #include <QMessageBox>
 #include <nlohmann/json.hpp>
 
+// Helper: WaveformType <-> int index
+static int waveformToIndex(socketspy::gui::WaveformType w) {
+    switch (w) {
+    case socketspy::gui::WaveformType::Sine:   return 1;
+    case socketspy::gui::WaveformType::Ramp:   return 2;
+    case socketspy::gui::WaveformType::Square: return 3;
+    case socketspy::gui::WaveformType::Random: return 4;
+    default: return 0;
+    }
+}
+static socketspy::gui::WaveformType indexToWaveform(int idx) {
+    switch (idx) {
+    case 1: return socketspy::gui::WaveformType::Sine;
+    case 2: return socketspy::gui::WaveformType::Ramp;
+    case 3: return socketspy::gui::WaveformType::Square;
+    case 4: return socketspy::gui::WaveformType::Random;
+    default: return socketspy::gui::WaveformType::None;
+    }
+}
+
 using json = nlohmann::json;
 
 namespace socketspy::gui {
 
 static QString msgLabel(uint32_t id, int period) {
-    return QString("0x%1 @ %2ms").arg(id, 0, 16, QChar('0')).toUpper().arg(period);
+    return "0x" + QString::number(id, 16).toUpper().rightJustified(3, QChar('0'))
+         + QString(" @ %1ms").arg(period);
 }
 
 SimProfileEditor::SimProfileEditor(QWidget* parent) : QDialog(parent) {
@@ -25,8 +47,8 @@ SimProfileEditor::SimProfileEditor(QWidget* parent) : QDialog(parent) {
 }
 
 void SimProfileEditor::setupUi() {
-    setWindowTitle("New Simulator Profile");
-    resize(620, 540);
+    setWindowTitle("Éditeur de profil simulateur");
+    resize(640, 620);
 
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(8, 8, 8, 8);
@@ -34,17 +56,17 @@ void SimProfileEditor::setupUi() {
 
     // Profile name
     auto* nameRow = new QHBoxLayout;
-    nameRow->addWidget(new QLabel("Profile name:", this));
-    m_profileName = new QLineEdit("My Profile", this);
+    nameRow->addWidget(new QLabel("Nom du profil :", this));
+    m_profileName = new QLineEdit("Mon Profil", this);
     nameRow->addWidget(m_profileName, 1);
     root->addLayout(nameRow);
 
     // Action buttons
     auto* btnRow = new QHBoxLayout;
-    m_addNodeBtn = new QPushButton("+ Node", this);
+    m_addNodeBtn = new QPushButton("+ Nœud", this);
     m_addMsgBtn  = new QPushButton("+ Message", this);
     m_addSigBtn  = new QPushButton("+ Signal", this);
-    m_removeBtn  = new QPushButton("Remove", this);
+    m_removeBtn  = new QPushButton("Supprimer", this);
     m_addMsgBtn->setEnabled(false);
     m_addSigBtn->setEnabled(false);
     m_removeBtn->setEnabled(false);
@@ -71,15 +93,16 @@ void SimProfileEditor::setupUi() {
     m_stack = new QStackedWidget(this);
 
     // Page 0: placeholder
-    auto* emptyPage = new QLabel("Select a node, message or signal to edit.", this);
+    auto* emptyPage = new QLabel("Sélectionnez un nœud, un message ou un signal pour l'éditer.", this);
     emptyPage->setAlignment(Qt::AlignCenter);
+    emptyPage->setStyleSheet("color: #888;");
     m_stack->addWidget(emptyPage);
 
     // Page 1: Node
     auto* nodePage = new QWidget(this);
     auto* nodeForm = new QFormLayout(nodePage);
     m_nodeNameEdit = new QLineEdit(nodePage);
-    nodeForm->addRow("Name:", m_nodeNameEdit);
+    nodeForm->addRow("Nom :", m_nodeNameEdit);
     m_stack->addWidget(nodePage);
 
     // Page 2: Message
@@ -94,13 +117,13 @@ void SimProfileEditor::setupUi() {
     m_msgDlcSpin = new QSpinBox(msgPage);
     m_msgDlcSpin->setRange(1, 8);
     m_msgDlcSpin->setValue(8);
-    msgForm->addRow("ID (hex):", m_msgIdEdit);
-    msgForm->addRow("Period:", m_msgPeriodSpin);
-    msgForm->addRow("DLC:", m_msgDlcSpin);
+    msgForm->addRow("ID (hex) :",  m_msgIdEdit);
+    msgForm->addRow("Période :",   m_msgPeriodSpin);
+    msgForm->addRow("DLC :",       m_msgDlcSpin);
     m_stack->addWidget(msgPage);
 
-    // Page 3: Signal
-    auto* sigPage = new QWidget(this);
+    // Page 3: Signal (wrapped in a QScrollArea – sigPage has no parent, scroll area owns it)
+    auto* sigPage = new QWidget();
     auto* sigForm = new QFormLayout(sigPage);
     m_sigNameEdit     = new QLineEdit(sigPage);
     m_sigStartBitSpin = new QSpinBox(sigPage);
@@ -125,14 +148,50 @@ void SimProfileEditor::setupUi() {
     m_sigDefaultSpin = new QDoubleSpinBox(sigPage);
     m_sigDefaultSpin->setRange(-1e9, 1e9);
     m_sigDefaultSpin->setDecimals(4);
-    sigForm->addRow("Name:",         m_sigNameEdit);
-    sigForm->addRow("Start bit:",    m_sigStartBitSpin);
-    sigForm->addRow("Length (bits):", m_sigLengthSpin);
-    sigForm->addRow("Factor:",       m_sigFactorSpin);
-    sigForm->addRow("Offset:",       m_sigOffsetSpin);
-    sigForm->addRow("Min:",          m_sigMinSpin);
-    sigForm->addRow("Max:",          m_sigMaxSpin);
-    sigForm->addRow("Default:",      m_sigDefaultSpin);
+    sigForm->addRow("Nom :",           m_sigNameEdit);
+    sigForm->addRow("Bit de départ :", m_sigStartBitSpin);
+    sigForm->addRow("Longueur (bits):", m_sigLengthSpin);
+    sigForm->addRow("Facteur :",      m_sigFactorSpin);
+    sigForm->addRow("Offset :",       m_sigOffsetSpin);
+    sigForm->addRow("Min :",          m_sigMinSpin);
+    sigForm->addRow("Max :",          m_sigMaxSpin);
+    sigForm->addRow("Défaut :",       m_sigDefaultSpin);
+
+    // Waveform section
+    auto* waveBox = new QGroupBox("Forme d'onde (génération automatique)", sigPage);
+    auto* waveLayout = new QFormLayout(waveBox);
+    waveLayout->setContentsMargins(4, 8, 4, 4);
+    waveLayout->setSpacing(4);
+
+    auto* waveHelp = new QLabel(
+        "Génère automatiquement un scénario cyclique. "
+        "Remplace les points manuels ci-dessous si actif.", waveBox);
+    waveHelp->setWordWrap(true);
+    waveHelp->setStyleSheet("color: gray; font-size: 10px;");
+    waveLayout->addRow(waveHelp);
+
+    m_waveformCombo = new QComboBox(waveBox);
+    m_waveformCombo->addItem("Aucune (statique / manuel)", 0);
+    m_waveformCombo->addItem("Sinusoïde",                  1);
+    m_waveformCombo->addItem("Rampe (dent de scie)",       2);
+    m_waveformCombo->addItem("Carré",                      3);
+    m_waveformCombo->addItem("Aléatoire",                  4);
+    waveLayout->addRow("Type :", m_waveformCombo);
+
+    m_numPointsSpin = new QSpinBox(waveBox);
+    m_numPointsSpin->setRange(2, 10000);
+    m_numPointsSpin->setValue(100);
+    m_numPointsSpin->setToolTip("Nombre de points par cycle de la forme d'onde");
+    waveLayout->addRow("Points/cycle :", m_numPointsSpin);
+
+    m_stepMsSpin = new QSpinBox(waveBox);
+    m_stepMsSpin->setRange(1, 60000);
+    m_stepMsSpin->setValue(50);
+    m_stepMsSpin->setSuffix(" ms");
+    m_stepMsSpin->setToolTip("Intervalle entre deux pas consécutifs (fréquence de mise à jour)");
+    waveLayout->addRow("Pas (update) :", m_stepMsSpin);
+
+    sigForm->addRow(waveBox);
 
     // Scenario section
     auto* scenBox = new QGroupBox("Scenario (animation automatique)", sigPage);
@@ -160,11 +219,14 @@ void SimProfileEditor::setupUi() {
     scenBtnRow->addStretch();
     scenLayout->addLayout(scenBtnRow);
 
-    auto* sigPageLayout = qobject_cast<QFormLayout*>(sigPage->layout());
-    // Attach scenBox via a wrapper in the form
-    sigPageLayout->addRow(scenBox);
+    sigForm->addRow(scenBox);
 
-    m_stack->addWidget(sigPage);
+    // Wrap in a scroll area so the form is usable even at small dialog sizes
+    auto* sigScroll = new QScrollArea(this);
+    sigScroll->setWidgetResizable(true);
+    sigScroll->setWidget(sigPage);
+    sigScroll->setFrameShape(QFrame::NoFrame);
+    m_stack->addWidget(sigScroll);
 
     root->addWidget(m_stack);
 
@@ -213,6 +275,9 @@ void SimProfileEditor::setupUi() {
         m_current->setData(0, MinRole,      m_sigMinSpin->value());
         m_current->setData(0, MaxRole,      m_sigMaxSpin->value());
         m_current->setData(0, DefaultRole,  m_sigDefaultSpin->value());
+        m_current->setData(0, WaveformRole,  m_waveformCombo->currentIndex());
+        m_current->setData(0, NumPointsRole, m_numPointsSpin->value());
+        m_current->setData(0, StepMsRole,    m_stepMsSpin->value());
     };
     connect(m_sigNameEdit, &QLineEdit::textChanged, this, syncSig);
     connect(m_sigStartBitSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, syncSig);
@@ -222,6 +287,9 @@ void SimProfileEditor::setupUi() {
     connect(m_sigMinSpin,      QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, syncSig);
     connect(m_sigMaxSpin,      QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, syncSig);
     connect(m_sigDefaultSpin,  QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, syncSig);
+    connect(m_waveformCombo,  QOverload<int>::of(&QComboBox::currentIndexChanged), this, syncSig);
+    connect(m_numPointsSpin,  QOverload<int>::of(&QSpinBox::valueChanged), this, syncSig);
+    connect(m_stepMsSpin,     QOverload<int>::of(&QSpinBox::valueChanged), this, syncSig);
 
     connect(m_scenarioAddBtn,    &QPushButton::clicked, this, &SimProfileEditor::onScenarioAdd);
     connect(m_scenarioRemoveBtn, &QPushButton::clicked, this, &SimProfileEditor::onScenarioRemove);
@@ -258,6 +326,9 @@ QTreeWidgetItem* SimProfileEditor::addSignalItem(QTreeWidgetItem* parent, const 
     item->setData(0, MinRole,      s.min);
     item->setData(0, MaxRole,      s.max);
     item->setData(0, DefaultRole,  s.current_value);
+    item->setData(0, WaveformRole,   waveformToIndex(s.waveform));
+    item->setData(0, NumPointsRole,  s.num_points);
+    item->setData(0, StepMsRole,     s.step_ms);
 
     QVariantList pts;
     for (const auto& p : s.scenario) {
@@ -331,7 +402,7 @@ void SimProfileEditor::onScenarioCellChanged(int /*row*/, int /*col*/) {
 // ── slots ─────────────────────────────────────────────────────────────────────
 
 void SimProfileEditor::onAddNode() {
-    auto* item = addNodeItem("NewNode");
+    auto* item = addNodeItem("NouveauNœud");
     m_tree->setCurrentItem(item);
 }
 
@@ -358,6 +429,7 @@ void SimProfileEditor::onAddSignal() {
     SimSignal s;
     s.name = "Signal"; s.start_bit = 0; s.length = 8;
     s.factor = 1.0; s.offset = 0.0; s.min = 0.0; s.max = 255.0; s.current_value = 0.0;
+    s.scenario = {};
     auto* item = addSignalItem(msgItem, s);
     m_tree->setCurrentItem(item);
 }
@@ -407,6 +479,16 @@ void SimProfileEditor::onSelectionChanged() {
         m_sigMinSpin->setValue(m_current->data(0, MinRole).toDouble());
         m_sigMaxSpin->setValue(m_current->data(0, MaxRole).toDouble());
         m_sigDefaultSpin->setValue(m_current->data(0, DefaultRole).toDouble());
+        // Waveform fields (default to 0/100/50 if not set)
+        int waveIdx = m_current->data(0, WaveformRole).isValid()
+                      ? m_current->data(0, WaveformRole).toInt() : 0;
+        int numPts  = m_current->data(0, NumPointsRole).isValid()
+                      ? m_current->data(0, NumPointsRole).toInt() : 100;
+        int stepMs  = m_current->data(0, StepMsRole).isValid()
+                      ? m_current->data(0, StepMsRole).toInt() : 50;
+        m_waveformCombo->setCurrentIndex(waveIdx);
+        m_numPointsSpin->setValue(numPts);
+        m_stepMsSpin->setValue(stepMs);
         loadScenarioTable(m_current);
         m_stack->setCurrentIndex(3);
     }
@@ -441,6 +523,13 @@ SimProfile SimProfileEditor::buildProfile() const {
                 sig.min           = si_item->data(0, MinRole).toDouble();
                 sig.max           = si_item->data(0, MaxRole).toDouble();
                 sig.current_value = si_item->data(0, DefaultRole).toDouble();
+                sig.waveform   = indexToWaveform(
+                    si_item->data(0, WaveformRole).isValid()
+                    ? si_item->data(0, WaveformRole).toInt() : 0);
+                sig.num_points = si_item->data(0, NumPointsRole).isValid()
+                    ? si_item->data(0, NumPointsRole).toInt() : 100;
+                sig.step_ms    = si_item->data(0, StepMsRole).isValid()
+                    ? si_item->data(0, StepMsRole).toInt() : 50;
                 for (const auto& pt : si_item->data(0, ScenarioRole).toList()) {
                     QVariantMap m = pt.toMap();
                     SimScenarioPoint p;
@@ -474,14 +563,17 @@ bool SimProfileEditor::saveToFile(const SimProfile& p) {
             json sigs_arr = json::array();
             for (const auto& sig : msg.sigs) {
                 json sj;
-                sj["name"]      = sig.name.toStdString();
-                sj["start_bit"] = sig.start_bit;
-                sj["length"]    = sig.length;
-                sj["factor"]    = sig.factor;
-                sj["offset"]    = sig.offset;
-                sj["min"]       = sig.min;
-                sj["max"]       = sig.max;
-                sj["default"]   = sig.current_value;
+                sj["name"]       = sig.name.toStdString();
+                sj["start_bit"]  = sig.start_bit;
+                sj["length"]     = sig.length;
+                sj["factor"]     = sig.factor;
+                sj["offset"]     = sig.offset;
+                sj["min"]        = sig.min;
+                sj["max"]        = sig.max;
+                sj["default"]    = sig.current_value;
+                sj["waveform"]   = waveformToIndex(sig.waveform);
+                sj["num_points"] = sig.num_points;
+                sj["step_ms"]    = sig.step_ms;
                 if (!sig.scenario.empty()) {
                     json sa = json::array();
                     for (const auto& p : sig.scenario)
@@ -519,9 +611,20 @@ bool SimProfileEditor::saveToFile(const SimProfile& p) {
 
 void SimProfileEditor::onAccept() {
     SimProfile p = buildProfile();
-    if (p.name.isEmpty() || p.nodes.empty()) {
-        QMessageBox::warning(this, "Incomplete",
-            "Profile needs a name and at least one node with a message.");
+    if (p.name.isEmpty()) {
+        QMessageBox::warning(this, "Profil incomplet", "Le profil doit avoir un nom.");
+        return;
+    }
+    if (p.nodes.empty()) {
+        QMessageBox::warning(this, "Profil incomplet",
+            "Le profil doit contenir au moins un nœud avec un message.");
+        return;
+    }
+    bool hasMessage = false;
+    for (const auto& n : p.nodes) if (!n.messages.empty()) { hasMessage = true; break; }
+    if (!hasMessage) {
+        QMessageBox::warning(this, "Profil incomplet",
+            "Chaque nœud doit avoir au moins un message.");
         return;
     }
     if (saveToFile(p))

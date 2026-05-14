@@ -6,6 +6,16 @@ using json = nlohmann::json;
 
 namespace socketspy::gui {
 
+static WaveformType waveformFromInt(int v) {
+    switch (v) {
+    case 1: return WaveformType::Sine;
+    case 2: return WaveformType::Ramp;
+    case 3: return WaveformType::Square;
+    case 4: return WaveformType::Random;
+    default: return WaveformType::None;
+    }
+}
+
 static SimSignal parse_signal(const json& j) {
     SimSignal s;
     s.name          = QString::fromStdString(j.at("name").get<std::string>());
@@ -16,6 +26,9 @@ static SimSignal parse_signal(const json& j) {
     s.min           = j.value("min",     0.0);
     s.max           = j.value("max",     255.0);
     s.current_value = j.value("default", 0.0);
+    s.waveform      = waveformFromInt(j.value("waveform",   0));
+    s.num_points    = j.value("num_points", 100);
+    s.step_ms       = j.value("step_ms",    50);
     if (j.contains("scenario")) {
         for (const auto& pt : j.at("scenario")) {
             SimScenarioPoint p;

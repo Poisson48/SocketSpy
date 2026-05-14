@@ -296,18 +296,22 @@ void DbcBuilderPanel::setupUi() {
 
     m_factor = new QDoubleSpinBox(rightBox);
     m_factor->setRange(-1e9, 1e9); m_factor->setDecimals(6); m_factor->setValue(1.0);
+    m_factor->setLocale(QLocale::c());
     form->addRow(tr("Factor:"), m_factor);
 
     m_offset = new QDoubleSpinBox(rightBox);
     m_offset->setRange(-1e9, 1e9); m_offset->setDecimals(6); m_offset->setValue(0.0);
+    m_offset->setLocale(QLocale::c());
     form->addRow(tr("Offset:"), m_offset);
 
     m_minVal = new QDoubleSpinBox(rightBox);
     m_minVal->setRange(-1e9, 1e9); m_minVal->setDecimals(6); m_minVal->setValue(0.0);
+    m_minVal->setLocale(QLocale::c());
     form->addRow(tr("Min:"), m_minVal);
 
     m_maxVal = new QDoubleSpinBox(rightBox);
     m_maxVal->setRange(-1e9, 1e9); m_maxVal->setDecimals(6); m_maxVal->setValue(0.0);
+    m_maxVal->setLocale(QLocale::c());
     form->addRow(tr("Max:"), m_maxVal);
 
     m_unit = new QLineEdit(rightBox);
@@ -356,12 +360,18 @@ void DbcBuilderPanel::onIdSelected(int row) {
     if (!ok) return;
     m_selectedId = id;
 
-    // Update message name field
+    // Update message name field: use existing name from DB, or show the auto-generated default
+    bool found = false;
     for (auto& msg : m_db.messages) {
         if (msg.id == id) {
             m_msgName->setText(QString::fromStdString(msg.name));
+            found = true;
             break;
         }
+    }
+    if (!found) {
+        // Show the default name that will be assigned when signals are added
+        m_msgName->setText(QString("MSG_%1").arg(id, 4, 16, QChar('0')).toUpper());
     }
 
     refreshGrid();
@@ -510,7 +520,11 @@ socketspy::dbc::Message* DbcBuilderPanel::findOrCreateMessage(uint32_t id) {
     socketspy::dbc::Message msg;
     msg.id   = id;
     msg.dlc  = 8;
-    msg.name = QString("MSG_%1").arg(id, 4, 16, QChar('0')).toUpper().toStdString();
+    // Use the name the user typed in m_msgName, or auto-generate one
+    QString name = m_msgName ? m_msgName->text().trimmed() : QString();
+    if (name.isEmpty())
+        name = QString("MSG_%1").arg(id, 4, 16, QChar('0')).toUpper();
+    msg.name = name.toStdString();
     m_db.messages.push_back(std::move(msg));
     return &m_db.messages.back();
 }

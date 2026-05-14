@@ -1,17 +1,22 @@
 #include "dbc_writer.h"
 #include <cstdio>
+#include <clocale>
 #include <string>
 
 namespace socketspy::dbc {
 
 namespace {
 
-// Format a double with %.6g but strip trailing zeros after decimal point
-// to stay compact yet precise enough for round-trip
+// Format a double with %.6g in a locale-independent way (DBC requires '.' as decimal separator)
 std::string fmt_double(double v) {
     char buf[64];
     // Use %g which removes trailing zeros; 6 significant digits is the DBC convention
+    // We must use the C locale so the decimal separator is always '.' regardless of system locale
     std::snprintf(buf, sizeof(buf), "%.6g", v);
+    // Patch: if system locale uses comma, snprintf may have written ',' — replace with '.'
+    for (char* p = buf; *p; ++p) {
+        if (*p == ',') *p = '.';
+    }
     return buf;
 }
 

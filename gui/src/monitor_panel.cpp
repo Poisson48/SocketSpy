@@ -479,11 +479,38 @@ void MonitorPanel::onContextMenu(const QPoint& pos) {
 
 // ---------------------------------------------------------------------------
 
+void MonitorPanel::setAliases(const QHash<QString,QString>& aliases) {
+    m_aliases = aliases;
+}
+
 QString MonitorPanel::decodeFrame(const CanFrame& f) const {
-    if (!m_dbcLoaded) return {};
-    std::span<const uint8_t> data(f.data, f.dlc);
-    return QString::fromStdString(
-        dbc_helper::decode_frame(*m_dbc, f.id, data));
+    QString result;
+
+    if (m_dbcLoaded) {
+        std::span<const uint8_t> data(f.data, f.dlc);
+        result = QString::fromStdString(dbc_helper::decode_frame(*m_dbc, f.id, data));
+        // Apply DBC signal name aliases (replace "SigName=" with "Alias=" in output)
+        if (!m_aliases.isEmpty() && !result.isEmpty()) {
+            for (auto it = m_aliases.cbegin(); it != m_aliases.cend(); ++it) {
+                if (!it.key().startsWith("0x"))
+                    result.replace(it.key() + "=", it.value() + "=");
+            }
+        }
+    }
+
+    // Show raw byte aliases even when no DBC match
+    if (!m_aliases.isEmpty()) {
+        for (int b = 0; b < f.dlc; ++b) {
+            const QString canonical = QString("0x%1[B%2]")
+                .arg(QString::number(f.id, 16).toUpper()).arg(b);
+            auto it = m_aliases.find(canonical);
+            if (it == m_aliases.end() || it.value().isEmpty()) continue;
+            if (!result.isEmpty()) result += "  ";
+            result += QString("%1=%2").arg(it.value()).arg(f.data[b]);
+        }
+    }
+
+    return result;
 }
 
 } // namespace socketspy::gui

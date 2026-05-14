@@ -7,6 +7,7 @@
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include <QHash>
 #include <memory>
 #include <unordered_map>
 #include <set>
@@ -78,6 +79,7 @@ public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);
     void onFilterChanged(const socketspy::gui::FrameFilter& filter);
+    void setAliases(const QHash<QString,QString>& aliases);
 
 signals:
     void signalDoubleClicked(QString signalName, uint32_t msgId);
@@ -111,6 +113,7 @@ private:
 
     std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;
     bool m_dbcLoaded{false};
+    QHash<QString, QString> m_aliases;
 
     socketspy::gui::FrameFilter  m_filter;
     MonitorFilter                m_monFilter;   // persisted filter state

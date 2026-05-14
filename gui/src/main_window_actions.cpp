@@ -105,10 +105,13 @@ void MainWindow::onStopRecording() {
 
 ProjectData MainWindow::collectProject() const {
     ProjectData p;
-    p.iface = m_iface; p.bitrate = m_bitrate; p.dbcPath = m_dbcPath;
-    p.graphSignals = m_graph->trackedSignals();
-    p.filter  = m_filterPanel->currentFilter();
-    p.trigger = m_triggerPanel->currentConfig();
+    p.iface         = m_iface;
+    p.bitrate       = m_bitrate;
+    p.dbcPath       = m_dbcPath;
+    p.graphSignals  = m_graph->trackedSignals();
+    p.signalAliases = m_signalAliases;
+    p.filter        = m_filterPanel->currentFilter();
+    p.trigger       = m_triggerPanel->currentConfig();
     return p;
 }
 
@@ -119,7 +122,9 @@ void MainWindow::applyProject(const ProjectData& p) {
     if (!p.iface.isEmpty()) m_ifaceCombo->setCurrentText(p.iface);
     m_filterPanel->applyFilter(p.filter);
     m_triggerPanel->applyConfig(p.trigger);
-    m_graph->restoreSignals(p.graphSignals);
+    m_signalAliases = p.signalAliases;
+    m_monitor->setAliases(m_signalAliases);
+    m_graph->restoreSignals(p.graphSignals, p.signalAliases);
     if (!p.dbcPath.isEmpty()) {
         QFile f(p.dbcPath);
         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -132,6 +137,8 @@ void MainWindow::applyProject(const ProjectData& p) {
 
 void MainWindow::onNewProject() {
     m_projectPath.clear();
+    m_signalAliases.clear();
+    m_monitor->setAliases({});
     m_graph->restoreSignals({});
     m_filterPanel->applyFilter({});
     m_triggerPanel->applyConfig({});

@@ -3,13 +3,25 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QInputDialog>
+#include <QMenu>
+#include <QMouseEvent>
+#include <QResizeEvent>
 #include <algorithm>
 #include <span>
 
 using namespace socketspy::core;
 using namespace socketspy::dbc;
 
-// Access Message::signals (field named "signals") without the Qt macro expanding it.
+static const QColor kTracePalette[] = {
+    QColor("#6366f1"), QColor("#22c55e"), QColor("#f59e0b"), QColor("#ef4444"),
+    QColor("#06b6d4"), QColor("#a78bfa"), QColor("#fb923c"), QColor("#f472b6"),
+};
+static const QColor kMarkerPalette[] = {
+    QColor("#f59e0b"), QColor("#22c55e"), QColor("#ef4444"),
+    QColor("#06b6d4"), QColor("#a78bfa"),
+};
+
 #pragma push_macro("signals")
 #undef signals
 static std::vector<std::string> msgSignalNames(const DbcDatabase& dbc, uint32_t id) {
@@ -25,6 +37,25 @@ static std::vector<std::string> msgSignalNames(const DbcDatabase& dbc, uint32_t 
 
 namespace socketspy::gui {
 
+// ── GraphChartView ──────────────────────────────────────────────────────────
+
+GraphChartView::GraphChartView(QChart* chart, QWidget* parent)
+    : QChartView(chart, parent) {}
+
+void GraphChartView::mousePressEvent(QMouseEvent* e) {
+    if (e->button() == Qt::RightButton)
+        emit rightClickedAt(QPointF(e->pos()));
+    else
+        QChartView::mousePressEvent(e);
+}
+
+void GraphChartView::resizeEvent(QResizeEvent* e) {
+    QChartView::resizeEvent(e);
+    emit resized();
+}
+
+// ── SignalGraphPanel ────────────────────────────────────────────────────────
+
 SignalGraphPanel::SignalGraphPanel(QWidget* parent) : QWidget(parent) {
     m_dbc = std::make_unique<DbcDatabase>();
     setupUi();
@@ -34,12 +65,15 @@ SignalGraphPanel::~SignalGraphPanel() = default;
 
 void SignalGraphPanel::setupUi() {
     m_chart = new QChart;
-    m_chart->setTitle("Signal Traces");
     m_chart->legend()->setVisible(true);
+    m_chart->setMargins(QMargins(8, 8, 8, 8));
+    m_chart->setAnimationOptions(QChart::NoAnimation);
 
     m_axisX = new QValueAxis(m_chart);
     m_axisX->setTitleText("Time (s)");
     m_axisX->setRange(0.0, kWindowSec);
+    m_axisX->setTickCount(6);
+    m_axisX->setMinorTickCount(1);
 
     m_axisY = new QValueAxis(m_chart);
     m_axisY->setTitleText("Value");
@@ -48,23 +82,68 @@ void SignalGraphPanel::setupUi() {
     m_chart->addAxis(m_axisX, Qt::AlignBottom);
     m_chart->addAxis(m_axisY, Qt::AlignLeft);
 
-    m_view = new QChartView(m_chart, this);
+    applyChartTheme();
+
+    m_view = new GraphChartView(m_chart, this);
     m_view->setRenderHint(QPainter::Antialiasing);
+    m_view->setContextMenuPolicy(Qt::PreventContextMenu);
+    connect(m_view, &GraphChartView::rightClickedAt,
+            this, &SignalGraphPanel::onChartRightClick);
+    connect(m_view, &GraphChartView::resized,
+            this, &SignalGraphPanel::updateMarkerPositions);
 
     m_clearBtn = new QPushButton("Clear All", this);
+    m_clearBtn->setObjectName("clearBtn");
     connect(m_clearBtn, &QPushButton::clicked, this, &SignalGraphPanel::onClearAll);
+
+    m_markerBtn = new QPushButton("\xe2\x8a\x95 Marker", this);
+    m_markerBtn->setProperty("secondary", true);
+    connect(m_markerBtn, &QPushButton::clicked, this, &SignalGraphPanel::onAddMarkerNow);
 
     m_scrollTimer = new QTimer(this);
     m_scrollTimer->setInterval(200);
     connect(m_scrollTimer, &QTimer::timeout, this, &SignalGraphPanel::onScrollAxis);
 
     auto* toolbar = new QHBoxLayout;
+    toolbar->setContentsMargins(8, 4, 8, 0);
+    toolbar->setSpacing(6);
     toolbar->addWidget(m_clearBtn);
+    toolbar->addWidget(m_markerBtn);
     toolbar->addStretch();
 
     auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
     layout->addLayout(toolbar);
     layout->addWidget(m_view);
+}
+
+void SignalGraphPanel::applyChartTheme() {
+    m_chart->setBackgroundBrush(QBrush(QColor("#1a2235")));
+    m_chart->setBackgroundPen(QPen(Qt::NoPen));
+    m_chart->setBackgroundRoundness(0);
+    m_chart->setPlotAreaBackgroundBrush(QBrush(QColor("#111827")));
+    m_chart->setPlotAreaBackgroundVisible(true);
+    m_chart->setTitleBrush(QBrush(QColor("#f1f5f9")));
+
+    m_chart->legend()->setBackgroundVisible(true);
+    m_chart->legend()->setBrush(QBrush(QColor("#1a2235")));
+    m_chart->legend()->setPen(QPen(QColor("#2a3a52")));
+    m_chart->legend()->setLabelBrush(QBrush(QColor("#f1f5f9")));
+    m_chart->legend()->setFont(QFont("Segoe UI", 9));
+
+    auto styleAxis = [](QValueAxis* ax) {
+        ax->setLabelsBrush(QBrush(QColor("#7c8fa6")));
+        ax->setTitleBrush(QBrush(QColor("#7c8fa6")));
+        ax->setLinePen(QPen(QColor("#3d5270"), 1));
+        ax->setGridLinePen(QPen(QColor("#2a3a52"), 1, Qt::DashLine));
+        ax->setMinorGridLinePen(QPen(QColor("#1d2a3d"), 1, Qt::DotLine));
+        ax->setLabelsColor(QColor("#7c8fa6"));
+        ax->setTitleFont(QFont("Segoe UI", 9));
+        ax->setLabelsFont(QFont("Segoe UI", 9));
+    };
+    styleAxis(m_axisX);
+    styleAxis(m_axisY);
 }
 
 void SignalGraphPanel::onDbcLoaded(DbcDatabase db) {
@@ -75,9 +154,10 @@ void SignalGraphPanel::onDbcLoaded(DbcDatabase db) {
 void SignalGraphPanel::addTrace(TrackedSignal t) {
     if ((int)m_traces.size() >= kMaxTraces) return;
     auto* series = new QLineSeries(m_chart);
-    series->setName(t.isRaw
-        ? QString("0x%1[B%2]").arg(t.msgId, 0, 16).toUpper().arg(t.rawByteIdx)
-        : QString::fromStdString(t.signalName));
+    QPen pen(kTracePalette[m_traces.size() % 8]);
+    pen.setWidth(2);
+    series->setPen(pen);
+    series->setName(t.displayName());
     m_chart->addSeries(series);
     series->attachAxis(m_axisX);
     series->attachAxis(m_axisY);
@@ -93,13 +173,13 @@ void SignalGraphPanel::addSignal(QString signalName, uint32_t msgId) {
         if (!t.isRaw && t.msgId == msgId && t.signalName == signalName.toStdString()) return;
     double minVal = 0.0, maxVal = 1.0;
     dbc_helper::signal_range(*m_dbc, msgId, signalName.toStdString(), minVal, maxVal);
-    addTrace({signalName.toStdString(), msgId, nullptr, 0.0, minVal, maxVal, false, 0});
+    addTrace({signalName.toStdString(), {}, msgId, nullptr, 0.0, minVal, maxVal, false, 0});
 }
 
 void SignalGraphPanel::addRawSignal(uint32_t msgId, int byteIdx) {
     for (const auto& t : m_traces)
         if (t.isRaw && t.msgId == msgId && t.rawByteIdx == byteIdx) return;
-    addTrace({"", msgId, nullptr, 0.0, 0.0, 255.0, true, byteIdx});
+    addTrace({"", {}, msgId, nullptr, 0.0, 0.0, 255.0, true, byteIdx});
 }
 
 void SignalGraphPanel::addFrameSignals(uint32_t id) {
@@ -119,16 +199,48 @@ void SignalGraphPanel::addFrameSignals(uint32_t id) {
 QList<GraphSignalConfig> SignalGraphPanel::trackedSignals() const {
     QList<GraphSignalConfig> result;
     for (const auto& t : m_traces)
-        result.append({QString::fromStdString(t.signalName), t.msgId, t.isRaw, t.rawByteIdx});
+        result.append({QString::fromStdString(t.signalName), t.label,
+                        t.msgId, t.isRaw, t.rawByteIdx});
     return result;
 }
 
-void SignalGraphPanel::restoreSignals(const QList<GraphSignalConfig>& list) {
+void SignalGraphPanel::restoreSignals(const QList<GraphSignalConfig>& list,
+                                      const QHash<QString,QString>& aliases) {
     onClearAll();
     for (const auto& s : list) {
         if (s.isRaw) addRawSignal(s.msgId, s.rawByteIdx);
         else         addSignal(s.name, s.msgId);
     }
+    // Apply per-signal labels from config
+    for (int i = 0; i < list.size() && i < (int)m_traces.size(); ++i) {
+        if (!list[i].label.isEmpty()) {
+            m_traces[i].label = list[i].label;
+            m_traces[i].series->setName(m_traces[i].displayName());
+        }
+    }
+    // Apply project-level aliases (canonical → display name)
+    for (auto& t : m_traces) {
+        const auto it = aliases.find(t.canonicalName());
+        if (it != aliases.end() && !it.value().isEmpty()) {
+            t.label = it.value();
+            t.series->setName(t.displayName());
+        }
+    }
+}
+
+void SignalGraphPanel::renameTrace(int idx) {
+    if (idx < 0 || idx >= (int)m_traces.size()) return;
+    auto& t = m_traces[idx];
+    bool ok;
+    QString newLabel = QInputDialog::getText(
+        this, tr("Rename Signal"),
+        tr("New name for \"%1\":").arg(t.displayName()),
+        QLineEdit::Normal, t.displayName(), &ok);
+    if (!ok || newLabel.trimmed().isEmpty()) return;
+    newLabel = newLabel.trimmed();
+    t.label = newLabel;
+    t.series->setName(newLabel);
+    emit signalAliased(t.canonicalName(), newLabel);
 }
 
 void SignalGraphPanel::onFrameReceived(CanFrame frame) {
@@ -163,7 +275,9 @@ void SignalGraphPanel::onFrameReceived(CanFrame frame) {
 void SignalGraphPanel::onClearAll() {
     for (auto& t : m_traces) { m_chart->removeSeries(t.series); delete t.series; }
     m_traces.clear();
-    m_firstFrame = true;
+    clearMarkers();
+    m_firstFrame  = true;
+    m_currentMaxT = 0.0;
     m_scrollTimer->stop();
     rescaleY();
 }
@@ -173,9 +287,11 @@ void SignalGraphPanel::onScrollAxis() {
     double maxT = 0.0;
     for (const auto& t : m_traces)
         if (t.series->count() > 0) maxT = std::max(maxT, t.series->points().last().x());
+    m_currentMaxT = maxT;
     double lo = std::max(0.0, maxT - kWindowSec);
     m_axisX->setRange(lo, lo + kWindowSec);
     rescaleY();
+    updateMarkerPositions();
 }
 
 void SignalGraphPanel::rescaleY() {
@@ -184,6 +300,101 @@ void SignalGraphPanel::rescaleY() {
     for (const auto& t : m_traces) { lo = std::min(lo, t.minVal); hi = std::max(hi, t.maxVal); }
     if (hi <= lo) hi = lo + 1.0;
     m_axisY->setRange(lo, hi);
+}
+
+void SignalGraphPanel::onChartRightClick(QPointF viewPos) {
+    QPointF scenePos = m_view->mapToScene(viewPos.toPoint());
+    QPointF dataVal  = m_chart->mapToValue(scenePos);
+
+    QMenu menu(this);
+
+    auto* addHere = menu.addAction(
+        tr("\xe2\x8a\x95 Add marker at t=%.2fs…").arg(dataVal.x()));
+
+    menu.addSeparator();
+
+    QList<QAction*> renameActions;
+    for (int i = 0; i < (int)m_traces.size(); ++i) {
+        renameActions << menu.addAction(
+            tr("\xe2\x9c\x8e Rename \"%1\"…").arg(m_traces[i].displayName()));
+    }
+
+    if (!m_markers.empty()) {
+        menu.addSeparator();
+        menu.addAction(tr("Clear Markers"));
+    }
+
+    QAction* act = menu.exec(m_view->mapToGlobal(viewPos.toPoint()));
+    if (!act) return;
+
+    const QString actText = act->text();
+
+    if (act == addHere) {
+        bool ok;
+        QString label = QInputDialog::getText(
+            this, tr("Add Marker"), tr("Marker label:"),
+            QLineEdit::Normal, {}, &ok);
+        if (ok && !label.trimmed().isEmpty())
+            addMarker(m_startTimeSec + dataVal.x(), label.trimmed());
+        return;
+    }
+    if (actText == tr("Clear Markers")) { clearMarkers(); return; }
+    for (int i = 0; i < renameActions.size(); ++i) {
+        if (act == renameActions[i]) { renameTrace(i); return; }
+    }
+}
+
+void SignalGraphPanel::onAddMarkerNow() {
+    if (m_firstFrame) return;
+    bool ok;
+    QString label = QInputDialog::getText(
+        this, tr("Add Marker"), tr("Marker label:"),
+        QLineEdit::Normal, {}, &ok);
+    if (ok && !label.trimmed().isEmpty())
+        addMarker(m_startTimeSec + m_currentMaxT, label.trimmed());
+}
+
+void SignalGraphPanel::addMarker(double timeSec, const QString& label) {
+    const QColor color = kMarkerPalette[m_markers.size() % 5];
+
+    auto* line = new QGraphicsLineItem;
+    line->setPen(QPen(color, 1, Qt::DashLine));
+    line->setZValue(20);
+    m_view->scene()->addItem(line);
+
+    auto* text = new QGraphicsTextItem(label);
+    text->setDefaultTextColor(color);
+    text->setFont(QFont("Segoe UI", 9, QFont::DemiBold));
+    text->setZValue(21);
+    m_view->scene()->addItem(text);
+
+    m_markers.push_back({timeSec, label, color, line, text});
+    updateMarkerPositions();
+}
+
+void SignalGraphPanel::clearMarkers() {
+    for (auto& mk : m_markers) {
+        if (mk.line) { m_view->scene()->removeItem(mk.line); delete mk.line; }
+        if (mk.text) { m_view->scene()->removeItem(mk.text); delete mk.text; }
+    }
+    m_markers.clear();
+}
+
+void SignalGraphPanel::updateMarkerPositions() {
+    if (m_markers.empty()) return;
+    QRectF plotArea = m_chart->plotArea();
+    for (auto& mk : m_markers) {
+        double relT = mk.timeSec - m_startTimeSec;
+        QPointF pos = m_chart->mapToPosition(QPointF(relT, 0.0));
+        double x = pos.x();
+        bool visible = (x >= plotArea.left() && x <= plotArea.right());
+        mk.line->setVisible(visible);
+        mk.text->setVisible(visible);
+        if (visible) {
+            mk.line->setLine(x, plotArea.top(), x, plotArea.bottom());
+            mk.text->setPos(x + 3.0, plotArea.top() + 3.0);
+        }
+    }
 }
 
 } // namespace socketspy::gui

@@ -91,6 +91,8 @@ void MainWindow::setupUi() {
             m_graph,   &SignalGraphPanel::addFrameSignals);
     connect(m_replay,  &ReplayPanel::replayFrame,
             m_monitor, &MonitorPanel::onFrameReceived);
+    connect(m_graph, &SignalGraphPanel::signalAliased,
+            this,    &MainWindow::onSignalAliased);
 
     auto wireFrames = [&](auto* src, auto sig) {
         connect(src, sig, m_monitor,       &MonitorPanel::onFrameReceived);
@@ -345,5 +347,10 @@ void MainWindow::onFpsTick() {
 void MainWindow::onStatusTimeout()               { setConnStatus(false); }
 void MainWindow::onCaptureError(QString message) { statusBar()->showMessage(tr("Capture error: ") + message, 8000); }
 void MainWindow::onExit()                        { close(); }
+
+void MainWindow::onSignalAliased(const QString& canonical, const QString& alias) {
+    m_signalAliases[canonical] = alias;
+    m_monitor->setAliases(m_signalAliases);
+}
 
 } // namespace socketspy::gui

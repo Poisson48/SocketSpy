@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QString>
 #include <QStringList>
+#include <QHash>
 #include <atomic>
 #include <memory>
 #include "filter_panel.h"
@@ -67,6 +68,7 @@ private slots:
     void onSaveProject();
     void onSaveProjectAs();
     void onShowProjectBrowser();
+    void onSignalAliased(const QString& canonical, const QString& alias);
 
 private:
     void setupUi();
@@ -115,6 +117,7 @@ private:
     QString         m_projectPath;
     QString         m_dbcPath;
     ProjectRegistry m_projectRegistry;
+    QHash<QString, QString> m_signalAliases;
 };
 
 } // namespace socketspy::gui

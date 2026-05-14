@@ -55,18 +55,24 @@ static TriggerConfig triggerFromJson(const QJsonObject& o) {
 bool projectSave(const ProjectData& p, const QString& path, QString& error) {
     QJsonArray sigs;
     for (const auto& s : p.graphSignals)
-        sigs.append(QJsonObject{{"name",s.name},{"msg_id",(int)s.msgId},
+        sigs.append(QJsonObject{{"name",s.name},{"label",s.label},
+                                {"msg_id",(int)s.msgId},
                                 {"is_raw",s.isRaw},{"byte_idx",s.rawByteIdx}});
 
+    QJsonObject aliases;
+    for (auto it = p.signalAliases.begin(); it != p.signalAliases.end(); ++it)
+        aliases[it.key()] = it.value();
+
     QJsonObject root;
-    root["version"]       = 1;
-    root["iface"]         = p.iface;
-    root["bitrate"]       = p.bitrate;
-    root["dbc_path"]      = p.dbcPath;
-    root["log_path"]      = p.logPath;
-    root["graph_signals"] = sigs;
-    root["filter"]        = filterToJson(p.filter);
-    root["trigger"]       = triggerToJson(p.trigger);
+    root["version"]        = 1;
+    root["iface"]          = p.iface;
+    root["bitrate"]        = p.bitrate;
+    root["dbc_path"]       = p.dbcPath;
+    root["log_path"]       = p.logPath;
+    root["graph_signals"]  = sigs;
+    root["signal_aliases"] = aliases;
+    root["filter"]         = filterToJson(p.filter);
+    root["trigger"]        = triggerToJson(p.trigger);
 
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly)) { error = f.errorString(); return false; }
@@ -91,10 +97,17 @@ bool projectLoad(ProjectData& p, const QString& path, QString& error) {
     for (const auto& sv : root["graph_signals"].toArray()) {
         const auto so = sv.toObject();
         p.graphSignals.append({so["name"].toString(),
+                               so["label"].toString(),
                                (uint32_t)so["msg_id"].toInt(),
                                so["is_raw"].toBool(),
                                so["byte_idx"].toInt()});
     }
+
+    p.signalAliases.clear();
+    const auto aliasObj = root["signal_aliases"].toObject();
+    for (auto it = aliasObj.begin(); it != aliasObj.end(); ++it)
+        p.signalAliases[it.key()] = it.value().toString();
+
     p.filter  = filterFromJson(root["filter"].toObject());
     p.trigger = triggerFromJson(root["trigger"].toObject());
     return true;

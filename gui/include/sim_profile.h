@@ -5,6 +5,11 @@
 
 namespace socketspy::gui {
 
+struct SimScenarioPoint {
+    int64_t t_ms;
+    double  value;
+};
+
 struct SimSignal {
     QString name;
     int     start_bit;
@@ -14,6 +19,7 @@ struct SimSignal {
     double  min;
     double  max;
     double  current_value;
+    std::vector<SimScenarioPoint> scenario; // empty = static/manual
 };
 
 struct SimMessage {

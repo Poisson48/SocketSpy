@@ -14,6 +14,7 @@
 namespace socketspy::gui {
 
 static const QStringList kBuiltinPaths = {
+    ":/vehicles/renault_megane2.json",
     ":/vehicles/generic_car.json",
     ":/vehicles/electric_scooter.json",
 };
@@ -61,6 +62,8 @@ void SimulatorPanel::setupUi() {
     connect(m_deleteBtn, &QPushButton::clicked, this, &SimulatorPanel::onDeleteProfile);
     connect(m_simulator, &CanSimulator::frameGenerated,
             this, &SimulatorPanel::frameGenerated);
+    connect(m_simulator, &CanSimulator::animationTick,
+            this, &SimulatorPanel::onAnimationTick);
 }
 
 void SimulatorPanel::populateProfiles() {
@@ -119,6 +122,8 @@ void SimulatorPanel::onProfileChanged(int index) {
 
 void SimulatorPanel::populateTree() {
     m_tree->clear();
+    m_signalWidgets.clear();
+
     for (int ni = 0; ni < (int)m_currentProfile.nodes.size(); ++ni) {
         const auto& node = m_currentProfile.nodes[ni];
         auto* nodeItem = new QTreeWidgetItem(m_tree, {node.name});
@@ -132,22 +137,39 @@ void SimulatorPanel::populateTree() {
             msgItem->setExpanded(true);
             for (int si = 0; si < (int)msg.sigs.size(); ++si) {
                 const auto& sig = msg.sigs[si];
-                QString range = QString("[%1 – %2]")
-                    .arg(sig.min).arg(sig.max);
-                auto* sigItem = new QTreeWidgetItem(msgItem,
-                    {sig.name, "", range});
+                bool animated = !sig.scenario.empty();
+                QString range = animated
+                    ? QString("[%1 – %2] ▶").arg(sig.min).arg(sig.max)
+                    : QString("[%1 – %2]").arg(sig.min).arg(sig.max);
+                auto* sigItem = new QTreeWidgetItem(msgItem, {sig.name, "", range});
                 auto* spin = new QDoubleSpinBox(m_tree);
                 spin->setRange(sig.min, sig.max);
                 spin->setValue(sig.current_value);
                 spin->setSingleStep((sig.max - sig.min) / 100.0);
                 spin->setDecimals(2);
+                spin->setReadOnly(animated);
+                spin->setButtonSymbols(animated ? QAbstractSpinBox::NoButtons
+                                                 : QAbstractSpinBox::UpDownArrows);
                 m_tree->setItemWidget(sigItem, 1, spin);
-                connect(spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-                    this, [this, ni, mi, si](double v) {
-                        m_simulator->setSignalValue(ni, mi, si, v);
-                    });
+                if (!animated) {
+                    connect(spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+                        this, [this, ni, mi, si](double v) {
+                            m_simulator->setSignalValue(ni, mi, si, v);
+                        });
+                }
+                m_signalWidgets.push_back({ni, mi, si, spin, animated});
             }
         }
+    }
+}
+
+void SimulatorPanel::onAnimationTick() {
+    for (const auto& sw : m_signalWidgets) {
+        if (!sw.animated) continue;
+        double v = m_simulator->signalValue(sw.ni, sw.mi, sw.si);
+        sw.spin->blockSignals(true);
+        sw.spin->setValue(v);
+        sw.spin->blockSignals(false);
     }
 }
 
@@ -188,6 +210,5 @@ void SimulatorPanel::onDeleteProfile() {
     populateProfiles();
 }
 
-void SimulatorPanel::connectSignalWidgets() {}
 
 } // namespace socketspy::gui

@@ -16,6 +16,14 @@ static SimSignal parse_signal(const json& j) {
     s.min           = j.value("min",     0.0);
     s.max           = j.value("max",     255.0);
     s.current_value = j.value("default", 0.0);
+    if (j.contains("scenario")) {
+        for (const auto& pt : j.at("scenario")) {
+            SimScenarioPoint p;
+            p.t_ms  = static_cast<int64_t>(pt.at("t_ms").get<double>());
+            p.value = pt.at("value").get<double>();
+            s.scenario.push_back(p);
+        }
+    }
     return s;
 }
 

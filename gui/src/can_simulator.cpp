@@ -20,6 +20,41 @@ void CanSimulator::load(const SimProfile& profile) {
     m_profile = profile;
 }
 
+double CanSimulator::interpolateScenario(const std::vector<SimScenarioPoint>& pts, int64_t t_ms) {
+    if (pts.size() == 1) return pts[0].value;
+    int64_t loop_ms = pts.back().t_ms;
+    if (loop_ms <= 0) return pts.back().value;
+    t_ms = t_ms % loop_ms;
+    for (size_t i = 1; i < pts.size(); ++i) {
+        if (t_ms <= pts[i].t_ms) {
+            double dt = static_cast<double>(pts[i].t_ms - pts[i - 1].t_ms);
+            if (dt <= 0.0) return pts[i].value;
+            double alpha = static_cast<double>(t_ms - pts[i - 1].t_ms) / dt;
+            return pts[i - 1].value + alpha * (pts[i].value - pts[i - 1].value);
+        }
+    }
+    return pts.back().value;
+}
+
+void CanSimulator::tickAnimations() {
+    m_elapsed_ms += kAnimInterval;
+    for (auto& node : m_profile.nodes)
+        for (auto& msg : node.messages)
+            for (auto& sig : msg.sigs)
+                if (!sig.scenario.empty())
+                    sig.current_value = interpolateScenario(sig.scenario, m_elapsed_ms);
+    emit animationTick();
+}
+
+double CanSimulator::signalValue(int ni, int mi, int si) const {
+    if (ni < 0 || ni >= (int)m_profile.nodes.size()) return 0.0;
+    const auto& node = m_profile.nodes[ni];
+    if (mi < 0 || mi >= (int)node.messages.size()) return 0.0;
+    const auto& msg = node.messages[mi];
+    if (si < 0 || si >= (int)msg.sigs.size()) return 0.0;
+    return msg.sigs[si].current_value;
+}
+
 void CanSimulator::encodeSignal(uint8_t* data, const SimSignal& sig) {
     double clamped = std::clamp(sig.current_value, sig.min, sig.max);
     int64_t raw = static_cast<int64_t>((clamped - sig.offset) / sig.factor);
@@ -53,6 +88,14 @@ void CanSimulator::encodeAndEmit(int node_idx, int msg_idx) {
 
 void CanSimulator::start() {
     if (m_running) return;
+    m_elapsed_ms = 0;
+
+    // Animation timer: drives scenario interpolation for all signals
+    auto* animT = new QTimer(this);
+    animT->setInterval(kAnimInterval);
+    connect(animT, &QTimer::timeout, this, &CanSimulator::tickAnimations);
+    animT->start();
+    m_timers.push_back(animT);
 
     int total_msgs = 0;
     for (const auto& node : m_profile.nodes)

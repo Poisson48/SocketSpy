@@ -1,0 +1,528 @@
+{
+  "name": "Renault Mégane II",
+  "description": "Renault Mégane II (2002-2008) – HS-CAN 500kbps. Scénario de conduite 60s : démarrage ville, nationale, autoroute, freinage.",
+  "nodes": [
+    {
+      "name": "ECU_Moteur",
+      "messages": [
+        {
+          "id": "0x0C6",
+          "period_ms": 10,
+          "dlc": 8,
+          "signals": [
+            {
+              "name": "RPM",
+              "start_bit": 0,
+              "length": 16,
+              "factor": 0.25,
+              "offset": 0,
+              "min": 0,
+              "max": 8000,
+              "default": 850,
+              "scenario": [
+                {"t_ms":     0, "value":  850},
+                {"t_ms":  2000, "value":  850},
+                {"t_ms":  2500, "value": 2500},
+                {"t_ms":  4000, "value": 4800},
+                {"t_ms":  4500, "value": 2800},
+                {"t_ms":  6000, "value": 4200},
+                {"t_ms":  6800, "value": 2600},
+                {"t_ms":  9000, "value": 3200},
+                {"t_ms": 11000, "value": 2700},
+                {"t_ms": 15000, "value": 2700},
+                {"t_ms": 15500, "value": 3500},
+                {"t_ms": 17000, "value": 4000},
+                {"t_ms": 17500, "value": 2900},
+                {"t_ms": 20000, "value": 3000},
+                {"t_ms": 25000, "value": 3000},
+                {"t_ms": 27500, "value": 3800},
+                {"t_ms": 30000, "value": 3000},
+                {"t_ms": 35000, "value": 3000},
+                {"t_ms": 37000, "value": 2200},
+                {"t_ms": 40000, "value": 1800},
+                {"t_ms": 42000, "value": 1600},
+                {"t_ms": 47000, "value": 1500},
+                {"t_ms": 50000, "value": 1100},
+                {"t_ms": 51500, "value":  850},
+                {"t_ms": 52000, "value":  850},
+                {"t_ms": 57000, "value":  850},
+                {"t_ms": 60000, "value":  850}
+              ]
+            },
+            {
+              "name": "EngineLoad",
+              "start_bit": 16,
+              "length": 8,
+              "factor": 0.4,
+              "offset": 0,
+              "min": 0,
+              "max": 100,
+              "default": 12,
+              "scenario": [
+                {"t_ms":     0, "value":  12},
+                {"t_ms":  2000, "value":  12},
+                {"t_ms":  2500, "value":  85},
+                {"t_ms":  4500, "value":   0},
+                {"t_ms":  4700, "value":  70},
+                {"t_ms":  6800, "value":   0},
+                {"t_ms":  7000, "value":  55},
+                {"t_ms":  9000, "value":  25},
+                {"t_ms": 11000, "value":  20},
+                {"t_ms": 15000, "value":  20},
+                {"t_ms": 15500, "value":  65},
+                {"t_ms": 17500, "value":   0},
+                {"t_ms": 17700, "value":  28},
+                {"t_ms": 20000, "value":  24},
+                {"t_ms": 25000, "value":  24},
+                {"t_ms": 27500, "value":  90},
+                {"t_ms": 30000, "value":  24},
+                {"t_ms": 35000, "value":  24},
+                {"t_ms": 37000, "value":   0},
+                {"t_ms": 42000, "value":  15},
+                {"t_ms": 47000, "value":  14},
+                {"t_ms": 51500, "value":  12},
+                {"t_ms": 60000, "value":  12}
+              ]
+            },
+            {
+              "name": "Throttle",
+              "start_bit": 24,
+              "length": 8,
+              "factor": 0.4,
+              "offset": 0,
+              "min": 0,
+              "max": 100,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value":   0},
+                {"t_ms":  2000, "value":   0},
+                {"t_ms":  2500, "value":  90},
+                {"t_ms":  4000, "value":  75},
+                {"t_ms":  4500, "value":   0},
+                {"t_ms":  4700, "value":  70},
+                {"t_ms":  6800, "value":   0},
+                {"t_ms":  7000, "value":  55},
+                {"t_ms":  9000, "value":  22},
+                {"t_ms": 11000, "value":  18},
+                {"t_ms": 15000, "value":  18},
+                {"t_ms": 15500, "value":  65},
+                {"t_ms": 17000, "value":  60},
+                {"t_ms": 17500, "value":   0},
+                {"t_ms": 17700, "value":  25},
+                {"t_ms": 20000, "value":  22},
+                {"t_ms": 25000, "value":  22},
+                {"t_ms": 27500, "value":  85},
+                {"t_ms": 30000, "value":  22},
+                {"t_ms": 35000, "value":  22},
+                {"t_ms": 37000, "value":   0},
+                {"t_ms": 42000, "value":  15},
+                {"t_ms": 47000, "value":  15},
+                {"t_ms": 50000, "value":   5},
+                {"t_ms": 51500, "value":   0},
+                {"t_ms": 60000, "value":   0}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0x17C",
+          "period_ms": 10,
+          "dlc": 7,
+          "signals": [
+            {
+              "name": "EngineTorque_pct",
+              "start_bit": 0,
+              "length": 8,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 100,
+              "default": 10,
+              "scenario": [
+                {"t_ms":     0, "value":  10},
+                {"t_ms":  2000, "value":  10},
+                {"t_ms":  2500, "value":  90},
+                {"t_ms":  4000, "value":  85},
+                {"t_ms":  6800, "value":   0},
+                {"t_ms":  7000, "value":  60},
+                {"t_ms":  9000, "value":  25},
+                {"t_ms": 11000, "value":  20},
+                {"t_ms": 15000, "value":  20},
+                {"t_ms": 15500, "value":  70},
+                {"t_ms": 17000, "value":  65},
+                {"t_ms": 17500, "value":   0},
+                {"t_ms": 17700, "value":  25},
+                {"t_ms": 20000, "value":  22},
+                {"t_ms": 25000, "value":  22},
+                {"t_ms": 27500, "value":  92},
+                {"t_ms": 30000, "value":  22},
+                {"t_ms": 35000, "value":  22},
+                {"t_ms": 37000, "value":   0},
+                {"t_ms": 42000, "value":  15},
+                {"t_ms": 52000, "value":  10},
+                {"t_ms": 60000, "value":  10}
+              ]
+            },
+            {
+              "name": "FuelFlow_Lh",
+              "start_bit": 16,
+              "length": 16,
+              "factor": 0.01,
+              "offset": 0,
+              "min": 0,
+              "max": 50,
+              "default": 0.5,
+              "scenario": [
+                {"t_ms":     0, "value":  0.5},
+                {"t_ms":  2000, "value":  0.5},
+                {"t_ms":  2500, "value": 18.0},
+                {"t_ms":  4000, "value": 15.0},
+                {"t_ms":  9000, "value":  6.0},
+                {"t_ms": 11000, "value":  5.0},
+                {"t_ms": 15000, "value":  5.0},
+                {"t_ms": 15500, "value": 12.0},
+                {"t_ms": 20000, "value":  7.0},
+                {"t_ms": 25000, "value":  7.0},
+                {"t_ms": 27500, "value": 20.0},
+                {"t_ms": 30000, "value":  7.0},
+                {"t_ms": 35000, "value":  7.0},
+                {"t_ms": 37000, "value":  0.0},
+                {"t_ms": 42000, "value":  3.0},
+                {"t_ms": 47000, "value":  2.5},
+                {"t_ms": 52000, "value":  0.5},
+                {"t_ms": 60000, "value":  0.5}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ABS_ESP",
+      "messages": [
+        {
+          "id": "0x354",
+          "period_ms": 10,
+          "dlc": 8,
+          "signals": [
+            {
+              "name": "WheelSpeed_FL",
+              "start_bit": 0,
+              "length": 16,
+              "factor": 0.01,
+              "offset": 0,
+              "min": 0,
+              "max": 300,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value":   0},
+                {"t_ms":  2000, "value":   0},
+                {"t_ms":  5000, "value":  20},
+                {"t_ms":  7000, "value":  50},
+                {"t_ms":  9000, "value":  70},
+                {"t_ms": 11000, "value":  80},
+                {"t_ms": 15000, "value":  80},
+                {"t_ms": 17000, "value":  95},
+                {"t_ms": 20000, "value": 110},
+                {"t_ms": 25000, "value": 110},
+                {"t_ms": 28000, "value": 130},
+                {"t_ms": 30000, "value": 110},
+                {"t_ms": 35000, "value": 110},
+                {"t_ms": 38000, "value":  70},
+                {"t_ms": 41000, "value":  50},
+                {"t_ms": 44000, "value":  30},
+                {"t_ms": 47000, "value":  30},
+                {"t_ms": 50000, "value":  10},
+                {"t_ms": 52000, "value":   0},
+                {"t_ms": 57000, "value":   0},
+                {"t_ms": 60000, "value":   0}
+              ]
+            },
+            {
+              "name": "WheelSpeed_FR",
+              "start_bit": 16,
+              "length": 16,
+              "factor": 0.01,
+              "offset": 0,
+              "min": 0,
+              "max": 300,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value":   0},
+                {"t_ms":  2000, "value":   0},
+                {"t_ms":  5000, "value":  20},
+                {"t_ms":  7000, "value":  50},
+                {"t_ms":  9000, "value":  70},
+                {"t_ms": 11000, "value":  80},
+                {"t_ms": 15000, "value":  80},
+                {"t_ms": 17000, "value":  95},
+                {"t_ms": 20000, "value": 110},
+                {"t_ms": 25000, "value": 110},
+                {"t_ms": 28000, "value": 130},
+                {"t_ms": 30000, "value": 110},
+                {"t_ms": 35000, "value": 110},
+                {"t_ms": 38000, "value":  70},
+                {"t_ms": 41000, "value":  50},
+                {"t_ms": 44000, "value":  30},
+                {"t_ms": 47000, "value":  30},
+                {"t_ms": 50000, "value":  10},
+                {"t_ms": 52000, "value":   0},
+                {"t_ms": 57000, "value":   0},
+                {"t_ms": 60000, "value":   0}
+              ]
+            },
+            {
+              "name": "WheelSpeed_RL",
+              "start_bit": 32,
+              "length": 16,
+              "factor": 0.01,
+              "offset": 0,
+              "min": 0,
+              "max": 300,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value":   0},
+                {"t_ms":  2000, "value":   0},
+                {"t_ms":  5000, "value":  20},
+                {"t_ms":  7000, "value":  50},
+                {"t_ms":  9000, "value":  70},
+                {"t_ms": 11000, "value":  80},
+                {"t_ms": 15000, "value":  80},
+                {"t_ms": 17000, "value":  95},
+                {"t_ms": 20000, "value": 110},
+                {"t_ms": 25000, "value": 110},
+                {"t_ms": 28000, "value": 130},
+                {"t_ms": 30000, "value": 110},
+                {"t_ms": 35000, "value": 110},
+                {"t_ms": 38000, "value":  70},
+                {"t_ms": 41000, "value":  50},
+                {"t_ms": 44000, "value":  30},
+                {"t_ms": 47000, "value":  30},
+                {"t_ms": 50000, "value":  10},
+                {"t_ms": 52000, "value":   0},
+                {"t_ms": 57000, "value":   0},
+                {"t_ms": 60000, "value":   0}
+              ]
+            },
+            {
+              "name": "WheelSpeed_RR",
+              "start_bit": 48,
+              "length": 16,
+              "factor": 0.01,
+              "offset": 0,
+              "min": 0,
+              "max": 300,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value":   0},
+                {"t_ms":  2000, "value":   0},
+                {"t_ms":  5000, "value":  20},
+                {"t_ms":  7000, "value":  50},
+                {"t_ms":  9000, "value":  70},
+                {"t_ms": 11000, "value":  80},
+                {"t_ms": 15000, "value":  80},
+                {"t_ms": 17000, "value":  95},
+                {"t_ms": 20000, "value": 110},
+                {"t_ms": 25000, "value": 110},
+                {"t_ms": 28000, "value": 130},
+                {"t_ms": 30000, "value": 110},
+                {"t_ms": 35000, "value": 110},
+                {"t_ms": 38000, "value":  70},
+                {"t_ms": 41000, "value":  50},
+                {"t_ms": 44000, "value":  30},
+                {"t_ms": 47000, "value":  30},
+                {"t_ms": 50000, "value":  10},
+                {"t_ms": 52000, "value":   0},
+                {"t_ms": 57000, "value":   0},
+                {"t_ms": 60000, "value":   0}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard_UCH",
+      "messages": [
+        {
+          "id": "0x345",
+          "period_ms": 100,
+          "dlc": 8,
+          "signals": [
+            {
+              "name": "VehicleSpeed",
+              "start_bit": 0,
+              "length": 16,
+              "factor": 0.01,
+              "offset": 0,
+              "min": 0,
+              "max": 300,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value":   0},
+                {"t_ms":  2000, "value":   0},
+                {"t_ms":  5000, "value":  20},
+                {"t_ms":  7000, "value":  50},
+                {"t_ms":  9000, "value":  70},
+                {"t_ms": 11000, "value":  80},
+                {"t_ms": 15000, "value":  80},
+                {"t_ms": 17000, "value":  95},
+                {"t_ms": 20000, "value": 110},
+                {"t_ms": 25000, "value": 110},
+                {"t_ms": 28000, "value": 130},
+                {"t_ms": 30000, "value": 110},
+                {"t_ms": 35000, "value": 110},
+                {"t_ms": 38000, "value":  70},
+                {"t_ms": 41000, "value":  50},
+                {"t_ms": 44000, "value":  30},
+                {"t_ms": 47000, "value":  30},
+                {"t_ms": 50000, "value":  10},
+                {"t_ms": 52000, "value":   0},
+                {"t_ms": 57000, "value":   0},
+                {"t_ms": 60000, "value":   0}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "0x39C",
+          "period_ms": 100,
+          "dlc": 5,
+          "signals": [
+            {
+              "name": "GearPosition",
+              "start_bit": 0,
+              "length": 4,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 6,
+              "default": 0,
+              "scenario": [
+                {"t_ms":     0, "value": 0},
+                {"t_ms":  2000, "value": 1},
+                {"t_ms":  4500, "value": 2},
+                {"t_ms":  6800, "value": 3},
+                {"t_ms": 11000, "value": 4},
+                {"t_ms": 17500, "value": 5},
+                {"t_ms": 27500, "value": 4},
+                {"t_ms": 30000, "value": 5},
+                {"t_ms": 37000, "value": 4},
+                {"t_ms": 40000, "value": 3},
+                {"t_ms": 42000, "value": 2},
+                {"t_ms": 48000, "value": 1},
+                {"t_ms": 52000, "value": 0},
+                {"t_ms": 60000, "value": 0}
+              ]
+            },
+            {
+              "name": "TurnSignal_Left",
+              "start_bit": 4,
+              "length": 1,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 1,
+              "default": 0
+            },
+            {
+              "name": "TurnSignal_Right",
+              "start_bit": 5,
+              "length": 1,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 1,
+              "default": 0
+            },
+            {
+              "name": "Handbrake",
+              "start_bit": 6,
+              "length": 1,
+              "factor": 1.0,
+              "offset": 0,
+              "min": 0,
+              "max": 1,
+              "default": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Body_Controller",
+      "messages": [
+        {
+          "id": "0x38C",
+          "period_ms": 200,
+          "dlc": 8,
+          "signals": [
+            {
+              "name": "CoolantTemp",
+              "start_bit": 0,
+              "length": 8,
+              "factor": 1.0,
+              "offset": -40,
+              "min": -40,
+              "max": 215,
+              "default": 87,
+              "scenario": [
+                {"t_ms":     0, "value":  87},
+                {"t_ms": 20000, "value":  91},
+                {"t_ms": 35000, "value":  89},
+                {"t_ms": 60000, "value":  87}
+              ]
+            },
+            {
+              "name": "AmbientTemp",
+              "start_bit": 8,
+              "length": 8,
+              "factor": 0.5,
+              "offset": -40,
+              "min": -40,
+              "max": 87,
+              "default": 18
+            },
+            {
+              "name": "FuelLevel",
+              "start_bit": 16,
+              "length": 8,
+              "factor": 0.5,
+              "offset": 0,
+              "min": 0,
+              "max": 100,
+              "default": 67
+            }
+          ]
+        },
+        {
+          "id": "0x3A7",
+          "period_ms": 200,
+          "dlc": 8,
+          "signals": [
+            {
+              "name": "BattVoltage",
+              "start_bit": 0,
+              "length": 8,
+              "factor": 0.1,
+              "offset": 0,
+              "min": 0,
+              "max": 25.5,
+              "default": 14.1,
+              "scenario": [
+                {"t_ms":     0, "value": 14.1},
+                {"t_ms":  2500, "value": 13.8},
+                {"t_ms":  5000, "value": 14.2},
+                {"t_ms": 25000, "value": 14.0},
+                {"t_ms": 27500, "value": 13.5},
+                {"t_ms": 30000, "value": 14.1},
+                {"t_ms": 52000, "value": 14.0},
+                {"t_ms": 60000, "value": 14.0}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

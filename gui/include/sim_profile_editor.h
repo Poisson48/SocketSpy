@@ -1,11 +1,13 @@
 #pragma once
 #include <QDialog>
 #include <QTreeWidget>
+#include <QTableWidget>
 #include <QPushButton>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QStackedWidget>
+#include <QGroupBox>
 #include "sim_profile.h"
 
 namespace socketspy::gui {
@@ -26,13 +28,16 @@ private slots:
     void onRemove();
     void onSelectionChanged();
     void onAccept();
+    void onScenarioAdd();
+    void onScenarioRemove();
+    void onScenarioCellChanged(int row, int col);
 
 private:
     enum ItemType { Node = 1001, Message = 1002, Signal = 1003 };
     enum DataRole {
         IdRole = Qt::UserRole, PeriodRole, DlcRole,
         StartBitRole, LengthRole, FactorRole, OffsetRole,
-        MinRole, MaxRole, DefaultRole
+        MinRole, MaxRole, DefaultRole, ScenarioRole
     };
 
     void setupUi();
@@ -41,6 +46,8 @@ private:
     QTreeWidgetItem* addSignalItem(QTreeWidgetItem* parent, const SimSignal& s);
     SimProfile       buildProfile() const;
     bool             saveToFile(const SimProfile& p);
+    void             loadScenarioTable(QTreeWidgetItem* item);
+    void             saveScenarioTable();
 
     QLineEdit*      m_profileName{nullptr};
     QTreeWidget*    m_tree{nullptr};
@@ -67,6 +74,12 @@ private:
     QDoubleSpinBox* m_sigMinSpin{nullptr};
     QDoubleSpinBox* m_sigMaxSpin{nullptr};
     QDoubleSpinBox* m_sigDefaultSpin{nullptr};
+
+    // Scenario section (inside signal form)
+    QTableWidget* m_scenarioTable{nullptr};
+    QPushButton*  m_scenarioAddBtn{nullptr};
+    QPushButton*  m_scenarioRemoveBtn{nullptr};
+    bool          m_scenarioBlockSync{false};
 
     QString          m_savedPath;
     QTreeWidgetItem* m_current{nullptr};

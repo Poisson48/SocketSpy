@@ -3,6 +3,8 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QTreeWidget>
+#include <QDoubleSpinBox>
+#include <vector>
 #include "can_simulator.h"
 #include "cancore.h"
 
@@ -22,8 +24,15 @@ private slots:
     void onProfileChanged(int index);
     void onNewProfile();
     void onDeleteProfile();
+    void onAnimationTick();
 
 private:
+    struct SignalWidget {
+        int ni, mi, si;
+        QDoubleSpinBox* spin;
+        bool animated;
+    };
+
     void setupUi();
     void populateProfiles();
     void populateTree();
@@ -36,8 +45,9 @@ private:
     QPushButton* m_deleteBtn{nullptr};
     QTreeWidget* m_tree{nullptr};
 
-    CanSimulator* m_simulator{nullptr};
-    SimProfile    m_currentProfile;
+    CanSimulator*            m_simulator{nullptr};
+    SimProfile               m_currentProfile;
+    std::vector<SignalWidget> m_signalWidgets;
 };
 
 } // namespace socketspy::gui

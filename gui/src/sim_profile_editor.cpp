@@ -4,6 +4,7 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QFrame>
+#include <QHeaderView>
 #include <QDialogButtonBox>
 #include <QStandardPaths>
 #include <QDir>
@@ -132,6 +133,37 @@ void SimProfileEditor::setupUi() {
     sigForm->addRow("Min:",          m_sigMinSpin);
     sigForm->addRow("Max:",          m_sigMaxSpin);
     sigForm->addRow("Default:",      m_sigDefaultSpin);
+
+    // Scenario section
+    auto* scenBox = new QGroupBox("Scenario (animation automatique)", sigPage);
+    auto* scenLayout = new QVBoxLayout(scenBox);
+    scenLayout->setContentsMargins(4, 4, 4, 4);
+    scenLayout->setSpacing(4);
+
+    auto* scenHelp = new QLabel("Points interpolés linéairement en boucle. Laissez vide pour valeur manuelle.", scenBox);
+    scenHelp->setWordWrap(true);
+    scenHelp->setStyleSheet("color: gray; font-size: 10px;");
+    scenLayout->addWidget(scenHelp);
+
+    m_scenarioTable = new QTableWidget(0, 2, scenBox);
+    m_scenarioTable->setHorizontalHeaderLabels({"Temps (ms)", "Valeur"});
+    m_scenarioTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_scenarioTable->setMinimumHeight(100);
+    m_scenarioTable->setMaximumHeight(160);
+    scenLayout->addWidget(m_scenarioTable);
+
+    auto* scenBtnRow = new QHBoxLayout;
+    m_scenarioAddBtn    = new QPushButton("+ Point", scenBox);
+    m_scenarioRemoveBtn = new QPushButton("Supprimer", scenBox);
+    scenBtnRow->addWidget(m_scenarioAddBtn);
+    scenBtnRow->addWidget(m_scenarioRemoveBtn);
+    scenBtnRow->addStretch();
+    scenLayout->addLayout(scenBtnRow);
+
+    auto* sigPageLayout = qobject_cast<QFormLayout*>(sigPage->layout());
+    // Attach scenBox via a wrapper in the form
+    sigPageLayout->addRow(scenBox);
+
     m_stack->addWidget(sigPage);
 
     root->addWidget(m_stack);
@@ -190,6 +222,11 @@ void SimProfileEditor::setupUi() {
     connect(m_sigMinSpin,      QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, syncSig);
     connect(m_sigMaxSpin,      QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, syncSig);
     connect(m_sigDefaultSpin,  QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, syncSig);
+
+    connect(m_scenarioAddBtn,    &QPushButton::clicked, this, &SimProfileEditor::onScenarioAdd);
+    connect(m_scenarioRemoveBtn, &QPushButton::clicked, this, &SimProfileEditor::onScenarioRemove);
+    connect(m_scenarioTable, &QTableWidget::cellChanged,
+            this, &SimProfileEditor::onScenarioCellChanged);
 }
 
 // ── tree builders ─────────────────────────────────────────────────────────────
@@ -221,7 +258,74 @@ QTreeWidgetItem* SimProfileEditor::addSignalItem(QTreeWidgetItem* parent, const 
     item->setData(0, MinRole,      s.min);
     item->setData(0, MaxRole,      s.max);
     item->setData(0, DefaultRole,  s.current_value);
+
+    QVariantList pts;
+    for (const auto& p : s.scenario) {
+        QVariantMap m;
+        m["t_ms"]  = (qlonglong)p.t_ms;
+        m["value"] = p.value;
+        pts.append(m);
+    }
+    item->setData(0, ScenarioRole, pts);
     return item;
+}
+
+void SimProfileEditor::loadScenarioTable(QTreeWidgetItem* item) {
+    m_scenarioBlockSync = true;
+    m_scenarioTable->setRowCount(0);
+    QVariantList pts = item->data(0, ScenarioRole).toList();
+    for (const auto& pt : pts) {
+        QVariantMap m = pt.toMap();
+        int row = m_scenarioTable->rowCount();
+        m_scenarioTable->insertRow(row);
+        m_scenarioTable->setItem(row, 0, new QTableWidgetItem(QString::number(m["t_ms"].toLongLong())));
+        m_scenarioTable->setItem(row, 1, new QTableWidgetItem(QString::number(m["value"].toDouble())));
+    }
+    m_scenarioBlockSync = false;
+}
+
+void SimProfileEditor::saveScenarioTable() {
+    if (!m_current || m_current->type() != Signal) return;
+    QVariantList pts;
+    for (int r = 0; r < m_scenarioTable->rowCount(); ++r) {
+        auto* tItem = m_scenarioTable->item(r, 0);
+        auto* vItem = m_scenarioTable->item(r, 1);
+        if (!tItem || !vItem) continue;
+        bool ok1, ok2;
+        qlonglong t = tItem->text().toLongLong(&ok1);
+        double    v = vItem->text().toDouble(&ok2);
+        if (!ok1 || !ok2) continue;
+        QVariantMap m;
+        m["t_ms"]  = t;
+        m["value"] = v;
+        pts.append(m);
+    }
+    m_current->setData(0, ScenarioRole, pts);
+}
+
+void SimProfileEditor::onScenarioAdd() {
+    if (!m_current || m_current->type() != Signal) return;
+    int row = m_scenarioTable->rowCount();
+    m_scenarioTable->insertRow(row);
+    qlonglong t_ms = (row > 0 && m_scenarioTable->item(row - 1, 0))
+        ? m_scenarioTable->item(row - 1, 0)->text().toLongLong() + 1000
+        : 0LL;
+    m_scenarioTable->setItem(row, 0, new QTableWidgetItem(QString::number(t_ms)));
+    m_scenarioTable->setItem(row, 1, new QTableWidgetItem("0"));
+    saveScenarioTable();
+}
+
+void SimProfileEditor::onScenarioRemove() {
+    if (!m_current || m_current->type() != Signal) return;
+    int row = m_scenarioTable->currentRow();
+    if (row < 0) return;
+    m_scenarioTable->removeRow(row);
+    saveScenarioTable();
+}
+
+void SimProfileEditor::onScenarioCellChanged(int /*row*/, int /*col*/) {
+    if (m_scenarioBlockSync) return;
+    saveScenarioTable();
 }
 
 // ── slots ─────────────────────────────────────────────────────────────────────
@@ -303,6 +407,7 @@ void SimProfileEditor::onSelectionChanged() {
         m_sigMinSpin->setValue(m_current->data(0, MinRole).toDouble());
         m_sigMaxSpin->setValue(m_current->data(0, MaxRole).toDouble());
         m_sigDefaultSpin->setValue(m_current->data(0, DefaultRole).toDouble());
+        loadScenarioTable(m_current);
         m_stack->setCurrentIndex(3);
     }
     m_blockSync = false;
@@ -336,6 +441,13 @@ SimProfile SimProfileEditor::buildProfile() const {
                 sig.min           = si_item->data(0, MinRole).toDouble();
                 sig.max           = si_item->data(0, MaxRole).toDouble();
                 sig.current_value = si_item->data(0, DefaultRole).toDouble();
+                for (const auto& pt : si_item->data(0, ScenarioRole).toList()) {
+                    QVariantMap m = pt.toMap();
+                    SimScenarioPoint p;
+                    p.t_ms  = m["t_ms"].toLongLong();
+                    p.value = m["value"].toDouble();
+                    sig.scenario.push_back(p);
+                }
                 msg.sigs.push_back(sig);
             }
             node.messages.push_back(msg);
@@ -370,6 +482,12 @@ bool SimProfileEditor::saveToFile(const SimProfile& p) {
                 sj["min"]       = sig.min;
                 sj["max"]       = sig.max;
                 sj["default"]   = sig.current_value;
+                if (!sig.scenario.empty()) {
+                    json sa = json::array();
+                    for (const auto& p : sig.scenario)
+                        sa.push_back({{"t_ms", p.t_ms}, {"value", p.value}});
+                    sj["scenario"] = sa;
+                }
                 sigs_arr.push_back(sj);
             }
             mj["signals"] = sigs_arr;

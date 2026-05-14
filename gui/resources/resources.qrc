@@ -4,6 +4,7 @@
     <file>theme.qss</file>
 </qresource>
 <qresource prefix="/vehicles">
+    <file alias="renault_megane2.json">vehicles/renault_megane2.json</file>
     <file alias="generic_car.json">vehicles/generic_car.json</file>
     <file alias="electric_scooter.json">vehicles/electric_scooter.json</file>
 </qresource>

@@ -163,6 +163,7 @@ void MonitorPanel::setupUi() {
             this,    &MonitorPanel::onContextMenu);
 
     m_clear         = new QPushButton("Clear", this);
+    m_clear->setObjectName("clearBtn");
     m_pause         = new QCheckBox("Pause", this);
     m_trackMode     = new QCheckBox("Track by ID", this);
     m_filterBtn     = new QPushButton("Filters…", this);  // "Filters…"

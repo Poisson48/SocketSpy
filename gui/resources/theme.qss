@@ -93,10 +93,12 @@ QTabBar {
 QTabBar::tab {
     background: transparent;
     color: #7c8fa6;
-    padding: 9px 18px;
+    padding: 8px 20px;
     border: none;
     border-bottom: 3px solid transparent;
     font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.3px;
     min-width: 80px;
 }
 QTabBar::tab:selected {
@@ -323,4 +325,91 @@ QToolTip {
     color: #f1f5f9;
     padding: 5px 10px;
     font-size: 12px;
+}
+
+/* ── Status bar FPS label ─────────────────────────────── */
+QLabel#statusFps {
+    color: #f1f5f9;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 0 12px;
+}
+
+/* ── Progress bar (simulator) ────────────────────────── */
+QProgressBar {
+    background: #111827;
+    border: none;
+    border-radius: 2px;
+}
+QProgressBar::chunk {
+    background: #6366f1;
+    border-radius: 2px;
+}
+
+/* ── Tree widget ─────────────────────────────────────── */
+QTreeWidget {
+    background: #111827;
+    alternate-background-color: #161f2e;
+    border: 1px solid #2a3a52;
+    border-radius: 8px;
+    outline: none;
+}
+QTreeWidget::item {
+    padding: 3px 4px;
+    border: none;
+}
+QTreeWidget::item:selected {
+    background: rgba(99,102,241,0.25);
+    color: #f1f5f9;
+}
+QTreeWidget::item:hover { background: #232f45; }
+QTreeWidget::branch { background: transparent; }
+
+/* ── Dock widget ─────────────────────────────────────── */
+QDockWidget {
+    color: #f1f5f9;
+    titlebar-close-icon: none;
+}
+QDockWidget::title {
+    background: #1a2235;
+    padding: 6px 10px;
+    border-bottom: 1px solid #2a3a52;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #7c8fa6;
+}
+
+/* ── Toolbar buttons ─────────────────────────────────── */
+QToolBar QPushButton {
+    background: transparent;
+    border: 1px solid #3d5270;
+    color: #f1f5f9;
+    padding: 5px 12px;
+    font-weight: 500;
+}
+QToolBar QPushButton:hover {
+    border-color: #6366f1;
+    background: rgba(99,102,241,0.12);
+}
+QToolBar QPushButton:checked {
+    background: rgba(99,102,241,0.2);
+    border-color: #6366f1;
+    color: #6366f1;
+}
+
+/* ── Record button — red accent ──────────────────────── */
+QPushButton#recordBtn {
+    background: transparent;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+}
+QPushButton#recordBtn:hover {
+    background: rgba(239,68,68,0.12);
+}
+QPushButton#stopRecBtn {
+    background: transparent;
+    border: 1px solid #3d5270;
+    color: #7c8fa6;
 }

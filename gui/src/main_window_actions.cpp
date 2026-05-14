@@ -67,17 +67,17 @@ void MainWindow::onOpenDbc() {
 
 void MainWindow::onToggleMonitor(bool v) {
     int i = m_tabs->indexOf(m_monitor);
-    if (v && i==-1) m_tabs->insertTab(0, m_monitor, tr("Monitor"));
+    if (v && i==-1) m_tabs->insertTab(0, m_monitor, QString::fromUtf8("⊞  ") + tr("Monitor"));
     else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 void MainWindow::onToggleTransmit(bool v) {
     int i = m_tabs->indexOf(m_transmit);
-    if (v && i==-1) m_tabs->addTab(m_transmit, tr("Transmit"));
+    if (v && i==-1) m_tabs->addTab(m_transmit, QString::fromUtf8("↑  ") + tr("Transmit"));
     else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 void MainWindow::onToggleGraph(bool v) {
     int i = m_tabs->indexOf(m_graph);
-    if (v && i==-1) m_tabs->addTab(m_graph, tr("Signal Graph"));
+    if (v && i==-1) m_tabs->addTab(m_graph, QString::fromUtf8("∿  ") + tr("Graph"));
     else if (!v && i!=-1) m_tabs->removeTab(i);
 }
 
@@ -170,10 +170,12 @@ void MainWindow::onSaveProjectAs() {
 
 void MainWindow::setConnStatus(bool active) {
     if (active) {
-        m_connStatusLabel->setStyleSheet("color: #33aa33; font-size: 14px;");
+        m_connStatusLabel->setText(QString::fromUtf8("● LIVE"));
+        m_connStatusLabel->setStyleSheet("color: #22c55e; font-size: 11px; font-weight:700; letter-spacing:1px;");
         m_connStatusLabel->setToolTip(tr("Interface active"));
     } else {
-        m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
+        m_connStatusLabel->setText(QString::fromUtf8("●  \xe2\x80\x93 \xe2\x80\x93"));
+        m_connStatusLabel->setStyleSheet("color: #4b5563; font-size: 11px; font-weight:700; letter-spacing:1px;");
         m_connStatusLabel->setToolTip(tr("No traffic received"));
     }
 }

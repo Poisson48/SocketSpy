@@ -66,18 +66,24 @@ void MainWindow::setupUi() {
     m_scriptPanel   = new ScriptingPanel(this);
     m_protocolPanel = new ProtocolPanel(this);
 
-    m_tabs->addTab(m_monitor,    tr("Monitor"));
-    m_tabs->addTab(m_transmit,   tr("Transmit"));
-    m_tabs->addTab(m_graph,      tr("Signal Graph"));
-    m_tabs->addTab(m_replay,     tr("Replay"));
-    m_tabs->addTab(m_stats,      tr("Statistics"));
-    m_tabs->addTab(m_elm327Panel,   tr("OBD2/BT"));
-    m_tabs->addTab(m_simulator,     tr("Simulator"));
-    m_tabs->addTab(m_scriptPanel,   tr("Scripts"));
-    m_tabs->addTab(m_protocolPanel, tr("Protocols"));
+    m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
+    m_tabs->addTab(m_transmit,      QString::fromUtf8("↑  ") + tr("Transmit"));
+    m_tabs->addTab(m_graph,         QString::fromUtf8("∿  ") + tr("Graph"));
+    m_tabs->addTab(m_replay,        QString::fromUtf8("▶  ") + tr("Replay"));
+    m_tabs->addTab(m_stats,         QString::fromUtf8("⊞  ") + tr("Stats"));
+    m_tabs->addTab(m_elm327Panel,   QString::fromUtf8("⚡  ") + tr("OBD2"));
+    m_tabs->addTab(m_simulator,     QString::fromUtf8("⚙  ") + tr("Simulator"));
+    m_tabs->addTab(m_scriptPanel,   QString::fromUtf8("{}  ") + tr("Scripts"));
+    m_tabs->addTab(m_protocolPanel, QString::fromUtf8("⊕  ") + tr("Protocols"));
 
-    m_statusLabel = new QLabel(tr("Interface: ") + m_iface + "  |  0 fps", this);
+    m_statusLabel = new QLabel(m_iface + "  \xc2\xb7  0 fps", this);
+    m_statusLabel->setObjectName("statusFps");
     statusBar()->addPermanentWidget(m_statusLabel);
+
+    m_fpsTimer = new QTimer(this);
+    m_fpsTimer->setInterval(1000);
+    connect(m_fpsTimer, &QTimer::timeout, this, &MainWindow::onFpsTick);
+    m_fpsTimer->start();
 
     connect(m_monitor, &MonitorPanel::signalDoubleClicked,
             m_graph,   &SignalGraphPanel::addSignal);
@@ -94,6 +100,10 @@ void MainWindow::setupUi() {
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
+    connect(m_elm327Panel, &Elm327Panel::frameReceived,
+            this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
+    connect(m_simulator,   &SimulatorPanel::frameGenerated,
+            this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
 
     m_filterPanel = new FilterPanel(this);
     m_filterDock  = new QDockWidget(tr("Filter"), this);
@@ -180,7 +190,8 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_graph,         &SignalGraphPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_stats,         &StatsPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_protocolPanel, &ProtocolPanel::onFrameReceived);
-    connect(m_capture, &CanCapture::statsUpdated,  this,      &MainWindow::onStatsUpdated);
+    connect(m_capture, &CanCapture::frameReceived, this,            &MainWindow::onAnyFrameReceived,
+            Qt::DirectConnection);
     connect(m_capture, &CanCapture::errorOccurred, this,      &MainWindow::onCaptureError);
     connect(m_capture, &CanCapture::triggerFired,  this,      &MainWindow::onTriggerFired);
     connect(m_triggerPanel, &TriggerPanel::triggerConfigChanged, m_capture, &CanCapture::setTrigger);
@@ -202,7 +213,8 @@ void MainWindow::setupToolBar() {
     int idx = m_ifaceCombo->findText(m_iface);
     if (idx >= 0) m_ifaceCombo->setCurrentIndex(idx);
     tb->addWidget(m_ifaceCombo);
-    auto* refreshBtn = new QPushButton("↺", this);
+    auto* refreshBtn = new QPushButton(QString::fromUtf8("↺"), this);
+    refreshBtn->setObjectName("refreshBtn");
     refreshBtn->setFixedWidth(28); refreshBtn->setToolTip(tr("Refresh interface list"));
     tb->addWidget(refreshBtn); tb->addSeparator();
 
@@ -214,8 +226,8 @@ void MainWindow::setupToolBar() {
     m_bitrateCombo->setCurrentIndex(2);
     tb->addWidget(m_bitrateCombo); tb->addSeparator();
 
-    m_connStatusLabel = new QLabel("●", this);
-    m_connStatusLabel->setStyleSheet("color: #cc3333; font-size: 14px;");
+    m_connStatusLabel = new QLabel(QString::fromUtf8("●  \xe2\x80\x93 \xe2\x80\x93"), this);
+    m_connStatusLabel->setStyleSheet("color: #4b5563; font-size: 11px; font-weight:700; letter-spacing:1px;");
     m_connStatusLabel->setToolTip(tr("No traffic received"));
     tb->addWidget(m_connStatusLabel); tb->addSeparator();
 
@@ -234,8 +246,14 @@ void MainWindow::setupToolBar() {
     m_statusTimer->setInterval(2000);
     connect(m_statusTimer, &QTimer::timeout, this, &MainWindow::onStatusTimeout);
 
+    auto* spacer = new QWidget(this);
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    tb->addWidget(spacer);
+
     auto* recordBtn  = new QPushButton(tr("Record"),   this);
     auto* stopRecBtn = new QPushButton(tr("Stop Rec"), this);
+    recordBtn->setObjectName("recordBtn");
+    stopRecBtn->setObjectName("stopRecBtn");
     recordBtn->setToolTip(tr("Start recording to .log file"));
     stopRecBtn->setToolTip(tr("Stop recording"));
     stopRecBtn->setEnabled(false);
@@ -279,7 +297,9 @@ void MainWindow::onIfaceChanged(const QString& iface) {
     if (iface == m_iface) return;
     m_userPicked = (iface != "vcan0");
     m_iface = iface;
-    m_statusLabel->setText(tr("Interface: ") + m_iface + "  |  0 fps");
+    m_fpsCount = 0;
+    m_smoothFps = 0.0;
+    m_statusLabel->setText(m_iface + "  \xc2\xb7  0 fps");
     setConnStatus(false);
     m_bitrateCombo->setEnabled(!canIfaceIsVirtual(iface));
 
@@ -308,9 +328,17 @@ void MainWindow::onRefreshIfaces() {
         onIfaceChanged(m_ifaceCombo->currentText());
 }
 
-void MainWindow::onStatsUpdated(uint64_t fps) {
-    m_statusLabel->setText(tr("Interface: ") + m_iface + "  |  " + QString::number(fps) + " fps");
-    if (fps > 0) { m_statusTimer->stop(); setConnStatus(true); }
+void MainWindow::onAnyFrameReceived() {
+    ++m_fpsCount;
+}
+
+void MainWindow::onFpsTick() {
+    constexpr double alpha = 0.3;
+    m_smoothFps = alpha * m_fpsCount + (1.0 - alpha) * m_smoothFps;
+    m_fpsCount = 0;
+    const QString txt = m_iface + "  \xc2\xb7  " + QString::number(qRound(m_smoothFps)) + " fps";
+    m_statusLabel->setText(txt);
+    if (m_smoothFps > 0.5) { m_statusTimer->stop(); setConnStatus(true); }
     else if (!m_statusTimer->isActive()) { m_statusTimer->start(); }
 }
 

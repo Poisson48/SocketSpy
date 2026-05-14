@@ -30,6 +30,8 @@ set(GUI_HEADERS
     include/protocol_panel.h
     include/can_iface_config.h
     include/project.h
+    include/project_registry.h
+    include/project_browser.h
 )
 
 add_executable(socketspy
@@ -58,6 +60,8 @@ add_executable(socketspy
     src/protocol_panel.cpp
     src/can_iface_config.cpp
     src/project.cpp
+    src/project_registry.cpp
+    src/project_browser.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

@@ -8,6 +8,7 @@
 #include "filter_panel.h"
 #include "trigger_panel.h"
 #include "project.h"
+#include "project_browser.h"
 
 #pragma push_macro("signals")
 #undef signals
@@ -138,9 +139,18 @@ void MainWindow::onNewProject() {
 }
 
 void MainWindow::onOpenProject() {
-    const QString path = QFileDialog::getOpenFileName(
-        this, tr("Open project"), {}, tr("SocketSpy Projects (*.spyproj);;All Files (*)"));
+    onShowProjectBrowser();
+}
+
+void MainWindow::onShowProjectBrowser() {
+    ProjectBrowserDialog dlg(m_projectRegistry, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    if (dlg.wantsNew()) { onNewProject(); return; }
+
+    const QString path = dlg.selectedPath();
     if (path.isEmpty()) return;
+
     ProjectData p;
     QString err;
     if (!projectLoad(p, path, err)) {
@@ -148,8 +158,9 @@ void MainWindow::onOpenProject() {
         return;
     }
     m_projectPath = path;
+    m_projectRegistry.add(path);
     applyProject(p);
-    setWindowTitle("SocketSpy — " + QFileInfo(path).baseName());
+    setWindowTitle("SocketSpy \xe2\x80\x94 " + QFileInfo(path).baseName());
 }
 
 void MainWindow::onSaveProject() {
@@ -165,7 +176,8 @@ void MainWindow::onSaveProjectAs() {
     if (path.isEmpty()) return;
     m_projectPath = path.endsWith(".spyproj") ? path : path + ".spyproj";
     onSaveProject();
-    setWindowTitle("SocketSpy — " + QFileInfo(m_projectPath).baseName());
+    m_projectRegistry.add(m_projectPath);
+    setWindowTitle("SocketSpy \xe2\x80\x94 " + QFileInfo(m_projectPath).baseName());
 }
 
 void MainWindow::setConnStatus(bool active) {

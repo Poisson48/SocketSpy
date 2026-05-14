@@ -22,6 +22,7 @@
 #include "log_recorder.h"
 #include "replay_panel.h"
 #include "project.h"
+#include "project_registry.h"
 
 namespace socketspy::gui {
 
@@ -65,6 +66,7 @@ private slots:
     void onOpenProject();
     void onSaveProject();
     void onSaveProjectAs();
+    void onShowProjectBrowser();
 
 private:
     void setupUi();
@@ -108,10 +110,11 @@ private:
     QStringList m_knownIfaces;
     bool        m_userPicked{false};
 
-    LogRecorder   m_recorder;
-    TriggerConfig m_lastTriggerCfg;
-    QString       m_projectPath;
-    QString       m_dbcPath;
+    LogRecorder     m_recorder;
+    TriggerConfig   m_lastTriggerCfg;
+    QString         m_projectPath;
+    QString         m_dbcPath;
+    ProjectRegistry m_projectRegistry;
 };
 
 } // namespace socketspy::gui

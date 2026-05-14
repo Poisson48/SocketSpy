@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QString>
 #include <QStringList>
+#include <atomic>
 #include <memory>
 #include "filter_panel.h"
 #include "trigger_panel.h"
@@ -97,9 +98,9 @@ private:
     QComboBox*           m_bitrateCombo{nullptr};
     QFileSystemWatcher*  m_netWatcher{nullptr};
     QTimer*              m_statusTimer{nullptr};
-    QTimer*              m_fpsTimer{nullptr};
-    uint32_t             m_fpsCount{0};
-    double               m_smoothFps{0.0};
+    QTimer*                  m_fpsTimer{nullptr};
+    std::atomic<uint32_t>    m_fpsCount{0};
+    double                   m_smoothFps{0.0};
     int                  m_bitrate{500000};
 
     std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;

@@ -70,10 +70,10 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_transmit,      QString::fromUtf8("↑  ") + tr("Transmit"));
     m_tabs->addTab(m_graph,         QString::fromUtf8("∿  ") + tr("Graph"));
     m_tabs->addTab(m_replay,        QString::fromUtf8("▶  ") + tr("Replay"));
-    m_tabs->addTab(m_stats,         QString::fromUtf8("⊞  ") + tr("Stats"));
+    m_tabs->addTab(m_stats,         QString::fromUtf8("≡  ") + tr("Stats"));
     m_tabs->addTab(m_elm327Panel,   QString::fromUtf8("⚡  ") + tr("OBD2"));
     m_tabs->addTab(m_simulator,     QString::fromUtf8("⚙  ") + tr("Simulator"));
-    m_tabs->addTab(m_scriptPanel,   QString::fromUtf8("{}  ") + tr("Scripts"));
+    m_tabs->addTab(m_scriptPanel,   QString::fromUtf8("λ  ") + tr("Scripts"));
     m_tabs->addTab(m_protocolPanel, QString::fromUtf8("⊕  ") + tr("Protocols"));
 
     m_statusLabel = new QLabel(m_iface + "  \xc2\xb7  0 fps", this);
@@ -334,8 +334,8 @@ void MainWindow::onAnyFrameReceived() {
 
 void MainWindow::onFpsTick() {
     constexpr double alpha = 0.3;
-    m_smoothFps = alpha * m_fpsCount + (1.0 - alpha) * m_smoothFps;
-    m_fpsCount = 0;
+    const uint32_t count = m_fpsCount.exchange(0);
+    m_smoothFps = alpha * static_cast<double>(count) + (1.0 - alpha) * m_smoothFps;
     const QString txt = m_iface + "  \xc2\xb7  " + QString::number(qRound(m_smoothFps)) + " fps";
     m_statusLabel->setText(txt);
     if (m_smoothFps > 0.5) { m_statusTimer->stop(); setConnStatus(true); }

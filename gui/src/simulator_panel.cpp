@@ -262,9 +262,10 @@ void SimulatorPanel::populateTree() {
                 auto* waveBtn = new QPushButton("⚙ Onde", m_tree);
                 waveBtn->setToolTip("Configurer la forme d'onde pour ce signal");
                 waveBtn->setFixedHeight(20);
+                waveBtn->setProperty("secondary", true);
                 waveBtn->setStyleSheet(animated
                     ? "font-size:10px; padding:0 4px; color:#50b4ff;"
-                    : "font-size:10px; padding:0 4px;");
+                    : "font-size:10px; padding:0 4px; background:transparent; border:1px solid #3d5270; color:#7c8fa6;");
                 connect(waveBtn, &QPushButton::clicked, this,
                     [this, ni, mi, si]() { openWaveformConfig(ni, mi, si); });
                 m_tree->setItemWidget(sigItem, 3, waveBtn);

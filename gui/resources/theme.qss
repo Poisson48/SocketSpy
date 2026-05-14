@@ -127,7 +127,9 @@ QPushButton:disabled { background: #232f45; color: #7c8fa6; }
 QPushButton[flat="true"],
 QPushButton#clearBtn,
 QPushButton#pauseBtn,
-QPushButton#refreshBtn {
+QPushButton#refreshBtn,
+QPushButton#filterBtn,
+QPushButton#resetBtn {
     background: transparent;
     color: #7c8fa6;
     border: 1px solid #3d5270;
@@ -137,7 +139,21 @@ QPushButton#refreshBtn {
 QPushButton[flat="true"]:hover,
 QPushButton#clearBtn:hover,
 QPushButton#pauseBtn:hover,
-QPushButton#refreshBtn:hover {
+QPushButton#refreshBtn:hover,
+QPushButton#filterBtn:hover,
+QPushButton#resetBtn:hover {
+    border-color: #6366f1;
+    color: #f1f5f9;
+    background: rgba(99,102,241,0.12);
+}
+QPushButton[secondary="true"] {
+    background: transparent;
+    color: #7c8fa6;
+    border: 1px solid #3d5270;
+    padding: 5px 12px;
+    font-weight: 500;
+}
+QPushButton[secondary="true"]:hover {
     border-color: #6366f1;
     color: #f1f5f9;
     background: rgba(99,102,241,0.12);

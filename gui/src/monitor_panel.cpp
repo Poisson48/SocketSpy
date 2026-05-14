@@ -166,7 +166,9 @@ void MonitorPanel::setupUi() {
     m_clear->setObjectName("clearBtn");
     m_pause         = new QCheckBox("Pause", this);
     m_trackMode     = new QCheckBox("Track by ID", this);
-    m_filterBtn     = new QPushButton("Filters…", this);  // "Filters…"
+    m_filterBtn     = new QPushButton("Filters…", this);
+    m_filterBtn->setObjectName("filterBtn");
+    m_filterBtn->setProperty("secondary", true);
     m_autoScrollChk = new QCheckBox("Auto-scroll", this);
     m_autoScrollChk->setChecked(true);
 

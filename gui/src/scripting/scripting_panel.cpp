@@ -38,6 +38,7 @@ void ScriptingPanel::setupUi()
 
     // Buttons
     m_openBtn = new QPushButton("Open\xe2\x80\xa6", this);
+    m_openBtn->setProperty("secondary", true);
     m_runBtn  = new QPushButton("Run", this);
 
     // Button bar

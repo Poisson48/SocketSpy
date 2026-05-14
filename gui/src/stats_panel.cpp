@@ -28,7 +28,8 @@ void StatsPanel::setupUi() {
     m_errorLabel  = new QLabel("Errors: 0",          this);
     m_uptimeLabel = new QLabel("Uptime: 00:00:00",   this);
     m_resetBtn    = new QPushButton("Reset",          this);
-    m_resetBtn->setFixedWidth(60);
+    m_resetBtn->setObjectName("resetBtn");
+    m_resetBtn->setFixedWidth(72);
 
     bar->addWidget(m_totalLabel);
     bar->addWidget(m_loadLabel);

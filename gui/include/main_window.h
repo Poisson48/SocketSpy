@@ -31,6 +31,8 @@ class SignalGraphPanel;
 class StatsPanel;
 class Elm327Panel;
 class SimulatorPanel;
+class ScriptingPanel;
+class ProtocolPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -86,6 +88,8 @@ private:
     StatsPanel*          m_stats{nullptr};
     Elm327Panel*         m_elm327Panel{nullptr};
     SimulatorPanel*      m_simulator{nullptr};
+    ScriptingPanel*      m_scriptPanel{nullptr};
+    ProtocolPanel*       m_protocolPanel{nullptr};
 
     CanCapture*          m_capture{nullptr};
     QComboBox*           m_ifaceCombo{nullptr};

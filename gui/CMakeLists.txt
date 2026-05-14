@@ -25,6 +25,9 @@ set(GUI_HEADERS
     include/sim_profile.h
     include/can_simulator.h
     include/simulator_panel.h
+    include/sim_profile_editor.h
+    include/scripting_panel.h
+    include/protocol_panel.h
     include/can_iface_config.h
     include/project.h
 )
@@ -50,6 +53,9 @@ add_executable(socketspy
     src/sim_profile.cpp
     src/can_simulator.cpp
     src/simulator_panel.cpp
+    src/sim_profile_editor.cpp
+    src/scripting/scripting_panel.cpp
+    src/protocol_panel.cpp
     src/can_iface_config.cpp
     src/project.cpp
     resources/resources.qrc
@@ -63,6 +69,10 @@ target_include_directories(socketspy
             ../protocols/include
             ../scripting/include
             ../api/src/mcp
+)
+
+target_compile_definitions(socketspy PRIVATE
+    APP_VERSION="${PROJECT_VERSION}"
 )
 
 target_link_libraries(socketspy

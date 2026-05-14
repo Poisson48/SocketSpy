@@ -31,6 +31,7 @@ private:
     QSpinBox*    m_dlc{nullptr};
     QLineEdit*   m_data{nullptr};
     QCheckBox*   m_extended{nullptr};
+    QCheckBox*   m_fd{nullptr};
     QPushButton* m_send{nullptr};
     QLabel*      m_status{nullptr};
 };

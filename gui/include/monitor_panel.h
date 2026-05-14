@@ -3,6 +3,7 @@
 #include <QTableWidget>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QLineEdit>
 #include "cancore.h"
 #include "filter_model.h"
 
@@ -22,7 +23,7 @@ public:
     explicit MonitorPanel(QWidget* parent = nullptr);
     ~MonitorPanel() override;
 
-    static constexpr int kMaxRows = 500;
+    static constexpr int kMaxRows = 2000;
 
 public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
@@ -37,6 +38,7 @@ private slots:
     void onClear();
     void onCellDoubleClicked(int row, int col);
     void onContextMenu(const QPoint& pos);
+    void onSearchChanged(const QString& text);
 
 private:
     void setupUi();
@@ -45,6 +47,7 @@ private:
     QTableWidget*  m_table{nullptr};
     QPushButton*   m_clear{nullptr};
     QCheckBox*     m_pause{nullptr};
+    QLineEdit*     m_search{nullptr};
 
     socketspy::dbc::DbcDatabase* m_dbc{nullptr};
     bool m_dbcLoaded{false};

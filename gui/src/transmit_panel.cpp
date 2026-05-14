@@ -36,8 +36,13 @@ void TransmitPanel::setupUi() {
     m_data     = new QLineEdit(this);
     m_data->setPlaceholderText("DE AD BE EF ...");
     m_extended = new QCheckBox("Extended ID (29-bit)", this);
+    m_fd       = new QCheckBox("FD frame", this);
     m_send     = new QPushButton("Send", this);
     m_status   = new QLabel(this);
+
+    connect(m_fd, &QCheckBox::toggled, this, [this](bool checked) {
+        m_dlc->setRange(0, checked ? 15 : 8);
+    });
 
     auto* form = new QFormLayout;
     form->addRow("Interface:", ifaceRow);
@@ -45,6 +50,7 @@ void TransmitPanel::setupUi() {
     form->addRow("DLC:", m_dlc);
     form->addRow("Data (hex bytes):", m_data);
     form->addRow("", m_extended);
+    form->addRow("", m_fd);
 
     auto* btnRow = new QHBoxLayout;
     btnRow->addWidget(m_send);
@@ -110,11 +116,23 @@ void TransmitPanel::onSend() {
         return;
     }
 
+    const bool isFd = m_fd->isChecked();
+    if (isFd) {
+        if (!can_set_fd_mode(h, true)) {
+            m_status->setText("<font color='red'>can_set_fd_mode failed</font>");
+            can_close(h);
+            return;
+        }
+    }
+
     CanFrame f{};
     f.id  = m_id->text().toUInt(nullptr, 16);
     f.dlc = static_cast<uint8_t>(m_dlc->value());
+    if (isFd)
+        f.flags = static_cast<uint8_t>(FrameFlags::FD);
     QStringList tokens = m_data->text().trimmed().split(' ', Qt::SkipEmptyParts);
-    for (int i = 0; i < tokens.size() && i < 8; ++i)
+    const int maxBytes = isFd ? 64 : 8;
+    for (int i = 0; i < tokens.size() && i < maxBytes; ++i)
         f.data[i] = static_cast<uint8_t>(tokens[i].toUInt(nullptr, 16));
 
     bool ok = can_send(h, f);

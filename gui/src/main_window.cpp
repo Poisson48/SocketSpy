@@ -10,6 +10,8 @@
 #include "trigger_panel.h"
 #include "elm327_panel.h"
 #include "simulator_panel.h"
+#include "scripting_panel.h"
+#include "protocol_panel.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
@@ -25,6 +27,7 @@
 #include <QPushButton>
 #include <QDockWidget>
 #include <QKeySequence>
+#include <QMessageBox>
 
 using namespace socketspy::dbc;
 
@@ -47,7 +50,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUi() {
-    setWindowTitle("SocketSpy");
+    setWindowTitle(QString("SocketSpy v%1").arg(APP_VERSION));
     resize(1200, 700);
 
     m_tabs = new QTabWidget(this);
@@ -59,15 +62,19 @@ void MainWindow::setupUi() {
     m_stats     = new StatsPanel(this);
     m_replay    = new ReplayPanel(this);
     m_elm327Panel = new Elm327Panel(this);
-    m_simulator = new SimulatorPanel(this);
+    m_simulator     = new SimulatorPanel(this);
+    m_scriptPanel   = new ScriptingPanel(this);
+    m_protocolPanel = new ProtocolPanel(this);
 
     m_tabs->addTab(m_monitor,    "Monitor");
     m_tabs->addTab(m_transmit,   "Transmit");
     m_tabs->addTab(m_graph,      "Signal Graph");
     m_tabs->addTab(m_replay,     "Replay");
     m_tabs->addTab(m_stats,      "Statistics");
-    m_tabs->addTab(m_elm327Panel, "OBD2/BT");
-    m_tabs->addTab(m_simulator,  "Simulator");
+    m_tabs->addTab(m_elm327Panel,   "OBD2/BT");
+    m_tabs->addTab(m_simulator,     "Simulator");
+    m_tabs->addTab(m_scriptPanel,   "Scripts");
+    m_tabs->addTab(m_protocolPanel, "Protocols");
 
     m_statusLabel = new QLabel("Interface: " + m_iface + "  |  0 fps", this);
     statusBar()->addPermanentWidget(m_statusLabel);
@@ -80,9 +87,10 @@ void MainWindow::setupUi() {
             m_monitor, &MonitorPanel::onFrameReceived);
 
     auto wireFrames = [&](auto* src, auto sig) {
-        connect(src, sig, m_monitor, &MonitorPanel::onFrameReceived);
-        connect(src, sig, m_graph,   &SignalGraphPanel::onFrameReceived);
-        connect(src, sig, m_stats,   &StatsPanel::onFrameReceived);
+        connect(src, sig, m_monitor,       &MonitorPanel::onFrameReceived);
+        connect(src, sig, m_graph,         &SignalGraphPanel::onFrameReceived);
+        connect(src, sig, m_stats,         &StatsPanel::onFrameReceived);
+        connect(src, sig, m_protocolPanel, &ProtocolPanel::onFrameReceived);
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
@@ -144,6 +152,18 @@ void MainWindow::setupMenuBar() {
     auto* permsAct   = toolsMenu->addAction("Configurer les droits CAN (une seule fois)…");
     connect(rulesAct,  &QAction::triggered, this, &MainWindow::onInstallUdevRules);
     connect(permsAct,  &QAction::triggered, this, &MainWindow::onGrantCanPermissions);
+
+    auto* helpMenu = menuBar()->addMenu("&Help");
+    auto* aboutAct = helpMenu->addAction("About SocketSpy");
+    connect(aboutAct, &QAction::triggered, this, [this]() {
+        QMessageBox::about(this,
+            "About SocketSpy",
+            QString("<b>SocketSpy v%1</b><br>"
+                    "Linux CAN bus analysis platform<br><br>"
+                    "100% local · no telemetry · MIT license<br>"
+                    "Built on Linux SocketCAN")
+            .arg(APP_VERSION));
+    });
 }
 
 void MainWindow::setupCapture(const QString& iface) {
@@ -154,9 +174,10 @@ void MainWindow::setupCapture(const QString& iface) {
     }
     m_capture = new CanCapture(iface, this);
 
-    connect(m_capture, &CanCapture::frameReceived, m_monitor, &MonitorPanel::onFrameReceived);
-    connect(m_capture, &CanCapture::frameReceived, m_graph,   &SignalGraphPanel::onFrameReceived);
-    connect(m_capture, &CanCapture::frameReceived, m_stats,   &StatsPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_monitor,       &MonitorPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_graph,         &SignalGraphPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_stats,         &StatsPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_protocolPanel, &ProtocolPanel::onFrameReceived);
     connect(m_capture, &CanCapture::statsUpdated,  this,      &MainWindow::onStatsUpdated);
     connect(m_capture, &CanCapture::errorOccurred, this,      &MainWindow::onCaptureError);
     connect(m_capture, &CanCapture::triggerFired,  this,      &MainWindow::onTriggerFired);

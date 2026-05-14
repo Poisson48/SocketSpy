@@ -20,15 +20,20 @@ signals:
 private slots:
     void onStartStop();
     void onProfileChanged(int index);
+    void onNewProfile();
+    void onDeleteProfile();
 
 private:
     void setupUi();
     void populateProfiles();
     void populateTree();
     void connectSignalWidgets();
+    void updateDeleteButton();
 
     QComboBox*   m_profileCombo{nullptr};
     QPushButton* m_startBtn{nullptr};
+    QPushButton* m_newBtn{nullptr};
+    QPushButton* m_deleteBtn{nullptr};
     QTreeWidget* m_tree{nullptr};
 
     CanSimulator* m_simulator{nullptr};

@@ -8,6 +8,7 @@
 #include <QTableWidgetItem>
 #include <QMenu>
 #include <QString>
+#include <QLabel>
 
 using namespace socketspy::core;
 using namespace socketspy::dbc;
@@ -43,9 +44,16 @@ void MonitorPanel::setupUi() {
     m_pause = new QCheckBox("Pause", this);
     connect(m_clear, &QPushButton::clicked, this, &MonitorPanel::onClear);
 
+    m_search = new QLineEdit(this);
+    m_search->setPlaceholderText("Filter by ID (hex)…");
+    m_search->setMaximumWidth(160);
+    connect(m_search, &QLineEdit::textChanged, this, &MonitorPanel::onSearchChanged);
+
     auto* toolbar = new QHBoxLayout;
     toolbar->addWidget(m_clear);
     toolbar->addWidget(m_pause);
+    toolbar->addWidget(new QLabel("ID:", this));
+    toolbar->addWidget(m_search);
     toolbar->addStretch();
 
     auto* layout = new QVBoxLayout(this);
@@ -92,6 +100,16 @@ void MonitorPanel::onDbcLoaded(DbcDatabase db) {
 
 void MonitorPanel::onClear() {
     m_table->setRowCount(0);
+    m_search->clear();
+}
+
+void MonitorPanel::onSearchChanged(const QString& text) {
+    const QString filter = text.trimmed().toLower();
+    for (int row = 0; row < m_table->rowCount(); ++row) {
+        auto* item = m_table->item(row, 1); // colonne ID
+        bool match = filter.isEmpty() || (item && item->text().toLower().contains(filter));
+        m_table->setRowHidden(row, !match);
+    }
 }
 
 void MonitorPanel::onCellDoubleClicked(int row, int /*col*/) {

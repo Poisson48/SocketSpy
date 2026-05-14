@@ -257,7 +257,7 @@
 
 <!-- ── HERO ──────────────────────────────────────────────────────── -->
 <div class="hero">
-  <div class="badge">v0.0.1 — Linux x86_64 AppImage available</div>
+  <div class="badge">v0.5.0 — Linux x86_64 AppImage available</div>
   <h1>CAN bus analysis,<br/>built for Linux</h1>
   <p class="hero-sub">
     Live frame monitor, DBC signal decoding, Lua scripting, protocol decoders
@@ -282,7 +282,7 @@
       <div class="dot dot-red"></div>
       <div class="dot dot-yel"></div>
       <div class="dot dot-grn"></div>
-      <span class="mock-title">SocketSpy — vcan0</span>
+      <span class="mock-title">SocketSpy v0.5.0 — vcan0</span>
     </div>
     <div class="mock-body">
       <div class="mock-toolbar">
@@ -361,7 +361,7 @@
     <div class="feat-card">
       <div class="feat-icon">📡</div>
       <h3>Live Frame Monitor</h3>
-      <p>Real-time scrolling table with 500-row circular buffer. Pause, clear, and filter on the fly. Hardware timestamps via io_uring.</p>
+      <p>Real-time scrolling table with 2000-row buffer. Search by ID, pause, clear. Hardware timestamps via io_uring.</p>
     </div>
 
     <div class="feat-card">
@@ -373,13 +373,13 @@
     <div class="feat-card">
       <div class="feat-icon">📈</div>
       <h3>Signal Graphs</h3>
-      <p>Up to 4 live traces on a rolling 10-second QChart window. Watch voltages, temperatures and speeds in real time.</p>
+      <p>Up to 8 live traces on a rolling 10-second QChart window. Watch voltages, temperatures and speeds in real time.</p>
     </div>
 
     <div class="feat-card">
       <div class="feat-icon">📤</div>
       <h3>Frame Transmit</h3>
-      <p>Send standard, extended or FD frames with input validation. Perfect for testing ECU responses.</p>
+      <p>Send standard, extended or FD frames (DLC 0–15, 64 bytes) with input validation. Perfect for testing ECU responses.</p>
     </div>
 
     <div class="feat-card">
@@ -391,13 +391,19 @@
     <div class="feat-card">
       <div class="feat-icon">🧩</div>
       <h3>Protocol Decoders</h3>
-      <p>Built-in stateless decoders for CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II and NMEA 2000.</p>
+      <p>Live in-app tab decoding CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II and NMEA 2000 as frames arrive.</p>
     </div>
 
     <div class="feat-card">
       <div class="feat-icon">🌙</div>
       <h3>Lua 5.4 Scripting</h3>
-      <p>Automate bus interactions with a sandboxed Lua engine. Watchdog thread prevents runaway scripts. CAN, SDO and log APIs built in.</p>
+      <p>In-app editor with Run/Stop and live output console. Sandboxed Lua engine with watchdog. CAN, SDO and log APIs built in.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🎮</div>
+      <h3>CAN Simulator</h3>
+      <p>Generate realistic CAN traffic without hardware. Built-in vehicle profiles or create custom profiles from the UI — signals, periods and DLC all configurable.</p>
     </div>
 
     <div class="feat-card">
@@ -422,7 +428,7 @@
       <h2>Download SocketSpy</h2>
       <p>Self-contained AppImage — Qt6 fully bundled. Runs on any x86_64 Linux with SocketCAN support. No installation, no root required.</p>
       <div class="dl-meta">
-        <div class="dl-pill">Version <span>0.0.1</span></div>
+        <div class="dl-pill">Version <span>0.5.0</span></div>
         <div class="dl-pill">Size <span>~29 MB</span></div>
         <div class="dl-pill">Arch <span>x86_64</span></div>
         <div class="dl-pill">License <span>GPL-3.0</span></div>

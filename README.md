@@ -1,5 +1,7 @@
 # SocketSpy — Linux CAN bus analysis platform
 
+**[→ socketspy.dev — full documentation & screenshots](https://poisson48.github.io/SocketSpy/)**
+
 100% local, no telemetry, no network calls. Built on Linux SocketCAN.
 
 ## Download
@@ -15,14 +17,15 @@ Requires Linux x86_64, kernel ≥ 5.4 with SocketCAN support.
 
 ## Features
 
-- **Live frame monitor** — real-time scrolling table, 500-row circular buffer, pause/clear
+- **Live frame monitor** — real-time scrolling table, 2000-row buffer, search by ID, pause/clear
 - **Signal decode** — load a `.dbc` file, signals decoded and displayed inline
-- **Signal graphs** — up to 4 live traces on a rolling 10-second QChart window
-- **Frame transmit** — send standard/extended/FD frames with input validation
+- **Signal graphs** — up to 8 live traces on a rolling 10-second QChart window
+- **Frame transmit** — send standard/extended/FD frames (DLC 0–15, 64 bytes) with input validation
 - **Interface selector** — auto-detects all SocketCAN interfaces, hot-swap without restart
 - **DBC parser** — full round-trip lossless parser (VERSION, BU_, BO_, SG_, VAL_, CM_)
-- **Protocol decoders** — CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II, NMEA 2000
-- **Lua scripting** — sandboxed Lua 5.4 engine with watchdog, CAN/SDO/log APIs
+- **Protocol decoders** — live in-app tab: CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II, NMEA 2000
+- **Lua scripting** — in-app editor with Run/Stop + console; sandboxed Lua 5.4 engine with watchdog
+- **CAN simulator** — generate CAN traffic without hardware; built-in vehicle profiles or create custom ones from the UI
 - **MCP server** — JSON-RPC 2.0 over stdio or TCP (127.0.0.1 only) for Claude integration
 - **io_uring capture** — high-throughput frame capture pipeline with hardware timestamps
 

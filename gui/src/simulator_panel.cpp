@@ -58,7 +58,7 @@ void SimulatorPanel::setupUi() {
     topBar->addWidget(m_newBtn);
     topBar->addWidget(m_deleteBtn);
 
-    m_resetBtn = new QPushButton("⏮", this);
+    m_resetBtn = new QPushButton("↺", this);
     m_resetBtn->setFixedWidth(30);
     m_resetBtn->setEnabled(false);
     m_resetBtn->setToolTip("Remettre le scénario au début");
@@ -90,12 +90,15 @@ void SimulatorPanel::setupUi() {
     m_tree = new QTreeWidget(this);
     m_tree->setColumnCount(4);
     m_tree->setHeaderLabels({"Signal", "Valeur", "Plage", "Forme d'onde"});
-    m_tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
-    m_tree->header()->setSectionResizeMode(1, QHeaderView::Fixed);
-    m_tree->header()->resizeSection(1, 110);
+    m_tree->header()->setMinimumSectionSize(60);
+    m_tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_tree->header()->resizeSection(0, 160);
+    m_tree->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     m_tree->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     m_tree->header()->setSectionResizeMode(3, QHeaderView::Fixed);
-    m_tree->header()->resizeSection(3, 90);
+    m_tree->header()->resizeSection(3, 80);
+    m_tree->header()->setStretchLastSection(false);
+    m_tree->header()->setSortIndicatorShown(false);
     m_tree->setAlternatingRowColors(false);
     m_tree->setIndentation(16);
     root->addWidget(m_tree, 1);

@@ -32,6 +32,7 @@ set(GUI_HEADERS
     include/project.h
     include/project_registry.h
     include/project_browser.h
+    include/dbc_builder_panel.h
 )
 
 add_executable(socketspy
@@ -62,6 +63,7 @@ add_executable(socketspy
     src/project.cpp
     src/project_registry.cpp
     src/project_browser.cpp
+    src/dbc_builder_panel.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

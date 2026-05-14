@@ -12,6 +12,7 @@
 #include "simulator_panel.h"
 #include "scripting_panel.h"
 #include "protocol_panel.h"
+#include "dbc_builder_panel.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
@@ -65,6 +66,7 @@ void MainWindow::setupUi() {
     m_simulator     = new SimulatorPanel(this);
     m_scriptPanel   = new ScriptingPanel(this);
     m_protocolPanel = new ProtocolPanel(this);
+    m_dbcBuilder    = new DbcBuilderPanel(this);
 
     m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
     m_tabs->addTab(m_transmit,      QString::fromUtf8("↑  ") + tr("Transmit"));
@@ -75,6 +77,7 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_simulator,     QString::fromUtf8("⚙  ") + tr("Simulator"));
     m_tabs->addTab(m_scriptPanel,   QString::fromUtf8("λ  ") + tr("Scripts"));
     m_tabs->addTab(m_protocolPanel, QString::fromUtf8("⊕  ") + tr("Protocols"));
+    m_tabs->addTab(m_dbcBuilder,   QString::fromUtf8("✏  ") + tr("DBC Builder"));
 
     m_statusLabel = new QLabel(m_iface + "  \xc2\xb7  0 fps", this);
     m_statusLabel->setObjectName("statusFps");
@@ -99,6 +102,7 @@ void MainWindow::setupUi() {
         connect(src, sig, m_graph,         &SignalGraphPanel::onFrameReceived);
         connect(src, sig, m_stats,         &StatsPanel::onFrameReceived);
         connect(src, sig, m_protocolPanel, &ProtocolPanel::onFrameReceived);
+        connect(src, sig, m_dbcBuilder,    &DbcBuilderPanel::onFrameReceived);
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
@@ -106,6 +110,14 @@ void MainWindow::setupUi() {
             this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
     connect(m_simulator,   &SimulatorPanel::frameGenerated,
             this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
+
+    connect(m_dbcBuilder, &DbcBuilderPanel::dbcUpdated,
+            this, [this](const socketspy::dbc::DbcDatabase& db) {
+                *m_dbc = db;
+                m_monitor->onDbcLoaded(db);
+                m_graph->onDbcLoaded(db);
+                m_stats->onDbcLoaded(db);
+            });
 
     m_filterPanel = new FilterPanel(this);
     m_filterDock  = new QDockWidget(tr("Filter"), this);
@@ -131,6 +143,7 @@ void MainWindow::setupMenuBar() {
         connect(a, &QAction::triggered, this, slot);
     };
     addF(tr("&Open DBC…"),         &MainWindow::onOpenDbc);
+    addF(tr("&Save DBC…"),         &MainWindow::onSaveDbc);
     fileMenu->addSeparator();
     addF(tr("&New Project"),       &MainWindow::onNewProject,     QKeySequence::New);
     addF(tr("&Open Project…"),     &MainWindow::onOpenProject,    QKeySequence::Open);
@@ -192,6 +205,7 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_graph,         &SignalGraphPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_stats,         &StatsPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_protocolPanel, &ProtocolPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_dbcBuilder,    &DbcBuilderPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, this,            &MainWindow::onAnyFrameReceived,
             Qt::DirectConnection);
     connect(m_capture, &CanCapture::errorOccurred, this,      &MainWindow::onCaptureError);

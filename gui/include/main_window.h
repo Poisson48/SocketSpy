@@ -36,6 +36,7 @@ class Elm327Panel;
 class SimulatorPanel;
 class ScriptingPanel;
 class ProtocolPanel;
+class DbcBuilderPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -69,6 +70,7 @@ private slots:
     void onSaveProjectAs();
     void onShowProjectBrowser();
     void onSignalAliased(const QString& canonical, const QString& alias);
+    void onSaveDbc();
 
 private:
     void setupUi();
@@ -96,6 +98,7 @@ private:
     SimulatorPanel*      m_simulator{nullptr};
     ScriptingPanel*      m_scriptPanel{nullptr};
     ProtocolPanel*       m_protocolPanel{nullptr};
+    DbcBuilderPanel*     m_dbcBuilder{nullptr};
 
     CanCapture*          m_capture{nullptr};
     QComboBox*           m_ifaceCombo{nullptr};

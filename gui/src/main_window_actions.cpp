@@ -9,10 +9,12 @@
 #include "trigger_panel.h"
 #include "project.h"
 #include "project_browser.h"
+#include "dbc_builder_panel.h"
 
 #pragma push_macro("signals")
 #undef signals
 #include "dbc_parser.h"
+#include "dbc_writer.h"
 #pragma pop_macro("signals")
 
 #include <QFileDialog>
@@ -28,6 +30,25 @@
 using namespace socketspy::dbc;
 
 namespace socketspy::gui {
+
+void MainWindow::onSaveDbc() {
+    const auto& db = m_dbcBuilder->database();
+    if (db.messages.empty()) {
+        statusBar()->showMessage(tr("DBC Builder: no messages defined"), 4000);
+        return;
+    }
+    QString path = QFileDialog::getSaveFileName(
+        this, tr("Save DBC"), {}, tr("DBC Files (*.dbc);;All Files (*)"));
+    if (path.isEmpty()) return;
+    if (!path.endsWith(".dbc")) path += ".dbc";
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Error"), f.errorString());
+        return;
+    }
+    QTextStream(&f) << QString::fromStdString(socketspy::dbc::write_dbc(db));
+    statusBar()->showMessage(tr("DBC saved: ") + path, 5000);
+}
 
 void MainWindow::onTriggerFired() {
     switch (m_lastTriggerCfg.action) {
@@ -63,6 +84,7 @@ void MainWindow::onOpenDbc() {
     m_monitor->onDbcLoaded(*m_dbc);
     m_graph->onDbcLoaded(*m_dbc);
     m_stats->onDbcLoaded(*m_dbc);
+    m_dbcBuilder->loadDbc(*m_dbc);
     statusBar()->showMessage("DBC: " + QString::number(m_dbc->messages.size()) + " messages", 5000);
 }
 
@@ -130,7 +152,8 @@ void MainWindow::applyProject(const ProjectData& p) {
         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
             auto res = socketspy::dbc::parse_dbc(QTextStream(&f).readAll().toStdString());
             if (res) { *m_dbc = *res; m_dbcPath = p.dbcPath;
-                m_monitor->onDbcLoaded(*m_dbc); m_graph->onDbcLoaded(*m_dbc); m_stats->onDbcLoaded(*m_dbc); }
+                m_monitor->onDbcLoaded(*m_dbc); m_graph->onDbcLoaded(*m_dbc); m_stats->onDbcLoaded(*m_dbc);
+                m_dbcBuilder->loadDbc(*m_dbc); }
         }
     }
 }

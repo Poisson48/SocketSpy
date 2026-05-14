@@ -11,6 +11,12 @@
 #include <QStackedWidget>
 #include <QMessageBox>
 #include <cstring>
+#include <span>
+
+#pragma push_macro("signals")
+#undef signals
+#include "dbc_signal.h"
+#pragma pop_macro("signals")
 
 // Qt defines 'signals' as a macro; suppress it so we can access msg->signals
 #pragma push_macro("signals")
@@ -55,6 +61,16 @@ void BitGridWidget::setSignals(const std::vector<socketspy::dbc::Signal>& sigs) 
 void BitGridWidget::clearSelection() {
     m_dragStart = m_dragEnd = -1;
     m_dragging = false;
+    update();
+}
+
+void BitGridWidget::setSelection(int startBit, int length) {
+    if (length <= 0) {
+        m_dragStart = m_dragEnd = -1;
+    } else {
+        m_dragStart = startBit;
+        m_dragEnd   = startBit + length - 1;
+    }
     update();
 }
 
@@ -320,6 +336,11 @@ void DbcBuilderPanel::setupUi() {
     m_addBtn = new QPushButton(tr("Add signal"), rightBox);
     form->addRow(m_addBtn);
 
+    m_previewLabel = new QLabel(tr("Aperçu : –"), rightBox);
+    m_previewLabel->setStyleSheet("color: #22c55e; font-weight: 600; padding: 4px 0;");
+    m_previewLabel->setWordWrap(true);
+    form->addRow(m_previewLabel);
+
     mainSplit->addWidget(rightBox);
     mainSplit->setStretchFactor(2, 0);
 
@@ -331,6 +352,24 @@ void DbcBuilderPanel::setupUi() {
     connect(m_grid,    &BitGridWidget::selectionChanged, this, &DbcBuilderPanel::onBitsSelected);
     connect(m_addBtn,  &QPushButton::clicked,            this, &DbcBuilderPanel::onAddSignal);
     connect(m_msgName, &QLineEdit::textEdited,           this, &DbcBuilderPanel::onMsgNameChanged);
+
+    // Feature 1: live grid update when start/length spinboxes change
+    connect(m_startBit, qOverload<int>(&QSpinBox::valueChanged),
+            this, &DbcBuilderPanel::onFormBitsChanged);
+    connect(m_bitLen, qOverload<int>(&QSpinBox::valueChanged),
+            this, &DbcBuilderPanel::onFormBitsChanged);
+
+    // Feature 2: live preview update when any signal parameter changes
+    connect(m_byteOrder,  qOverload<int>(&QComboBox::currentIndexChanged),
+            this, &DbcBuilderPanel::updatePreview);
+    connect(m_valueType,  qOverload<int>(&QComboBox::currentIndexChanged),
+            this, &DbcBuilderPanel::updatePreview);
+    connect(m_factor,     qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this, &DbcBuilderPanel::updatePreview);
+    connect(m_offset,     qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this, &DbcBuilderPanel::updatePreview);
+    connect(m_unit,       &QLineEdit::textEdited,
+            this, &DbcBuilderPanel::updatePreview);
 }
 
 void DbcBuilderPanel::onFrameReceived(socketspy::core::CanFrame frame) {
@@ -349,8 +388,10 @@ void DbcBuilderPanel::onFrameReceived(socketspy::core::CanFrame frame) {
         m_idList->addItem(QString("0x%1").arg(frame.id, 8, 16, QChar('0')).toUpper());
     }
 
-    if (frame.id == m_selectedId)
+    if (frame.id == m_selectedId) {
         refreshGrid();
+        updatePreview();
+    }
 }
 
 void DbcBuilderPanel::onIdSelected(int row) {
@@ -376,6 +417,7 @@ void DbcBuilderPanel::onIdSelected(int row) {
 
     refreshGrid();
     refreshSignalTable();
+    updatePreview();
 }
 
 void DbcBuilderPanel::refreshGrid() {
@@ -435,8 +477,24 @@ void DbcBuilderPanel::refreshSignalTable() {
 }
 
 void DbcBuilderPanel::onBitsSelected(int startBit, int length) {
+    // Block form spinbox signals to avoid re-triggering setSelection while we fill them
+    m_startBit->blockSignals(true);
+    m_bitLen->blockSignals(true);
     m_startBit->setValue(startBit);
     m_bitLen->setValue(length);
+    m_startBit->blockSignals(false);
+    m_bitLen->blockSignals(false);
+
+    m_grid->setSelection(startBit, length);
+    updatePreview();
+}
+
+void DbcBuilderPanel::onFormBitsChanged() {
+    int start = m_startBit->value();
+    int len   = m_bitLen->value();
+    if (start >= 0 && len > 0 && start + len <= 64)
+        m_grid->setSelection(start, len);
+    updatePreview();
 }
 
 void DbcBuilderPanel::onAddSignal() {
@@ -527,6 +585,53 @@ socketspy::dbc::Message* DbcBuilderPanel::findOrCreateMessage(uint32_t id) {
     msg.name = name.toStdString();
     m_db.messages.push_back(std::move(msg));
     return &m_db.messages.back();
+}
+
+void DbcBuilderPanel::updatePreview() {
+    if (!m_previewLabel) return;
+
+    if (m_selectedId == 0xFFFFFFFF) {
+        m_previewLabel->setText(tr("Aperçu : (aucun message sélectionné)"));
+        return;
+    }
+    auto it = m_lastFrames.find(m_selectedId);
+    if (it == m_lastFrames.end()) {
+        m_previewLabel->setText(tr("Aperçu : (aucune trame reçue)"));
+        return;
+    }
+
+    int start = m_startBit->value();
+    int len   = m_bitLen->value();
+    if (len <= 0 || start + len > 64) {
+        m_previewLabel->setText(tr("Aperçu : (plage invalide)"));
+        return;
+    }
+
+    socketspy::dbc::Signal sig;
+    sig.start_bit  = static_cast<uint8_t>(start);
+    sig.bit_length = static_cast<uint8_t>(len);
+    sig.byte_order = (m_byteOrder->currentIndex() == 0)
+                     ? socketspy::dbc::ByteOrder::LittleEndian
+                     : socketspy::dbc::ByteOrder::BigEndian;
+    sig.value_type = (m_valueType->currentIndex() == 0)
+                     ? socketspy::dbc::ValueType::Unsigned
+                     : socketspy::dbc::ValueType::Signed;
+    sig.factor = m_factor->value();
+    sig.offset = m_offset->value();
+
+    const auto& frame = it->second;
+    std::span<const uint8_t> data(frame.data, static_cast<size_t>(frame.dlc));
+    auto val = socketspy::dbc::extract_signal(sig, data);
+
+    if (!val) {
+        m_previewLabel->setText(tr("Aperçu : (extraction échouée)"));
+        return;
+    }
+
+    QString unit = m_unit->text().trimmed();
+    QString txt  = QString("Aperçu :  %1").arg(*val, 0, 'g', 7);
+    if (!unit.isEmpty()) txt += " " + unit;
+    m_previewLabel->setText(txt);
 }
 
 void DbcBuilderPanel::loadDbc(const socketspy::dbc::DbcDatabase& db) {

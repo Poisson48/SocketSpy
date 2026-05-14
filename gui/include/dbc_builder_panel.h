@@ -33,6 +33,7 @@ public:
     void setData(const uint8_t* data, int dlc);
     void setSignals(const std::vector<socketspy::dbc::Signal>& sigs);
     void clearSelection();
+    void setSelection(int startBit, int length);
 
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
@@ -78,9 +79,11 @@ signals:
 private slots:
     void onIdSelected(int row);
     void onBitsSelected(int startBit, int length);
+    void onFormBitsChanged();
     void onAddSignal();
     void onDeleteSignal(int sigIdx);
     void onMsgNameChanged(const QString& text);
+    void updatePreview();
 
 private:
     void setupUi();
@@ -104,6 +107,7 @@ private:
     QDoubleSpinBox* m_maxVal{nullptr};
     QLineEdit*      m_unit{nullptr};
     QPushButton*    m_addBtn{nullptr};
+    QLabel*         m_previewLabel{nullptr};
     QTableWidget*   m_sigTable{nullptr};
 
     socketspy::dbc::DbcDatabase m_db;

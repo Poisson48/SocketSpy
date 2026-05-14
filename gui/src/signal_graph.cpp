@@ -118,6 +118,17 @@ void SignalGraphPanel::setupUi() {
     layout->addWidget(m_view);
 }
 
+void SignalGraphPanel::styleAxis(QValueAxis* ax) const {
+    ax->setLabelsBrush(QBrush(QColor("#7c8fa6")));
+    ax->setTitleBrush(QBrush(QColor("#7c8fa6")));
+    ax->setLinePen(QPen(QColor("#3d5270"), 1));
+    ax->setGridLinePen(QPen(QColor("#2a3a52"), 1, Qt::DashLine));
+    ax->setMinorGridLinePen(QPen(QColor("#1d2a3d"), 1, Qt::DotLine));
+    ax->setLabelsColor(QColor("#7c8fa6"));
+    ax->setTitleFont(QFont("Segoe UI", 9));
+    ax->setLabelsFont(QFont("Segoe UI", 9));
+}
+
 void SignalGraphPanel::applyChartTheme() {
     m_chart->setBackgroundBrush(QBrush(QColor("#1a2235")));
     m_chart->setBackgroundPen(QPen(Qt::NoPen));
@@ -132,16 +143,6 @@ void SignalGraphPanel::applyChartTheme() {
     m_chart->legend()->setLabelBrush(QBrush(QColor("#f1f5f9")));
     m_chart->legend()->setFont(QFont("Segoe UI", 9));
 
-    auto styleAxis = [](QValueAxis* ax) {
-        ax->setLabelsBrush(QBrush(QColor("#7c8fa6")));
-        ax->setTitleBrush(QBrush(QColor("#7c8fa6")));
-        ax->setLinePen(QPen(QColor("#3d5270"), 1));
-        ax->setGridLinePen(QPen(QColor("#2a3a52"), 1, Qt::DashLine));
-        ax->setMinorGridLinePen(QPen(QColor("#1d2a3d"), 1, Qt::DotLine));
-        ax->setLabelsColor(QColor("#7c8fa6"));
-        ax->setTitleFont(QFont("Segoe UI", 9));
-        ax->setLabelsFont(QFont("Segoe UI", 9));
-    };
     styleAxis(m_axisX);
     styleAxis(m_axisY);
 }
@@ -153,33 +154,59 @@ void SignalGraphPanel::onDbcLoaded(DbcDatabase db) {
 
 void SignalGraphPanel::addTrace(TrackedSignal t) {
     if ((int)m_traces.size() >= kMaxTraces) return;
+    const int idx = static_cast<int>(m_traces.size());
+    const QColor color = kTracePalette[idx % 8];
+
     auto* series = new QLineSeries(m_chart);
-    QPen pen(kTracePalette[m_traces.size() % 8]);
+    QPen pen(color);
     pen.setWidth(2);
     series->setPen(pen);
     series->setName(t.displayName());
     m_chart->addSeries(series);
     series->attachAxis(m_axisX);
-    series->attachAxis(m_axisY);
+
+    if (!t.isRaw) {
+        // Per-signal Y axis with DBC-sourced range and unit
+        auto* ay = new QValueAxis(m_chart);
+        double lo = t.minVal, hi = t.maxVal;
+        if (hi <= lo) hi = lo + 1.0;
+        ay->setRange(lo, hi);
+        if (!t.unit.empty())
+            ay->setTitleText(QString::fromStdString(t.unit));
+        styleAxis(ay);
+        ay->setLabelsBrush(QBrush(color));   // tint axis labels to match series
+        ay->setTitleBrush(QBrush(color));
+        ay->setLabelsColor(color);
+        // Alternate left/right to reduce overlap when multiple signals present
+        Qt::Alignment side = (idx % 2 == 0) ? Qt::AlignLeft : Qt::AlignRight;
+        m_chart->addAxis(ay, side);
+        series->attachAxis(ay);
+        t.axisY = ay;
+    } else {
+        series->attachAxis(m_axisY);
+        rescaleY();
+    }
+
     t.series = series;
     m_traces.push_back(std::move(t));
-    rescaleY();
     if (!m_scrollTimer->isActive()) m_scrollTimer->start();
 }
 
 void SignalGraphPanel::addSignal(QString signalName, uint32_t msgId) {
     if (!m_dbcLoaded) return;
+    const std::string sigStd = signalName.toStdString();
     for (const auto& t : m_traces)
-        if (!t.isRaw && t.msgId == msgId && t.signalName == signalName.toStdString()) return;
+        if (!t.isRaw && t.msgId == msgId && t.signalName == sigStd) return;
     double minVal = 0.0, maxVal = 1.0;
-    dbc_helper::signal_range(*m_dbc, msgId, signalName.toStdString(), minVal, maxVal);
-    addTrace({signalName.toStdString(), {}, msgId, nullptr, 0.0, minVal, maxVal, false, 0});
+    dbc_helper::signal_range(*m_dbc, msgId, sigStd, minVal, maxVal);
+    std::string unit = dbc_helper::signal_unit(*m_dbc, msgId, sigStd);
+    addTrace({sigStd, {}, unit, msgId, nullptr, nullptr, 0.0, minVal, maxVal, false, 0});
 }
 
 void SignalGraphPanel::addRawSignal(uint32_t msgId, int byteIdx) {
     for (const auto& t : m_traces)
         if (t.isRaw && t.msgId == msgId && t.rawByteIdx == byteIdx) return;
-    addTrace({"", {}, msgId, nullptr, 0.0, 0.0, 255.0, true, byteIdx});
+    addTrace({"", {}, {}, msgId, nullptr, nullptr, 0.0, 0.0, 255.0, true, byteIdx});
 }
 
 void SignalGraphPanel::addFrameSignals(uint32_t id) {
@@ -273,7 +300,11 @@ void SignalGraphPanel::onFrameReceived(CanFrame frame) {
 }
 
 void SignalGraphPanel::onClearAll() {
-    for (auto& t : m_traces) { m_chart->removeSeries(t.series); delete t.series; }
+    for (auto& t : m_traces) {
+        m_chart->removeSeries(t.series);
+        delete t.series;
+        if (t.axisY) { m_chart->removeAxis(t.axisY); delete t.axisY; }
+    }
     m_traces.clear();
     clearMarkers();
     m_firstFrame  = true;
@@ -290,14 +321,21 @@ void SignalGraphPanel::onScrollAxis() {
     m_currentMaxT = maxT;
     double lo = std::max(0.0, maxT - kWindowSec);
     m_axisX->setRange(lo, lo + kWindowSec);
+    // Per-signal axes have static DBC-sourced ranges; only update shared fallback
     rescaleY();
     updateMarkerPositions();
 }
 
 void SignalGraphPanel::rescaleY() {
-    if (m_traces.empty()) { m_axisY->setRange(0.0, 1.0); return; }
-    double lo = m_traces[0].minVal, hi = m_traces[0].maxVal;
-    for (const auto& t : m_traces) { lo = std::min(lo, t.minVal); hi = std::max(hi, t.maxVal); }
+    // Only the shared axis (used by raw traces) needs rescaling here.
+    // DBC-decoded signals each have their own QValueAxis with a static range.
+    double lo = 0.0, hi = 255.0;
+    bool hasRaw = false;
+    for (const auto& t : m_traces) {
+        if (!t.isRaw) continue;
+        if (!hasRaw) { lo = t.minVal; hi = t.maxVal; hasRaw = true; }
+        else { lo = std::min(lo, t.minVal); hi = std::max(hi, t.maxVal); }
+    }
     if (hi <= lo) hi = lo + 1.0;
     m_axisY->setRange(lo, hi);
 }

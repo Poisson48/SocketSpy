@@ -29,6 +29,11 @@ bool signal_range(const socketspy::dbc::DbcDatabase& db,
                   const std::string& sig_name,
                   double& out_min, double& out_max);
 
+// Return the unit string for a named signal ("rpm", "km/h", …), or empty.
+std::string signal_unit(const socketspy::dbc::DbcDatabase& db,
+                        uint32_t msg_id,
+                        const std::string& sig_name);
+
 // Decode a named signal value from a frame.
 std::optional<double> decode_signal(const socketspy::dbc::DbcDatabase& db,
                                     uint32_t msg_id,

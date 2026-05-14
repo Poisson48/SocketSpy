@@ -55,6 +55,17 @@ bool signal_range(const DbcDatabase& db,
     return false;
 }
 
+std::string signal_unit(const DbcDatabase& db,
+                        uint32_t msg_id,
+                        const std::string& sig_name) {
+    for (const auto& msg : db.messages) {
+        if (msg.id != msg_id) continue;
+        for (const auto& sig : msg.signals)
+            if (sig.name == sig_name) return sig.unit;
+    }
+    return {};
+}
+
 std::optional<double> decode_signal(const DbcDatabase& db,
                                     uint32_t msg_id,
                                     const std::string& sig_name,

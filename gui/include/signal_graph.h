@@ -26,8 +26,10 @@ namespace socketspy::gui {
 struct TrackedSignal {
     std::string  signalName;
     QString      label;        // user-editable display name (empty = auto)
+    std::string  unit;         // physical unit from DBC (e.g. "rpm", "km/h")
     uint32_t     msgId{0};
     QLineSeries* series{nullptr};
+    QValueAxis*  axisY{nullptr}; // per-signal Y axis (nullptr for shared fallback)
     double       lastValue{0.0};
     double       minVal{0.0};
     double       maxVal{255.0};
@@ -41,8 +43,14 @@ struct TrackedSignal {
                 .arg(rawByteIdx);
         return QString::fromStdString(signalName);
     }
+    QString autoLabel() const {
+        QString base = canonicalName();
+        if (!unit.empty())
+            base += QString(" [%1]").arg(QString::fromStdString(unit));
+        return base;
+    }
     QString displayName() const {
-        return label.isEmpty() ? canonicalName() : label;
+        return label.isEmpty() ? autoLabel() : label;
     }
 };
 
@@ -101,6 +109,7 @@ private slots:
 private:
     void setupUi();
     void applyChartTheme();
+    void styleAxis(QValueAxis* ax) const;
     void rescaleY();
     void addTrace(TrackedSignal t);
     void renameTrace(int idx);
@@ -111,7 +120,7 @@ private:
     QChart*         m_chart{nullptr};
     GraphChartView* m_view{nullptr};
     QValueAxis*     m_axisX{nullptr};
-    QValueAxis*     m_axisY{nullptr};
+    QValueAxis*     m_axisY{nullptr};   // shared fallback Y (raw / no-DBC)
     QPushButton*    m_clearBtn{nullptr};
     QPushButton*    m_markerBtn{nullptr};
     QTimer*         m_scrollTimer{nullptr};

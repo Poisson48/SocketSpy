@@ -59,6 +59,7 @@ void SimulatorPanel::setupUi() {
     topBar->addWidget(m_deleteBtn);
 
     m_resetBtn = new QPushButton("↺", this);
+    m_resetBtn->setObjectName("resetBtn");
     m_resetBtn->setFixedWidth(30);
     m_resetBtn->setEnabled(false);
     m_resetBtn->setToolTip("Remettre le scénario au début");
@@ -93,7 +94,8 @@ void SimulatorPanel::setupUi() {
     m_tree->header()->setMinimumSectionSize(60);
     m_tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
     m_tree->header()->resizeSection(0, 160);
-    m_tree->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    m_tree->header()->setSectionResizeMode(1, QHeaderView::Interactive);
+    m_tree->header()->resizeSection(1, 120);
     m_tree->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     m_tree->header()->setSectionResizeMode(3, QHeaderView::Fixed);
     m_tree->header()->resizeSection(3, 80);
@@ -247,11 +249,14 @@ void SimulatorPanel::populateTree() {
                 spin->setValue(sig.current_value);
                 spin->setSingleStep((sig.max - sig.min) / 100.0);
                 spin->setDecimals(2);
+                spin->setMinimumWidth(115);
                 spin->setReadOnly(animated);
                 spin->setButtonSymbols(animated ? QAbstractSpinBox::NoButtons
                                                  : QAbstractSpinBox::UpDownArrows);
                 if (animated)
-                    spin->setStyleSheet("color: #50b4ff; background: transparent; border: none;");
+                    spin->setStyleSheet("color: #50b4ff; background: transparent; border: none; padding-right: 6px;");
+                else
+                    spin->setStyleSheet("padding-right: 6px;");
                 m_tree->setItemWidget(sigItem, 1, spin);
 
                 if (!animated) {

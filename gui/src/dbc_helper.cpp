@@ -80,4 +80,16 @@ std::optional<double> decode_signal(const DbcDatabase& db,
     return std::nullopt;
 }
 
+std::vector<std::string> signal_names_for_msg(const DbcDatabase& db, uint32_t msg_id) {
+    for (const auto& msg : db.messages) {
+        if (msg.id == msg_id) {
+            std::vector<std::string> r;
+            r.reserve(msg.signals.size());
+            for (const auto& s : msg.signals) r.push_back(s.name);
+            return r;
+        }
+    }
+    return {};
+}
+
 } // namespace socketspy::gui::dbc_helper

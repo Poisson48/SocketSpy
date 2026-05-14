@@ -9,6 +9,7 @@
 #include <QHeaderView>
 #include <QTableWidgetItem>
 #include <QMenu>
+#include <QCursor>
 #include <QString>
 #include <QLabel>
 #include <QBrush>
@@ -416,9 +417,28 @@ void MonitorPanel::onCellDoubleClicked(int row, int /*col*/) {
     bool ok = false;
     uint32_t id = idText.trimmed().toUInt(&ok, 16);
     if (!ok) return;
-    std::string name = dbc_helper::first_signal_name(*m_dbc, id);
-    if (!name.empty())
-        emit signalDoubleClicked(QString::fromStdString(name), id);
+
+    auto names = dbc_helper::signal_names_for_msg(*m_dbc, id);
+    if (names.empty()) return;
+
+    // Single signal: add directly; multiple signals: show pick menu
+    if (names.size() == 1) {
+        emit signalDoubleClicked(QString::fromStdString(names[0]), id);
+        return;
+    }
+
+    QMenu pickMenu(this);
+    QList<QAction*> acts;
+    for (const auto& n : names)
+        acts << pickMenu.addAction(QString::fromStdString(n));
+
+    auto* chosen = pickMenu.exec(QCursor::pos());
+    for (int i = 0; i < acts.size(); ++i) {
+        if (chosen == acts[i]) {
+            emit signalDoubleClicked(QString::fromStdString(names[i]), id);
+            return;
+        }
+    }
 }
 
 void MonitorPanel::onContextMenu(const QPoint& pos) {
@@ -434,8 +454,20 @@ void MonitorPanel::onContextMenu(const QPoint& pos) {
     if (!ok) return;
 
     QMenu menu(this);
-    auto* graphAct = menu.addAction(
-        QString("Add 0x%1 to graph").arg(id, 0, 16).toUpper());
+    QMenu* graphMenu = menu.addMenu(tr("Add to graph"));
+    auto* graphAllAct = graphMenu->addAction(
+        tr("All signals of 0x%1").arg(id, 0, 16).toUpper());
+
+    // Per-signal submenu items (when DBC is loaded)
+    QList<QAction*> sigActs;
+    if (m_dbcLoaded) {
+        auto names = dbc_helper::signal_names_for_msg(*m_dbc, id);
+        if (!names.empty()) {
+            graphMenu->addSeparator();
+            for (const auto& name : names)
+                sigActs << graphMenu->addAction(QString::fromStdString(name));
+        }
+    }
 
     QAction* pinAct = nullptr;
     if (m_trackMode->isChecked()) {
@@ -447,9 +479,18 @@ void MonitorPanel::onContextMenu(const QPoint& pos) {
 
     auto* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
 
-    if (chosen == graphAct) {
+    if (chosen == graphAllAct) {
         emit frameGraphRequested(id);
         return;
+    }
+
+    for (int i = 0; i < sigActs.size(); ++i) {
+        if (chosen == sigActs[i]) {
+            auto names = dbc_helper::signal_names_for_msg(*m_dbc, id);
+            if (i < static_cast<int>(names.size()))
+                emit signalDoubleClicked(QString::fromStdString(names[i]), id);
+            return;
+        }
     }
 
     if (pinAct && chosen == pinAct) {

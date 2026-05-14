@@ -82,12 +82,15 @@ private slots:
     void onFormBitsChanged();
     void onAddSignal();
     void onDeleteSignal(int sigIdx);
+    void onEditSignal(int sigIdx);
+    void cancelEdit();
     void onMsgNameChanged(const QString& text);
     void updatePreview();
 
 private:
     void setupUi();
     socketspy::dbc::Message* findOrCreateMessage(uint32_t id);
+    socketspy::dbc::Message* findMessage(uint32_t id);
     void refreshSignalTable();
     void refreshGrid();
 
@@ -107,11 +110,13 @@ private:
     QDoubleSpinBox* m_maxVal{nullptr};
     QLineEdit*      m_unit{nullptr};
     QPushButton*    m_addBtn{nullptr};
+    QPushButton*    m_cancelEditBtn{nullptr};
     QLabel*         m_previewLabel{nullptr};
     QTableWidget*   m_sigTable{nullptr};
 
     socketspy::dbc::DbcDatabase m_db;
     uint32_t m_selectedId{0xFFFFFFFF};
+    int m_editingIdx{-1};
 
     struct LastFrame { uint8_t data[8]{}; int dlc{0}; };
     std::unordered_map<uint32_t, LastFrame> m_lastFrames;

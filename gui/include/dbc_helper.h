@@ -40,4 +40,8 @@ std::optional<double> decode_signal(const socketspy::dbc::DbcDatabase& db,
                                     const std::string& sig_name,
                                     std::span<const uint8_t> data);
 
+// Return names of all signals in the message matching msg_id, in order.
+std::vector<std::string> signal_names_for_msg(const socketspy::dbc::DbcDatabase& db,
+                                              uint32_t msg_id);
+
 } // namespace socketspy::gui::dbc_helper

@@ -265,10 +265,10 @@ void DbcBuilderPanel::setupUi() {
 
     centerSplit->addWidget(gridContainer);
 
-    m_sigTable = new QTableWidget(0, 9, this);
+    m_sigTable = new QTableWidget(0, 10, this);
     m_sigTable->setHorizontalHeaderLabels({
         tr("Name"), tr("Start"), tr("Len"), tr("BO"), tr("Type"),
-        tr("Factor"), tr("Offset"), tr("Unit"), tr("")
+        tr("Factor"), tr("Offset"), tr("Unit"), tr(""), tr("")
     });
     m_sigTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_sigTable->horizontalHeader()->setStretchLastSection(false);
@@ -336,6 +336,10 @@ void DbcBuilderPanel::setupUi() {
     m_addBtn = new QPushButton(tr("Add signal"), rightBox);
     form->addRow(m_addBtn);
 
+    m_cancelEditBtn = new QPushButton(tr("Cancel"), rightBox);
+    m_cancelEditBtn->hide();
+    form->addRow(m_cancelEditBtn);
+
     m_previewLabel = new QLabel(tr("Aperçu : –"), rightBox);
     m_previewLabel->setStyleSheet("color: #22c55e; font-weight: 600; padding: 4px 0;");
     m_previewLabel->setWordWrap(true);
@@ -348,10 +352,11 @@ void DbcBuilderPanel::setupUi() {
     mainSplit->setSizes({180, 600, 280});
 
     // Connections
-    connect(m_idList,  &QListWidget::currentRowChanged, this, &DbcBuilderPanel::onIdSelected);
-    connect(m_grid,    &BitGridWidget::selectionChanged, this, &DbcBuilderPanel::onBitsSelected);
-    connect(m_addBtn,  &QPushButton::clicked,            this, &DbcBuilderPanel::onAddSignal);
-    connect(m_msgName, &QLineEdit::textEdited,           this, &DbcBuilderPanel::onMsgNameChanged);
+    connect(m_idList,       &QListWidget::currentRowChanged, this, &DbcBuilderPanel::onIdSelected);
+    connect(m_grid,         &BitGridWidget::selectionChanged, this, &DbcBuilderPanel::onBitsSelected);
+    connect(m_addBtn,       &QPushButton::clicked,            this, &DbcBuilderPanel::onAddSignal);
+    connect(m_cancelEditBtn, &QPushButton::clicked,           this, &DbcBuilderPanel::cancelEdit);
+    connect(m_msgName,      &QLineEdit::textEdited,           this, &DbcBuilderPanel::onMsgNameChanged);
 
     // Feature 1: live grid update when start/length spinboxes change
     connect(m_startBit, qOverload<int>(&QSpinBox::valueChanged),
@@ -400,6 +405,7 @@ void DbcBuilderPanel::onIdSelected(int row) {
     uint32_t id = m_idList->item(row)->text().toUInt(&ok, 16);
     if (!ok) return;
     m_selectedId = id;
+    cancelEdit();
 
     // Update message name field: use existing name from DB, or show the auto-generated default
     bool found = false;
@@ -468,11 +474,16 @@ void DbcBuilderPanel::refreshSignalTable() {
         set(6, QString::number(sig.offset));
         set(7, QString::fromStdString(sig.unit));
 
+        auto* editBtn = new QPushButton("✏");
+        editBtn->setFixedSize(22, 22);
+        const int idx = i;
+        connect(editBtn, &QPushButton::clicked, this, [this, idx]() { onEditSignal(idx); });
+        m_sigTable->setCellWidget(i, 8, editBtn);
+
         auto* delBtn = new QPushButton("×");
         delBtn->setFixedSize(22, 22);
-        const int idx = i;
         connect(delBtn, &QPushButton::clicked, this, [this, idx]() { onDeleteSignal(idx); });
-        m_sigTable->setCellWidget(i, 8, delBtn);
+        m_sigTable->setCellWidget(i, 9, delBtn);
     }
 }
 
@@ -515,6 +526,45 @@ void DbcBuilderPanel::onAddSignal() {
         return;
     }
 
+    // ── Update existing signal (edit mode) ────────────────────────────────────
+    if (m_editingIdx >= 0) {
+        auto* msg = findMessage(m_selectedId);
+        if (msg && m_editingIdx < static_cast<int>(msg->signals.size())) {
+            // Duplicate name check: skip the signal being edited
+            for (int i = 0; i < static_cast<int>(msg->signals.size()); ++i) {
+                if (i == m_editingIdx) continue;
+                if (msg->signals[i].name == name.toStdString()) {
+                    QMessageBox::warning(this, tr("Duplicate"), tr("Signal name already exists."));
+                    return;
+                }
+            }
+            auto& sig      = msg->signals[m_editingIdx];
+            sig.name       = name.toStdString();
+            sig.start_bit  = static_cast<uint8_t>(start);
+            sig.bit_length = static_cast<uint8_t>(len);
+            sig.byte_order = m_byteOrder->currentData().toInt() == 1
+                             ? socketspy::dbc::ByteOrder::LittleEndian
+                             : socketspy::dbc::ByteOrder::BigEndian;
+            sig.value_type = m_valueType->currentData().toInt() == '+'
+                             ? socketspy::dbc::ValueType::Unsigned
+                             : socketspy::dbc::ValueType::Signed;
+            sig.factor  = m_factor->value();
+            sig.offset  = m_offset->value();
+            sig.min_val = m_minVal->value();
+            sig.max_val = m_maxVal->value();
+            sig.unit    = m_unit->text().trimmed().toStdString();
+
+            m_editingIdx = -1;
+            m_addBtn->setText(tr("Add signal"));
+            m_cancelEditBtn->hide();
+            refreshSignalTable();
+            refreshGrid();
+            emit dbcUpdated(m_db);
+        }
+        return;
+    }
+
+    // ── Add new signal ────────────────────────────────────────────────────────
     auto* msg = findOrCreateMessage(m_selectedId);
 
     // Check for duplicate name
@@ -548,6 +598,65 @@ void DbcBuilderPanel::onAddSignal() {
     emit dbcUpdated(m_db);
     m_sigName->clear();
     m_grid->clearSelection();
+}
+
+void DbcBuilderPanel::onEditSignal(int sigIdx) {
+    auto* msg = findMessage(m_selectedId);
+    if (!msg || sigIdx < 0 || sigIdx >= static_cast<int>(msg->signals.size())) return;
+
+    const auto& sig = msg->signals[sigIdx];
+
+    // Block spinbox signals to avoid triggering updatePreview() mid-load
+    m_startBit->blockSignals(true);
+    m_bitLen->blockSignals(true);
+    m_factor->blockSignals(true);
+    m_offset->blockSignals(true);
+    m_minVal->blockSignals(true);
+    m_maxVal->blockSignals(true);
+
+    m_sigName->setText(QString::fromStdString(sig.name));
+    m_startBit->setValue(static_cast<int>(sig.start_bit));
+    m_bitLen->setValue(static_cast<int>(sig.bit_length));
+    m_byteOrder->setCurrentIndex(
+        sig.byte_order == socketspy::dbc::ByteOrder::LittleEndian ? 0 : 1);
+    m_valueType->setCurrentIndex(
+        sig.value_type == socketspy::dbc::ValueType::Unsigned ? 0 : 1);
+    m_factor->setValue(sig.factor);
+    m_offset->setValue(sig.offset);
+    m_minVal->setValue(sig.min_val);
+    m_maxVal->setValue(sig.max_val);
+    m_unit->setText(QString::fromStdString(sig.unit));
+
+    m_startBit->blockSignals(false);
+    m_bitLen->blockSignals(false);
+    m_factor->blockSignals(false);
+    m_offset->blockSignals(false);
+    m_minVal->blockSignals(false);
+    m_maxVal->blockSignals(false);
+
+    // Highlight bits on the grid
+    m_grid->setSelection(static_cast<int>(sig.start_bit),
+                         static_cast<int>(sig.bit_length));
+
+    m_editingIdx = sigIdx;
+    m_addBtn->setText(tr("Update signal"));
+    m_cancelEditBtn->show();
+
+    updatePreview();
+}
+
+void DbcBuilderPanel::cancelEdit() {
+    m_editingIdx = -1;
+    m_addBtn->setText(tr("Add signal"));
+    if (m_cancelEditBtn) m_cancelEditBtn->hide();
+    m_grid->clearSelection();
+}
+
+socketspy::dbc::Message* DbcBuilderPanel::findMessage(uint32_t id) {
+    for (auto& msg : m_db.messages) {
+        if (msg.id == id) return &msg;
+    }
+    return nullptr;
 }
 
 void DbcBuilderPanel::onDeleteSignal(int sigIdx) {

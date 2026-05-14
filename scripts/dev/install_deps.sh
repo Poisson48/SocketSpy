@@ -1,5 +1,6 @@
 #!/bin/bash
 # install_deps.sh — install all build and runtime dependencies
+# Usage: bash scripts/dev/install_deps.sh
 set -e
 
 [ -f /etc/os-release ] && . /etc/os-release || ID="unknown"
@@ -16,44 +17,57 @@ apt_install() {
 
 case "${ID}" in
     ubuntu|debian|linuxmint|pop)
-        apt_install cmake ninja-build git pkg-config liburing-dev \
-            qt6-base-dev qt6-charts-dev qt6-declarative-dev qt6-serialbus-dev \
-            lua5.4 liblua5.4-dev luajit libluajit-5.1-dev \
-            libgl1-mesa-dev libcurl4-openssl-dev \
-            nlohmann-json3-dev libspdlog-dev libcpp-httplib-dev \
+        # Required — build will fail without these
+        apt_install \
+            build-essential cmake ninja-build git pkg-config \
+            qt6-base-dev qt6-charts-dev qt6-serialbus-dev qt6-serialport-dev \
+            qt6-tools-dev qt6-l10n-tools \
+            lua5.4 liblua5.4-dev \
+            nlohmann-json3-dev
+
+        # Optional — gracefully disabled at configure time if absent
+        apt_install \
+            libspdlog-dev libcpp-httplib-dev \
             libgtest-dev \
-            afl++ valgrind clang-format clang-tidy can-utils
+            can-utils
         ;;
     fedora|rhel|centos|rocky|alma)
-        sudo dnf install -y cmake ninja-build git pkgconf liburing-devel \
-            qt6-qtbase-devel qt6-qtcharts-devel qt6-qtdeclarative-devel \
-            lua-devel luajit-devel mesa-libGL-devel libcurl-devel \
-            spdlog-devel nlohmann-json-devel valgrind clang-tools-extra can-utils
+        sudo dnf install -y \
+            gcc-c++ cmake ninja-build git pkgconf \
+            qt6-qtbase-devel qt6-qtcharts-devel qt6-qtserialbus-devel qt6-qtserialport-devel \
+            qt6-linguist \
+            lua-devel \
+            nlohmann-json-devel spdlog-devel \
+            gtest-devel \
+            can-utils
         ;;
     arch|manjaro|endeavouros)
-        sudo pacman -Sy --noconfirm cmake ninja git pkgconf liburing \
-            qt6-base qt6-charts qt6-declarative lua luajit mesa libcurl \
-            spdlog nlohmann-json valgrind clang can-utils
+        sudo pacman -Sy --noconfirm \
+            base-devel cmake ninja git \
+            qt6-base qt6-charts qt6-serialbus qt6-serialport qt6-tools \
+            lua \
+            nlohmann-json spdlog \
+            gtest \
+            can-utils
         ;;
     *)
         echo "[WARN] Unknown distro '${ID}'. Attempting apt-get..."
-        apt_install cmake ninja-build git pkg-config liburing-dev \
-            qt6-base-dev libspdlog-dev nlohmann-json3-dev valgrind
+        apt_install cmake ninja-build git pkg-config \
+            qt6-base-dev qt6-charts-dev qt6-serialbus-dev qt6-serialport-dev \
+            qt6-tools-dev qt6-l10n-tools \
+            lua5.4 liblua5.4-dev nlohmann-json3-dev
         ;;
 esac
 
-# vcpkg — used for any remaining deps not in distro repos
-VCPKG_ROOT="${HOME}/.local/share/vcpkg"
-if [ ! -d "${VCPKG_ROOT}" ]; then
-    echo "Bootstrapping vcpkg..."
-    git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
-    bash "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
-fi
-
+echo ""
 echo "=== Verification ==="
-cmake --version      | head -1 && echo "[PASS] cmake"     || echo "[FAIL] cmake"
-ninja --version      | head -1 && echo "[PASS] ninja"     || echo "[FAIL] ninja"
-pkg-config --exists Qt6Core    && echo "[PASS] Qt6Core"   || echo "[FAIL] Qt6Core"
-pkg-config --exists liburing   && echo "[PASS] liburing"  || echo "[FAIL] liburing"
-pkg-config --exists lua5.4     && echo "[PASS] lua5.4"    || echo "[WARN] lua5.4 (optional)"
+cmake --version   | head -1 && echo "[PASS] cmake"        || echo "[FAIL] cmake"
+ninja --version   | head -1 && echo "[PASS] ninja"        || echo "[FAIL] ninja"
+pkg-config --exists Qt6Core      && echo "[PASS] Qt6Core"      || echo "[FAIL] Qt6Core"
+pkg-config --exists Qt6Charts    && echo "[PASS] Qt6Charts"    || echo "[WARN] Qt6Charts missing"
+pkg-config --exists Qt6SerialBus && echo "[PASS] Qt6SerialBus" || echo "[WARN] Qt6SerialBus missing"
+pkg-config --exists lua5.4       && echo "[PASS] lua5.4"       || echo "[WARN] lua5.4 missing"
 echo "=== Done ==="
+echo ""
+echo "Build:  bash build.sh"
+echo "Run:    ./build/dev/gui/socketspy"

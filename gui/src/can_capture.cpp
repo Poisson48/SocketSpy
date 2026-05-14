@@ -47,6 +47,7 @@ void CanCapture::run() {
     setsockopt(h.fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     uint64_t frame_count = 0;
+    double   smooth_fps  = 0.0;
     auto stat_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
     while (!m_stop.load(std::memory_order_relaxed)) {
@@ -57,16 +58,13 @@ void CanCapture::run() {
 
         if (n == static_cast<ssize_t>(sizeof(raw))) {
             CanFrame f{};
-            // Monotonic timestamp in microseconds
             auto us = std::chrono::duration_cast<std::chrono::microseconds>(
                           now.time_since_epoch()).count();
             f.timestamp_us = static_cast<uint64_t>(us);
             f.id           = raw.can_id & CAN_EFF_MASK;
             f.dlc          = raw.can_dlc;
-            f.flags        = (raw.can_id & CAN_EFF_FLAG) ? 0 : 0;
-            if (raw.can_id & CAN_EFF_FLAG)
-                f.flags |= 0; // extended stored in id size
-            f.iface_idx = h.idx;
+            f.flags        = 0;
+            f.iface_idx    = h.idx;
             std::memcpy(f.data, raw.data, raw.can_dlc);
             ++frame_count;
             emit frameReceived(f);
@@ -83,12 +81,14 @@ void CanCapture::run() {
                 }
             }
         }
-        // n < 0 on EAGAIN/timeout is expected — just loop
 
         if (now >= stat_deadline) {
-            emit statsUpdated(frame_count);
-            frame_count    = 0;
-            stat_deadline  = now + std::chrono::seconds(1);
+            // Exponential moving average: α=0.3 gives ~3-sample smoothing
+            constexpr double kAlpha = 0.3;
+            smooth_fps   = kAlpha * static_cast<double>(frame_count) + (1.0 - kAlpha) * smooth_fps;
+            emit statsUpdated(static_cast<uint64_t>(smooth_fps + 0.5));
+            frame_count  = 0;
+            stat_deadline = now + std::chrono::seconds(1);
         }
     }
 

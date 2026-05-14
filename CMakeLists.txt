@@ -24,7 +24,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup()
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBURING REQUIRED liburing)
 
 if(SOCKETSPY_LUAJIT)
     pkg_check_modules(LUA REQUIRED luajit)

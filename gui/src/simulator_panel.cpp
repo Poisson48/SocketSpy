@@ -324,9 +324,101 @@ void SimulatorPanel::onDeleteProfile() {
     populateProfiles();
 }
 
+// ---------------------------------------------------------------------------
+// WaveformConfigDialog implementation
+
+static int waveformToIndex(WaveformType w) {
+    switch (w) {
+    case WaveformType::Sine:   return 1;
+    case WaveformType::Ramp:   return 2;
+    case WaveformType::Square: return 3;
+    case WaveformType::Random: return 4;
+    default:                   return 0;
+    }
+}
+
+static WaveformType indexToWaveform(int i) {
+    switch (i) {
+    case 1:  return WaveformType::Sine;
+    case 2:  return WaveformType::Ramp;
+    case 3:  return WaveformType::Square;
+    case 4:  return WaveformType::Random;
+    default: return WaveformType::None;
+    }
+}
+
+WaveformConfigDialog::WaveformConfigDialog(const SimSignal& sig, QWidget* parent)
+    : QDialog(parent)
+{
+    setWindowTitle(QString("Forme d'onde — %1").arg(sig.name));
+    setMinimumWidth(320);
+
+    auto* root = new QVBoxLayout(this);
+    auto* form = new QFormLayout;
+    root->addLayout(form);
+
+    auto* nameLabel = new QLabel(sig.name, this);
+    nameLabel->setStyleSheet("font-weight:bold;");
+    form->addRow("Signal :", nameLabel);
+
+    m_waveCombo = new QComboBox(this);
+    m_waveCombo->addItem("Aucune (statique / manuel)", 0);
+    m_waveCombo->addItem("Sinusoïde",                  1);
+    m_waveCombo->addItem("Rampe (dent de scie)",       2);
+    m_waveCombo->addItem("Carré",                      3);
+    m_waveCombo->addItem("Aléatoire",                  4);
+    m_waveCombo->setCurrentIndex(waveformToIndex(sig.waveform));
+    form->addRow("Type :", m_waveCombo);
+
+    m_minSpin = new QDoubleSpinBox(this);
+    m_minSpin->setRange(-1e9, 1e9); m_minSpin->setDecimals(4); m_minSpin->setValue(sig.min);
+    form->addRow("Min :", m_minSpin);
+
+    m_maxSpin = new QDoubleSpinBox(this);
+    m_maxSpin->setRange(-1e9, 1e9); m_maxSpin->setDecimals(4); m_maxSpin->setValue(sig.max);
+    form->addRow("Max :", m_maxSpin);
+
+    m_ptsSpin = new QSpinBox(this);
+    m_ptsSpin->setRange(2, 10000); m_ptsSpin->setValue(sig.num_points);
+    m_ptsSpin->setToolTip("Nombre de points par cycle de la forme d'onde");
+    form->addRow("Points/cycle :", m_ptsSpin);
+
+    m_stepSpin = new QSpinBox(this);
+    m_stepSpin->setRange(1, 60000); m_stepSpin->setValue(sig.step_ms);
+    m_stepSpin->setSuffix(" ms");
+    m_stepSpin->setToolTip("Intervalle entre deux pas consécutifs");
+    form->addRow("Pas (update) :", m_stepSpin);
+
+    m_infoLabel = new QLabel(this);
+    m_infoLabel->setStyleSheet("color: gray; font-size: 10px;");
+    form->addRow(m_infoLabel);
+
+    auto* btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    root->addWidget(btns);
+    connect(btns, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(btns, &QDialogButtonBox::rejected, this, &QDialog::reject);
+
+    connect(m_ptsSpin,  QOverload<int>::of(&QSpinBox::valueChanged), this, &WaveformConfigDialog::updateCycleInfo);
+    connect(m_stepSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &WaveformConfigDialog::updateCycleInfo);
+    updateCycleInfo();
+}
+
+void WaveformConfigDialog::updateCycleInfo() {
+    const int total = m_ptsSpin->value() * m_stepSpin->value();
+    m_infoLabel->setText(QString("Durée du cycle : %1 ms (%2 s)")
+        .arg(total).arg(total / 1000.0, 0, 'f', 2));
+}
+
+WaveformType WaveformConfigDialog::waveform()  const { return indexToWaveform(m_waveCombo->currentIndex()); }
+double       WaveformConfigDialog::min()       const { return m_minSpin->value(); }
+double       WaveformConfigDialog::max()       const { return m_maxSpin->value(); }
+int          WaveformConfigDialog::numPoints() const { return m_ptsSpin->value(); }
+int          WaveformConfigDialog::stepMs()    const { return m_stepSpin->value(); }
+
+// ---------------------------------------------------------------------------
+
 void SimulatorPanel::openWaveformConfig(int ni, int mi, int si) {
     const SimSignal* sig = m_simulator->signalAt(ni, mi, si);
-    // Fall back to current profile if simulator not yet loaded
     SimSignal fallback;
     if (!sig) {
         if (ni < (int)m_currentProfile.nodes.size() &&
@@ -339,113 +431,22 @@ void SimulatorPanel::openWaveformConfig(int ni, int mi, int si) {
         if (!sig) return;
     }
 
-    auto* dlg = new QDialog(this);
-    dlg->setWindowTitle(QString("Forme d'onde — %1").arg(sig->name));
-    dlg->setMinimumWidth(320);
+    WaveformConfigDialog dlg(*sig, this);
+    if (dlg.exec() != QDialog::Accepted) return;
 
-    auto* root = new QVBoxLayout(dlg);
-    auto* form = new QFormLayout;
-    root->addLayout(form);
+    const WaveformType newWave = dlg.waveform();
+    const double       newMin  = dlg.min();
+    const double       newMax  = dlg.max();
+    const int          newPts  = dlg.numPoints();
+    const int          newStep = dlg.stepMs();
 
-    // Signal name (read-only info)
-    auto* nameLabel = new QLabel(sig->name, dlg);
-    nameLabel->setStyleSheet("font-weight:bold;");
-    form->addRow("Signal :", nameLabel);
-
-    // Waveform type
-    auto* waveCombo = new QComboBox(dlg);
-    waveCombo->addItem("Aucune (statique / manuel)", 0);
-    waveCombo->addItem("Sinusoïde",                  1);
-    waveCombo->addItem("Rampe (dent de scie)",       2);
-    waveCombo->addItem("Carré",                      3);
-    waveCombo->addItem("Aléatoire",                  4);
-    static auto waveToIdx = [](WaveformType w) -> int {
-        switch (w) {
-        case WaveformType::Sine:   return 1;
-        case WaveformType::Ramp:   return 2;
-        case WaveformType::Square: return 3;
-        case WaveformType::Random: return 4;
-        default: return 0;
-        }
-    };
-    static auto idxToWave = [](int i) -> WaveformType {
-        switch (i) {
-        case 1: return WaveformType::Sine;
-        case 2: return WaveformType::Ramp;
-        case 3: return WaveformType::Square;
-        case 4: return WaveformType::Random;
-        default: return WaveformType::None;
-        }
-    };
-    waveCombo->setCurrentIndex(waveToIdx(sig->waveform));
-    form->addRow("Type :", waveCombo);
-
-    // Min / Max
-    auto* minSpin = new QDoubleSpinBox(dlg);
-    minSpin->setRange(-1e9, 1e9);
-    minSpin->setDecimals(4);
-    minSpin->setValue(sig->min);
-    form->addRow("Min :", minSpin);
-
-    auto* maxSpin = new QDoubleSpinBox(dlg);
-    maxSpin->setRange(-1e9, 1e9);
-    maxSpin->setDecimals(4);
-    maxSpin->setValue(sig->max);
-    form->addRow("Max :", maxSpin);
-
-    // Num points
-    auto* ptsSpin = new QSpinBox(dlg);
-    ptsSpin->setRange(2, 10000);
-    ptsSpin->setValue(sig->num_points);
-    ptsSpin->setToolTip("Nombre de points par cycle de la forme d'onde");
-    form->addRow("Points/cycle :", ptsSpin);
-
-    // Step ms
-    auto* stepSpin = new QSpinBox(dlg);
-    stepSpin->setRange(1, 60000);
-    stepSpin->setValue(sig->step_ms);
-    stepSpin->setSuffix(" ms");
-    stepSpin->setToolTip("Intervalle entre deux pas consécutifs (fréquence de mise à jour)");
-    form->addRow("Pas (update) :", stepSpin);
-
-    // Info: cycle duration
-    auto* infoLabel = new QLabel(dlg);
-    infoLabel->setStyleSheet("color: gray; font-size: 10px;");
-    form->addRow(infoLabel);
-    auto updateInfo = [ptsSpin, stepSpin, infoLabel]() {
-        int total = ptsSpin->value() * stepSpin->value();
-        infoLabel->setText(QString("Durée du cycle : %1 ms (%2 s)")
-            .arg(total).arg(total / 1000.0, 0, 'f', 2));
-    };
-    updateInfo();
-    connect(ptsSpin,  QOverload<int>::of(&QSpinBox::valueChanged), dlg, [updateInfo](int) { updateInfo(); });
-    connect(stepSpin, QOverload<int>::of(&QSpinBox::valueChanged), dlg, [updateInfo](int) { updateInfo(); });
-
-    auto* btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dlg);
-    root->addWidget(btns);
-    connect(btns, &QDialogButtonBox::accepted, dlg, &QDialog::accept);
-    connect(btns, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
-
-    if (dlg->exec() != QDialog::Accepted) {
-        dlg->deleteLater();
-        return;
-    }
-
-    const WaveformType newWave = idxToWave(waveCombo->currentIndex());
-    const double       newMin  = minSpin->value();
-    const double       newMax  = maxSpin->value();
-    const int          newPts  = ptsSpin->value();
-    const int          newStep = stepSpin->value();
-
-    // Apply to simulator (live update, even while running)
     m_simulator->setSignalWaveform(ni, mi, si, newWave, newMin, newMax, newPts, newStep);
 
-    // Reflect in current profile so populateTree stays accurate
     if (ni < (int)m_currentProfile.nodes.size() &&
         mi < (int)m_currentProfile.nodes[ni].messages.size() &&
         si < (int)m_currentProfile.nodes[ni].messages[mi].sigs.size())
     {
-        auto& s    = m_currentProfile.nodes[ni].messages[mi].sigs[si];
+        auto& s      = m_currentProfile.nodes[ni].messages[mi].sigs[si];
         s.waveform   = newWave;
         s.min        = newMin;
         s.max        = newMax;
@@ -453,10 +454,7 @@ void SimulatorPanel::openWaveformConfig(int ni, int mi, int si) {
         s.step_ms    = newStep;
     }
 
-    // Refresh tree to update color/label/spin range
     populateTree();
-
-    dlg->deleteLater();
 }
 
 } // namespace socketspy::gui

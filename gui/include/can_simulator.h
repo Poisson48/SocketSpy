@@ -31,6 +31,7 @@ public:
                            int num_points, int step_ms);
 
     const SimSignal* signalAt(int ni, int mi, int si) const;
+          SimSignal* signalMut(int ni, int mi, int si);
 
 signals:
     void frameGenerated(socketspy::core::CanFrame frame);
@@ -52,9 +53,10 @@ private:
     bool                 m_running{false};
     int64_t              m_elapsed_ms{0};
 
-    static constexpr uint8_t kSimIfaceIdx  = 255;
-    static constexpr int     kMaxTimers    = 50;
-    static constexpr int     kAnimInterval = 50;
+    static constexpr uint8_t kSimIfaceIdx        = 255;
+    static constexpr int     kMaxTimers          = 50;
+    static constexpr int     kAnimInterval       = 50;
+    static constexpr int     kGlobalTimerInterval = 10;
 };
 
 } // namespace socketspy::gui

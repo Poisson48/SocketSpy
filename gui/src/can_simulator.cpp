@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
+#include <numbers>
 #include <random>
 
 namespace socketspy::gui {
@@ -39,7 +40,7 @@ std::vector<SimScenarioPoint> CanSimulator::generateWaveform(
         double value = 0.0;
         switch (waveform) {
         case WaveformType::Sine:
-            value = mid + amp * std::sin(2.0 * M_PI * phase);
+            value = mid + amp * std::sin(2.0 * std::numbers::pi * phase);
             break;
         case WaveformType::Ramp:
             value = min_val + range * phase;
@@ -133,13 +134,18 @@ void CanSimulator::resetElapsed() {
     m_elapsed_ms = 0;
 }
 
+SimSignal* CanSimulator::signalMut(int ni, int mi, int si) {
+    if (ni < 0 || ni >= static_cast<int>(m_profile.nodes.size())) return nullptr;
+    auto& node = m_profile.nodes[ni];
+    if (mi < 0 || mi >= static_cast<int>(node.messages.size())) return nullptr;
+    auto& msg = node.messages[mi];
+    if (si < 0 || si >= static_cast<int>(msg.sigs.size())) return nullptr;
+    return &msg.sigs[si];
+}
+
 double CanSimulator::signalValue(int ni, int mi, int si) const {
-    if (ni < 0 || ni >= (int)m_profile.nodes.size()) return 0.0;
-    const auto& node = m_profile.nodes[ni];
-    if (mi < 0 || mi >= (int)node.messages.size()) return 0.0;
-    const auto& msg = node.messages[mi];
-    if (si < 0 || si >= (int)msg.sigs.size()) return 0.0;
-    return msg.sigs[si].current_value;
+    const auto* s = signalAt(ni, mi, si);
+    return s ? s->current_value : 0.0;
 }
 
 void CanSimulator::encodeSignal(uint8_t* data, const SimSignal& sig) {
@@ -190,7 +196,7 @@ void CanSimulator::start() {
 
     if (total_msgs > kMaxTimers) {
         auto* global = new QTimer(this);
-        global->setInterval(10);
+        global->setInterval(kGlobalTimerInterval);
         std::vector<int64_t> next_fire;
         std::vector<std::pair<int,int>> msg_coords;
         for (int ni = 0; ni < (int)m_profile.nodes.size(); ++ni)
@@ -200,7 +206,7 @@ void CanSimulator::start() {
             }
         int64_t elapsed = 0;
         connect(global, &QTimer::timeout, this, [this, next_fire, msg_coords, elapsed]() mutable {
-            elapsed += 10;
+            elapsed += kGlobalTimerInterval;
             for (int i = 0; i < (int)msg_coords.size(); ++i) {
                 if (elapsed >= next_fire[i]) {
                     const int period = m_profile.nodes[msg_coords[i].first]
@@ -240,44 +246,36 @@ void CanSimulator::stop() {
 
 bool CanSimulator::isRunning() const { return m_running; }
 
-void CanSimulator::setSignalValue(int node_idx, int msg_idx, int sig_idx, double value) {
-    if (node_idx < 0 || node_idx >= (int)m_profile.nodes.size()) return;
-    auto& node = m_profile.nodes[node_idx];
-    if (msg_idx < 0 || msg_idx >= (int)node.messages.size()) return;
-    auto& msg = node.messages[msg_idx];
-    if (sig_idx < 0 || sig_idx >= (int)msg.sigs.size()) return;
-    msg.sigs[sig_idx].current_value = value;
+void CanSimulator::setSignalValue(int ni, int mi, int si, double value) {
+    if (auto* s = signalMut(ni, mi, si))
+        s->current_value = value;
 }
 
 void CanSimulator::setSignalWaveform(int ni, int mi, int si,
                                      WaveformType waveform, double min_val, double max_val,
                                      int num_points, int step_ms)
 {
-    if (ni < 0 || ni >= (int)m_profile.nodes.size()) return;
-    auto& node = m_profile.nodes[ni];
-    if (mi < 0 || mi >= (int)node.messages.size()) return;
-    auto& msg = node.messages[mi];
-    if (si < 0 || si >= (int)msg.sigs.size()) return;
-    auto& sig = msg.sigs[si];
+    auto* sig = signalMut(ni, mi, si);
+    if (!sig) return;
 
-    sig.waveform   = waveform;
-    sig.min        = min_val;
-    sig.max        = max_val;
-    sig.num_points = num_points;
-    sig.step_ms    = step_ms;
+    sig->waveform   = waveform;
+    sig->min        = min_val;
+    sig->max        = max_val;
+    sig->num_points = num_points;
+    sig->step_ms    = step_ms;
 
     if (waveform != WaveformType::None)
-        sig.scenario = generateWaveform(waveform, min_val, max_val, num_points, step_ms);
+        sig->scenario = generateWaveform(waveform, min_val, max_val, num_points, step_ms);
     else
-        sig.scenario.clear();
+        sig->scenario.clear();
 }
 
 const SimSignal* CanSimulator::signalAt(int ni, int mi, int si) const {
-    if (ni < 0 || ni >= (int)m_profile.nodes.size()) return nullptr;
+    if (ni < 0 || ni >= static_cast<int>(m_profile.nodes.size())) return nullptr;
     const auto& node = m_profile.nodes[ni];
-    if (mi < 0 || mi >= (int)node.messages.size()) return nullptr;
+    if (mi < 0 || mi >= static_cast<int>(node.messages.size())) return nullptr;
     const auto& msg = node.messages[mi];
-    if (si < 0 || si >= (int)msg.sigs.size()) return nullptr;
+    if (si < 0 || si >= static_cast<int>(msg.sigs.size())) return nullptr;
     return &msg.sigs[si];
 }
 

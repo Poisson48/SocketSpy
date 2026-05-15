@@ -19,7 +19,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install dependencies (ubuntu-22.04)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update -q
+          # qt6-charts-dev, qt6-serialbus-dev, qt6-serialport-dev are not in the
+          # Ubuntu 22.04 main/universe repos — install the subset that is available.
+          sudo apt-get install -y \
+            cmake ninja-build git pkg-config liburing-dev \
+            qt6-base-dev qt6-declarative-dev \
+            lua5.4 liblua5.4-dev libgl1-mesa-dev \
+            valgrind strace can-utils \
+            nlohmann-json3-dev libspdlog-dev libgtest-dev
+
+      - name: Install dependencies (ubuntu-24.04)
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y \
@@ -36,13 +50,19 @@ jobs:
 
       - name: Setup vcan interfaces
         run: |
-          sudo modprobe vcan
-          sudo ip link add dev vcan0 type vcan 2>/dev/null || true
-          sudo ip link add dev vcan1 type vcan 2>/dev/null || true
-          sudo ip link set up vcan0
-          sudo ip link set up vcan1
-          ip link show vcan0
-          ip link show vcan1
+          # modprobe may fail on Azure runners where the vcan kernel module is not
+          # compiled into the hosted kernel — treat that as non-fatal and skip the
+          # interface setup so the rest of the CI job can still run.
+          if sudo modprobe vcan 2>/dev/null; then
+            sudo ip link add dev vcan0 type vcan 2>/dev/null || true
+            sudo ip link add dev vcan1 type vcan 2>/dev/null || true
+            sudo ip link set up vcan0
+            sudo ip link set up vcan1
+            ip link show vcan0
+            ip link show vcan1
+          else
+            echo "WARN: vcan kernel module not available — skipping vcan interface setup"
+          fi
 
       - name: CMake configure (ci preset)
         run: cmake --preset ci

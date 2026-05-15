@@ -424,6 +424,34 @@ QToolBar QPushButton:checked {
     color: #6366f1;
 }
 
+/* ── Signal table edit/del buttons ───────────────────── */
+QPushButton#editSigBtn {
+    background: transparent;
+    border: 1px solid #3d5270;
+    color: #7c8fa6;
+    padding: 1px 4px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+}
+QPushButton#editSigBtn:hover {
+    border-color: #6366f1;
+    color: #f1f5f9;
+}
+QPushButton#delSigBtn {
+    background: transparent;
+    border: 1px solid #3d5270;
+    color: #ef4444;
+    padding: 1px 4px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+}
+QPushButton#delSigBtn:hover {
+    border-color: #ef4444;
+    background: rgba(239,68,68,0.12);
+}
+
 /* ── Record button — red accent ──────────────────────── */
 QPushButton#recordBtn {
     background: transparent;

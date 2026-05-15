@@ -11,6 +11,7 @@
 #include <QHeaderView>
 #include <QStackedWidget>
 #include <QMessageBox>
+#include <QTimer>
 #include <cstring>
 #include <span>
 
@@ -284,10 +285,10 @@ void DbcBuilderPanel::setupUi() {
 
     centerSplit->addWidget(gridContainer);
 
-    m_sigTable = new QTableWidget(0, 10, this);
+    m_sigTable = new QTableWidget(0, 11, this);
     m_sigTable->setHorizontalHeaderLabels({
         tr("Name"), tr("Start"), tr("Len"), tr("BO"), tr("Type"),
-        tr("Factor"), tr("Offset"), tr("Unit"), tr(""), tr("")
+        tr("Factor"), tr("Offset"), tr("Unit"), tr("Value"), tr(""), tr("")
     });
     m_sigTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_sigTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
@@ -418,6 +419,14 @@ void DbcBuilderPanel::onFrameReceived(socketspy::core::CanFrame frame) {
     if (frame.id == m_selectedId) {
         refreshGrid();
         updatePreview();
+        // Refresh signal decoded values at most every 200ms
+        if (!m_tableRefreshPending) {
+            m_tableRefreshPending = true;
+            QTimer::singleShot(200, this, [this]{
+                m_tableRefreshPending = false;
+                refreshSignalTable();
+            });
+        }
     }
 }
 
@@ -496,16 +505,34 @@ void DbcBuilderPanel::refreshSignalTable() {
         set(6, QString::number(sig.offset));
         set(7, QString::fromStdString(sig.unit));
 
-        auto* editBtn = new QPushButton("✏");
-        editBtn->setFixedSize(22, 22);
+        // Column 8: decoded value from last received frame
+        QString valStr = "-";
+        auto it = m_lastFrames.find(m_selectedId);
+        if (it != m_lastFrames.end()) {
+            std::span<const uint8_t> data(it->second.data, static_cast<size_t>(it->second.dlc));
+            auto decoded = socketspy::dbc::extract_signal(sig, data);
+            if (decoded) {
+                valStr = QString::number(*decoded, 'g', 6);
+                if (!sig.unit.empty())
+                    valStr += " " + QString::fromStdString(sig.unit);
+            }
+        }
+        auto* valItem = new QTableWidgetItem(valStr);
+        valItem->setForeground(QColor("#22c55e"));
+        m_sigTable->setItem(i, 8, valItem);
+
+        auto* editBtn = new QPushButton("Edit");
+        editBtn->setObjectName("editSigBtn");
+        editBtn->setFixedSize(40, 22);
         const int idx = i;
         connect(editBtn, &QPushButton::clicked, this, [this, idx]() { onEditSignal(idx); });
-        m_sigTable->setCellWidget(i, 8, editBtn);
+        m_sigTable->setCellWidget(i, 9, editBtn);
 
-        auto* delBtn = new QPushButton("×");
-        delBtn->setFixedSize(22, 22);
+        auto* delBtn = new QPushButton("Del");
+        delBtn->setObjectName("delSigBtn");
+        delBtn->setFixedSize(36, 22);
         connect(delBtn, &QPushButton::clicked, this, [this, idx]() { onDeleteSignal(idx); });
-        m_sigTable->setCellWidget(i, 9, delBtn);
+        m_sigTable->setCellWidget(i, 10, delBtn);
     }
 }
 

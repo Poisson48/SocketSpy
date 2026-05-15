@@ -118,6 +118,7 @@ private:
     socketspy::dbc::DbcDatabase m_db;
     uint32_t m_selectedId{0xFFFFFFFF};
     int m_editingIdx{-1};
+    bool m_tableRefreshPending{false};
 
     struct LastFrame { uint8_t data[8]{}; int dlc{0}; };
     std::unordered_map<uint32_t, LastFrame> m_lastFrames;

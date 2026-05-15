@@ -552,7 +552,8 @@ void DbcBuilderPanel::refreshSignalTable() {
         delLayout->addWidget(delBtn);
         m_sigTable->setCellWidget(i, 10, delContainer);
 
-        m_sigTable->setRowHeight(i, 28);
+        const int rowH = qMax(editBtn->sizeHint().height(), 24) + 6;
+        m_sigTable->setRowHeight(i, rowH);
     }
 }
 

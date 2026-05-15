@@ -257,6 +257,14 @@ void SimulatorPanel::populateTree() {
                     spin->setStyleSheet("color: #50b4ff; background: transparent; border: none; padding-right: 6px;");
                 else
                     spin->setStyleSheet("padding-right: 6px;");
+
+                // Ensure the row is tall enough to fully display the embedded spinbox.
+                // Qt sizes item rows from the item's own sizeHint (text/icon based) and
+                // ignores the height of widgets set via setItemWidget — without this the
+                // spinbox (and waveBtn) get vertically clipped to roughly half their height.
+                const int rowH = qMax(spin->sizeHint().height(), 26) + 4;
+                sigItem->setSizeHint(0, QSize(0, rowH));
+
                 m_tree->setItemWidget(sigItem, 1, spin);
 
                 if (!animated) {
@@ -269,7 +277,6 @@ void SimulatorPanel::populateTree() {
                 // Waveform configure button (always present for signals)
                 auto* waveBtn = new QPushButton("⚙ Onde", m_tree);
                 waveBtn->setToolTip("Configurer la forme d'onde pour ce signal");
-                waveBtn->setFixedHeight(20);
                 waveBtn->setProperty("secondary", true);
                 waveBtn->setStyleSheet(animated
                     ? "font-size:10px; padding:0 4px; color:#50b4ff;"

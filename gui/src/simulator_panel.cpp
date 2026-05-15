@@ -40,12 +40,13 @@ SimulatorPanel::SimulatorPanel(QWidget* parent) : QWidget(parent) {
 
 void SimulatorPanel::setupUi() {
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(6, 6, 6, 6);
-    root->setSpacing(4);
+    // Consistent outer margin 8px, inner spacing 6px
+    root->setContentsMargins(8, 8, 8, 8);
+    root->setSpacing(6);
 
     // ── Top bar: profile selector + actions ──────────────────────────────────
     auto* topBar = new QHBoxLayout;
-    topBar->setSpacing(4);
+    topBar->setSpacing(6);
     topBar->addWidget(new QLabel("Profil :", this));
     m_profileCombo = new QComboBox(this);
     m_profileCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -73,7 +74,8 @@ void SimulatorPanel::setupUi() {
 
     // ── Profile description ──────────────────────────────────────────────────
     m_descLabel = new QLabel(this);
-    m_descLabel->setStyleSheet("color: #888; font-style: italic; padding: 0 2px;");
+    // Use theme muted color (#7c8fa6) instead of hardcoded #888
+    m_descLabel->setStyleSheet("color: #7c8fa6; font-style: italic; padding: 0 2px;");
     m_descLabel->setWordWrap(true);
     m_descLabel->hide();
     root->addWidget(m_descLabel);
@@ -207,8 +209,8 @@ void SimulatorPanel::populateTree() {
     QFont msgFont = m_tree->font();
     msgFont.setItalic(true);
 
-    // Accent color for animated signals
-    static const QColor kAnimColor(80, 180, 255);
+    // Accent color for animated signals — theme cyan #06b6d4
+    static const QColor kAnimColor(6, 182, 212);
     static const QColor kNodeColor(210, 210, 210);
     static const QColor kMsgColor(160, 160, 160);
 
@@ -254,7 +256,8 @@ void SimulatorPanel::populateTree() {
                 spin->setButtonSymbols(animated ? QAbstractSpinBox::NoButtons
                                                  : QAbstractSpinBox::UpDownArrows);
                 if (animated)
-                    spin->setStyleSheet("color: #50b4ff; background: transparent; border: none; padding-right: 6px;");
+                    // Use theme cyan (#06b6d4) — read-only animated display, no border
+                    spin->setStyleSheet("color: #06b6d4; background: transparent; border: none; padding-right: 6px;");
                 else
                     spin->setStyleSheet("padding-right: 6px;");
 
@@ -279,7 +282,8 @@ void SimulatorPanel::populateTree() {
                 waveBtn->setToolTip("Configurer la forme d'onde pour ce signal");
                 waveBtn->setProperty("secondary", true);
                 waveBtn->setStyleSheet(animated
-                    ? "font-size:10px; padding:0 4px; color:#50b4ff;"
+                    // Use theme cyan (#06b6d4) for animated waveform button accent
+                    ? "font-size:10px; padding:0 4px; color:#06b6d4;"
                     : "font-size:10px; padding:0 4px; background:transparent; border:1px solid #3d5270; color:#7c8fa6;");
                 connect(waveBtn, &QPushButton::clicked, this,
                     [this, ni, mi, si]() { openWaveformConfig(ni, mi, si); });
@@ -406,7 +410,7 @@ WaveformConfigDialog::WaveformConfigDialog(const SimSignal& sig, QWidget* parent
     form->addRow("Pas (update) :", m_stepSpin);
 
     m_infoLabel = new QLabel(this);
-    m_infoLabel->setStyleSheet("color: gray; font-size: 10px;");
+    m_infoLabel->setStyleSheet("color: #7c8fa6; font-size: 10px;");
     form->addRow(m_infoLabel);
 
     auto* btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);

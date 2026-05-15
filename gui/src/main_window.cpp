@@ -13,13 +13,12 @@
 #include "scripting_panel.h"
 #include "protocol_panel.h"
 #include "dbc_builder_panel.h"
+#include "welcome_screen.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
-#pragma push_macro("signals")
-#undef signals
-#include "dbc_parser.h"
-#pragma pop_macro("signals")
+// Permanently undef Qt's `signals` macro so we can access dbc::Message::signals.
+#include "dbc_compat.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -58,6 +57,7 @@ void MainWindow::setupUi() {
     m_tabs = new QTabWidget(this);
     setCentralWidget(m_tabs);
 
+    m_welcomeScreen = new WelcomeScreen(m_projectRegistry, this);
     m_monitor   = new MonitorPanel(this);
     m_transmit  = new TransmitPanel(this);
     m_graph     = new SignalGraphPanel(this);
@@ -69,6 +69,7 @@ void MainWindow::setupUi() {
     m_protocolPanel = new ProtocolPanel(this);
     m_dbcBuilder    = new DbcBuilderPanel(this);
 
+    m_tabs->addTab(m_welcomeScreen, QString::fromUtf8("\xe2\x8c\x82  ") + tr("Home"));
     m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
     m_tabs->addTab(m_transmit,      QString::fromUtf8("↑  ") + tr("Transmit"));
     m_tabs->addTab(m_graph,         QString::fromUtf8("∿  ") + tr("Graph"));
@@ -119,6 +120,20 @@ void MainWindow::setupUi() {
                 m_graph->onDbcLoaded(db);
                 m_stats->onDbcLoaded(db);
             });
+
+    // WelcomeScreen signal wiring
+    connect(m_welcomeScreen, &WelcomeScreen::newProjectRequested,
+            this,            &MainWindow::onNewProject);
+    connect(m_welcomeScreen, &WelcomeScreen::openProjectRequested,
+            this,            &MainWindow::onWelcomeOpenProject);
+    connect(m_welcomeScreen, &WelcomeScreen::openDbcRequested,
+            this,            &MainWindow::onOpenDbc);
+    connect(m_welcomeScreen, &WelcomeScreen::quickConnectRequested,
+            this,            &MainWindow::onWelcomeQuickConnect);
+    connect(m_welcomeScreen, &WelcomeScreen::showSimulatorRequested,
+            this, [this]() { m_tabs->setCurrentWidget(m_simulator); });
+    connect(m_welcomeScreen, &WelcomeScreen::showMonitorRequested,
+            this, [this]() { m_tabs->setCurrentWidget(m_monitor); });
 
     m_filterPanel = new FilterPanel(this);
     m_filterDock  = new QDockWidget(tr("Filter"), this);

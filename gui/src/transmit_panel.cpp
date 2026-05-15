@@ -45,6 +45,8 @@ void TransmitPanel::setupUi() {
     });
 
     auto* form = new QFormLayout;
+    form->setContentsMargins(0, 0, 0, 0);
+    form->setSpacing(6);
     form->addRow("Interface:", ifaceRow);
     form->addRow("ID (hex):", m_id);
     form->addRow("DLC:", m_dlc);
@@ -53,11 +55,15 @@ void TransmitPanel::setupUi() {
     form->addRow("", m_fd);
 
     auto* btnRow = new QHBoxLayout;
+    btnRow->setSpacing(6);
     btnRow->addWidget(m_send);
     btnRow->addWidget(m_status);
     btnRow->addStretch();
 
     auto* layout = new QVBoxLayout(this);
+    // Consistent outer margin 8px, inner spacing 6px
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(6);
     layout->addLayout(form);
     layout->addLayout(btnRow);
     layout->addStretch();

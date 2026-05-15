@@ -32,6 +32,7 @@ ProtocolPanel::ProtocolPanel(QWidget* parent)
 void ProtocolPanel::setupUi()
 {
     auto* topBar = new QHBoxLayout;
+    topBar->setSpacing(6);
 
     auto* label = new QLabel("Protocol:", this);
     m_protoCombo = new QComboBox(this);
@@ -51,8 +52,13 @@ void ProtocolPanel::setupUi()
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->setAlternatingRowColors(true);
+    // Consistent row height matching other tables
+    m_table->verticalHeader()->setDefaultSectionSize(26);
 
     auto* layout = new QVBoxLayout(this);
+    // Consistent outer margin 8px, inner spacing 6px
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(6);
     layout->addLayout(topBar);
     layout->addWidget(m_table);
     setLayout(layout);

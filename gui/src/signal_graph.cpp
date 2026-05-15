@@ -13,17 +13,10 @@
 using namespace socketspy::core;
 using namespace socketspy::dbc;
 
-static const QColor kTracePalette[] = {
-    QColor("#6366f1"), QColor("#22c55e"), QColor("#f59e0b"), QColor("#ef4444"),
-    QColor("#06b6d4"), QColor("#a78bfa"), QColor("#fb923c"), QColor("#f472b6"),
-};
-static const QColor kMarkerPalette[] = {
-    QColor("#f59e0b"), QColor("#22c55e"), QColor("#ef4444"),
-    QColor("#06b6d4"), QColor("#a78bfa"),
-};
+// Permanently undef Qt's `signals` macro so we can access dbc::Message::signals.
+#include "dbc_compat.h"
+#include "gui_palette.h"
 
-#pragma push_macro("signals")
-#undef signals
 static std::vector<std::string> msgSignalNames(const DbcDatabase& dbc, uint32_t id) {
     for (const auto& msg : dbc.messages)
         if (msg.id == id) {
@@ -33,7 +26,6 @@ static std::vector<std::string> msgSignalNames(const DbcDatabase& dbc, uint32_t 
         }
     return {};
 }
-#pragma pop_macro("signals")
 
 namespace socketspy::gui {
 
@@ -155,7 +147,7 @@ void SignalGraphPanel::onDbcLoaded(DbcDatabase db) {
 void SignalGraphPanel::addTrace(TrackedSignal t) {
     if ((int)m_traces.size() >= kMaxTraces) return;
     const int idx = static_cast<int>(m_traces.size());
-    const QColor color = kTracePalette[idx % 8];
+    const QColor color = Palette::kSigColors[idx % Palette::kNumSigColors];
 
     auto* series = new QLineSeries(m_chart);
     QPen pen(color);
@@ -393,7 +385,7 @@ void SignalGraphPanel::onAddMarkerNow() {
 }
 
 void SignalGraphPanel::addMarker(double timeSec, const QString& label) {
-    const QColor color = kMarkerPalette[m_markers.size() % 5];
+    const QColor color = Palette::kMarkerColors[m_markers.size() % Palette::kNumMarkerColors];
 
     auto* line = new QGraphicsLineItem;
     line->setPen(QPen(color, 1, Qt::DashLine));

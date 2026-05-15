@@ -114,14 +114,17 @@ ReplayPanel::~ReplayPanel() {
 
 void ReplayPanel::setupUi() {
     auto* root = new QVBoxLayout(this);
-    root->setSpacing(8);
-    root->setContentsMargins(12, 12, 12, 12);
+    // Consistent outer margin 8px, inner spacing 6px
+    root->setSpacing(6);
+    root->setContentsMargins(8, 8, 8, 8);
 
     // Top bar
     auto* topBar = new QHBoxLayout;
+    topBar->setSpacing(6);
     m_openBtn   = new QPushButton("Open Log", this);
     m_fileLabel = new QLabel("No file loaded", this);
-    m_fileLabel->setStyleSheet("color:#8892a4;");
+    // Use theme muted color (#7c8fa6) instead of hardcoded #8892a4
+    m_fileLabel->setStyleSheet("color:#7c8fa6;");
     m_playBtn   = new QPushButton("Play", this);
     m_pauseBtn  = new QPushButton("Pause", this);
     m_stopBtn   = new QPushButton("Stop", this);
@@ -145,11 +148,13 @@ void ReplayPanel::setupUi() {
 
     // Progress row
     auto* progBar = new QHBoxLayout;
+    progBar->setSpacing(6);
     m_slider = new QSlider(Qt::Horizontal, this);
     m_slider->setRange(0, 1000);
     m_slider->setValue(0);
     m_timeLabel = new QLabel("00:00.000 / 00:00.000", this);
-    m_timeLabel->setStyleSheet("color:#8892a4; font-family: monospace;");
+    // Use theme muted color (#7c8fa6); monospace for fixed-width timestamp alignment
+    m_timeLabel->setStyleSheet("color:#7c8fa6; font-family: monospace;");
     progBar->addWidget(m_slider, 1);
     progBar->addWidget(m_timeLabel);
 
@@ -165,7 +170,8 @@ void ReplayPanel::setupUi() {
         "QPlainTextEdit {"
         "  background:#0f1623;"
         "  color:#c8d3e6;"
-        "  border:1px solid #1e2d45;"
+        "  border:1px solid #2a3a52;"  // Use theme border color (#2a3a52)
+        "  border-radius:6px;"
         "}");
 
     root->addLayout(topBar);

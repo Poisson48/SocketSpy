@@ -155,6 +155,13 @@ QPushButton#resetBtn:hover {
     color: #f1f5f9;
     background: rgba(99,102,241,0.12);
 }
+QPushButton[flat="true"]:disabled,
+QPushButton#clearBtn:disabled,
+QPushButton#filterBtn:disabled {
+    background: transparent;
+    border-color: #2a3a52;
+    color: #3d5270;
+}
 QPushButton[secondary="true"] {
     background: transparent;
     color: #7c8fa6;
@@ -166,6 +173,11 @@ QPushButton[secondary="true"]:hover {
     border-color: #6366f1;
     color: #f1f5f9;
     background: rgba(99,102,241,0.12);
+}
+QPushButton[secondary="true"]:disabled {
+    background: transparent;
+    border-color: #2a3a52;
+    color: #3d5270;
 }
 QPushButton#pauseBtn:checked {
     background: rgba(99,102,241,0.2);
@@ -191,13 +203,20 @@ QLineEdit:disabled, QSpinBox:disabled {
     color: #7c8fa6;
     border-color: #2a3a52;
 }
-QSpinBox::up-button, QSpinBox::down-button {
+QSpinBox::up-button, QSpinBox::down-button,
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
     background: #232f45;
     border: none;
     width: 16px;
 }
-QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+QSpinBox::up-button:hover, QSpinBox::down-button:hover,
+QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
     background: #3d5270;
+}
+QDoubleSpinBox:disabled {
+    background: #1a2235;
+    color: #7c8fa6;
+    border-color: #2a3a52;
 }
 
 QComboBox {
@@ -320,7 +339,8 @@ QGroupBox {
     border: 1px solid #2a3a52;
     border-radius: 8px;
     margin-top: 12px;
-    padding-top: 10px;
+    /* padding: top accounts for title text height; sides/bottom give inner breathing room */
+    padding: 10px 6px 6px 6px;
     font-weight: 600;
     color: #7c8fa6;
 }
@@ -389,6 +409,53 @@ QTreeWidget::item:selected {
 }
 QTreeWidget::item:hover { background: #232f45; }
 QTreeWidget::branch { background: transparent; }
+
+/* ── List widget (DBC builder message list) ──────────── */
+QListWidget {
+    background: #111827;
+    alternate-background-color: #161f2e;
+    border: 1px solid #2a3a52;
+    border-radius: 8px;
+    outline: none;
+}
+QListWidget::item {
+    padding: 5px 8px;
+    border: none;
+    color: #f1f5f9;
+}
+QListWidget::item:selected {
+    background: rgba(99,102,241,0.25);
+    color: #f1f5f9;
+}
+QListWidget::item:hover { background: #232f45; }
+
+/* ── Plain text edit (replay log) ────────────────────── */
+QPlainTextEdit {
+    background: #0f1623;
+    color: #c8d3e6;
+    border: 1px solid #2a3a52;
+    border-radius: 6px;
+    selection-background-color: rgba(99,102,241,0.35);
+}
+
+/* ── Slider (replay seek bar) ────────────────────────── */
+QSlider::groove:horizontal {
+    background: #2a3a52;
+    height: 4px;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    background: #6366f1;
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+QSlider::handle:horizontal:hover { background: #4f46e5; }
+QSlider::sub-page:horizontal {
+    background: #6366f1;
+    border-radius: 2px;
+}
 
 /* ── Dock widget ─────────────────────────────────────── */
 QDockWidget {
@@ -472,4 +539,44 @@ QPushButton#stopRecBtn {
     background: transparent;
     border: 1px solid #3d5270;
     color: #7c8fa6;
+}
+
+/* ── Welcome screen ──────────────────────────────────── */
+/* The scroll area that wraps the welcome content */
+QScrollArea {
+    background: #0f1623;
+    border: none;
+}
+
+/* Make sure the inner content widget inherits the dark background */
+WelcomeScreen QWidget {
+    background: #0f1623;
+}
+
+/* Open-selected button gets the primary accent style */
+QPushButton#welcomeOpenBtn {
+    background: #6366f1;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 18px;
+    font-weight: 600;
+}
+QPushButton#welcomeOpenBtn:hover    { background: #4f46e5; }
+QPushButton#welcomeOpenBtn:pressed  { background: #4338ca; }
+QPushButton#welcomeOpenBtn:disabled { background: #232f45; color: #7c8fa6; }
+
+/* Recent list scrollbar */
+QListWidget#welcomeRecentList QScrollBar:vertical {
+    background: #1a2235;
+    width: 6px;
+    border-radius: 3px;
+}
+QListWidget#welcomeRecentList QScrollBar::handle:vertical {
+    background: #3d5270;
+    border-radius: 3px;
+    min-height: 20px;
+}
+QListWidget#welcomeRecentList QScrollBar::handle:vertical:hover {
+    background: #6366f1;
 }

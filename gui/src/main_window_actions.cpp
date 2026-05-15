@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "welcome_screen.h"
 #include "monitor_panel.h"
 #include "transmit_panel.h"
 #include "signal_graph.h"
@@ -11,11 +12,10 @@
 #include "project_browser.h"
 #include "dbc_builder_panel.h"
 
-#pragma push_macro("signals")
-#undef signals
-#include "dbc_parser.h"
+// Permanently undef Qt's `signals` macro so we can access dbc::Message::signals.
+#include "dbc_compat.h"
 #include "dbc_writer.h"
-#pragma pop_macro("signals")
+#include "gui_palette.h"
 
 #include <QFileDialog>
 #include <QFileInfo>
@@ -189,6 +189,7 @@ void MainWindow::onShowProjectBrowser() {
     }
     m_projectPath = path;
     m_projectRegistry.add(path);
+    m_welcomeScreen->refreshRecentProjects();
     applyProject(p);
     setWindowTitle("SocketSpy \xe2\x80\x94 " + QFileInfo(path).baseName());
 }
@@ -207,17 +208,52 @@ void MainWindow::onSaveProjectAs() {
     m_projectPath = path.endsWith(".spyproj") ? path : path + ".spyproj";
     onSaveProject();
     m_projectRegistry.add(m_projectPath);
+    m_welcomeScreen->refreshRecentProjects();
     setWindowTitle("SocketSpy \xe2\x80\x94 " + QFileInfo(m_projectPath).baseName());
+}
+
+void MainWindow::onWelcomeOpenProject(const QString& path) {
+    if (path.isEmpty()) {
+        // no specific path → open the project browser dialog
+        onShowProjectBrowser();
+        return;
+    }
+    ProjectData p;
+    QString err;
+    if (!projectLoad(p, path, err)) {
+        QMessageBox::critical(this, tr("Error"), tr("Cannot open project: %1").arg(err));
+        return;
+    }
+    m_projectPath = path;
+    m_projectRegistry.add(path);
+    m_welcomeScreen->refreshRecentProjects();
+    applyProject(p);
+    setWindowTitle("SocketSpy \xe2\x80\x94 " + QFileInfo(path).baseName());
+    // Navigate to Monitor after loading
+    m_tabs->setCurrentWidget(m_monitor);
+}
+
+void MainWindow::onWelcomeQuickConnect() {
+    // Select vcan0 (or the first available interface) and navigate to Monitor
+    const QString target = m_knownIfaces.contains("vcan0") ? "vcan0"
+                         : (!m_knownIfaces.isEmpty() ? m_knownIfaces.first() : QString());
+    if (!target.isEmpty())
+        m_ifaceCombo->setCurrentText(target);
+    m_tabs->setCurrentWidget(m_monitor);
 }
 
 void MainWindow::setConnStatus(bool active) {
     if (active) {
         m_connStatusLabel->setText(QString::fromUtf8("● LIVE"));
-        m_connStatusLabel->setStyleSheet("color: #22c55e; font-size: 11px; font-weight:700; letter-spacing:1px;");
+        m_connStatusLabel->setStyleSheet(
+            QString("color: %1; font-size: 11px; font-weight:700; letter-spacing:1px;")
+                .arg(Palette::kLiveGreen));
         m_connStatusLabel->setToolTip(tr("Interface active"));
     } else {
         m_connStatusLabel->setText(QString::fromUtf8("●  \xe2\x80\x93 \xe2\x80\x93"));
-        m_connStatusLabel->setStyleSheet("color: #4b5563; font-size: 11px; font-weight:700; letter-spacing:1px;");
+        m_connStatusLabel->setStyleSheet(
+            QString("color: %1; font-size: 11px; font-weight:700; letter-spacing:1px;")
+                .arg(Palette::kDeadGray));
         m_connStatusLabel->setToolTip(tr("No traffic received"));
     }
 }

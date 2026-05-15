@@ -155,6 +155,8 @@ void MonitorPanel::setupUi() {
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->verticalHeader()->hide();
+    // Consistent row height across all tables
+    m_table->verticalHeader()->setDefaultSectionSize(26);
     m_table->setAlternatingRowColors(true);
 
     connect(m_table, &QTableWidget::cellDoubleClicked,
@@ -193,6 +195,7 @@ void MonitorPanel::setupUi() {
     connect(m_search, &QLineEdit::textChanged, this, &MonitorPanel::onSearchChanged);
 
     auto* toolbar = new QHBoxLayout;
+    toolbar->setSpacing(6);
     toolbar->addWidget(m_clear);
     toolbar->addWidget(m_pause);
     toolbar->addSpacing(12);
@@ -205,6 +208,9 @@ void MonitorPanel::setupUi() {
     toolbar->addStretch();
 
     auto* layout = new QVBoxLayout(this);
+    // Consistent outer margin 8px, inner spacing 6px
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(6);
     layout->addLayout(toolbar);
     layout->addWidget(m_table);
 }

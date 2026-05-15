@@ -17,11 +17,12 @@ StatsPanel::StatsPanel(QWidget* parent) : QWidget(parent) {
 
 void StatsPanel::setupUi() {
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(6, 6, 6, 6);
-    root->setSpacing(4);
+    // Consistent outer margin 8px, inner spacing 6px
+    root->setContentsMargins(8, 8, 8, 8);
+    root->setSpacing(6);
 
     auto* bar = new QHBoxLayout;
-    bar->setSpacing(16);
+    bar->setSpacing(12);
 
     m_totalLabel  = new QLabel("Total frames: 0",  this);
     m_loadLabel   = new QLabel("Bus load: 0.0 %",   this);
@@ -49,6 +50,8 @@ void StatsPanel::setupUi() {
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setAlternatingRowColors(true);
     m_table->verticalHeader()->hide();
+    // Consistent row height matching other tables
+    m_table->verticalHeader()->setDefaultSectionSize(26);
     m_table->horizontalHeader()->setStretchLastSection(true);
 
     m_table->sortByColumn(2, Qt::DescendingOrder);

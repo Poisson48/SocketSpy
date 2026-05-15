@@ -24,6 +24,7 @@
 #include "replay_panel.h"
 #include "project.h"
 #include "project_registry.h"
+#include "welcome_screen.h"
 
 namespace socketspy::gui {
 
@@ -37,6 +38,7 @@ class SimulatorPanel;
 class ScriptingPanel;
 class ProtocolPanel;
 class DbcBuilderPanel;
+class WelcomeScreen;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -71,6 +73,8 @@ private slots:
     void onShowProjectBrowser();
     void onSignalAliased(const QString& canonical, const QString& alias);
     void onSaveDbc();
+    void onWelcomeOpenProject(const QString& path);
+    void onWelcomeQuickConnect();
 
 private:
     void setupUi();
@@ -82,6 +86,7 @@ private:
     void applyProject(const ProjectData& p);
 
     QTabWidget*          m_tabs{nullptr};
+    WelcomeScreen*       m_welcomeScreen{nullptr};
     QLabel*              m_statusLabel{nullptr};
     QLabel*              m_connStatusLabel{nullptr};
 

@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QSplitter>
 #include <memory>
 #include <unordered_map>
 #include "cancore.h"
@@ -89,11 +90,21 @@ private slots:
     void updatePreview();
 
 private:
+    // Top-level UI assembly
     void setupUi();
+    // UI sub-builders (called once from setupUi)
+    QWidget* setupLeftPanel(QSplitter* parent);
+    QWidget* setupCenterPanel(QSplitter* parent);
+    QWidget* setupRightForm(QSplitter* parent);
+    void     setupConnections();
+
     socketspy::dbc::Message* findOrCreateMessage(uint32_t id);
     socketspy::dbc::Message* findMessage(uint32_t id);
     void refreshSignalTable();
     void refreshGrid();
+    // Build a Signal from the current state of the form widgets.
+    // Extracted to eliminate duplication between the "add" and "edit" paths.
+    socketspy::dbc::Signal buildSignalFromForm(const QString& name) const;
 
     QListWidget*   m_idList{nullptr};
     BitGridWidget* m_grid{nullptr};

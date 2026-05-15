@@ -15,24 +15,12 @@
 #include <cstring>
 #include <span>
 
-#pragma push_macro("signals")
-#undef signals
-#include "dbc_signal.h"
-#pragma pop_macro("signals")
-
-// Qt defines 'signals' as a macro; suppress it so we can access msg->signals
-#pragma push_macro("signals")
-#undef signals
+// Permanently undef Qt's `signals` macro so we can access dbc::Message::signals.
+// Safe in .cpp files — no `signals:` access specifier is used here.
+#include "dbc_compat.h"
+#include "gui_palette.h"
 
 namespace socketspy::gui {
-
-// ─── Palette (same as signal_graph.cpp) ──────────────────────────────────────
-static const QColor kSigColors[] = {
-    QColor("#6366f1"), QColor("#22c55e"), QColor("#f59e0b"),
-    QColor("#ef4444"), QColor("#06b6d4"), QColor("#a78bfa"),
-    QColor("#fb923c"), QColor("#f472b6"),
-};
-static constexpr int kNumSigColors = static_cast<int>(sizeof(kSigColors) / sizeof(kSigColors[0]));
 
 // ─── BitGridWidget ────────────────────────────────────────────────────────────
 
@@ -139,7 +127,7 @@ void BitGridWidget::paintEvent(QPaintEvent*) {
     std::unordered_map<int, int> bitToSig;
     for (int si = 0; si < static_cast<int>(m_signals.size()); ++si) {
         const auto& sig = m_signals[si];
-        int colorIdx = si % kNumSigColors;
+        int colorIdx = si % Palette::kNumSigColors;
         if (sig.byte_order == socketspy::dbc::ByteOrder::LittleEndian) {
             for (uint32_t b = 0; b < sig.bit_length; ++b)
                 bitToSig[static_cast<int>(sig.start_bit + b)] = colorIdx;
@@ -187,7 +175,7 @@ void BitGridWidget::paintEvent(QPaintEvent*) {
             if (inSel) {
                 fill = QColor(100, 120, 220, 180);
             } else if (bitToSig.count(flatBit)) {
-                fill = kSigColors[bitToSig[flatBit]];
+                fill = Palette::kSigColors[bitToSig[flatBit]];
                 fill.setAlpha(200);
             } else if (m_dlc > 0 && row < m_dlc) {
                 int byteVal = m_data[row];
@@ -256,28 +244,51 @@ DbcBuilderPanel::DbcBuilderPanel(QWidget* parent) : QWidget(parent) {
 void DbcBuilderPanel::setupUi() {
     auto* mainSplit = new QSplitter(Qt::Horizontal, this);
     auto* mainLayout = new QHBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+    // Consistent outer margin 8px, no gap around the splitter itself
+    mainLayout->setContentsMargins(8, 8, 8, 8);
+    mainLayout->setSpacing(0);
     mainLayout->addWidget(mainSplit);
 
-    // ── Left: message list ──────────────────────────────────────────────────
-    auto* leftBox = new QGroupBox(tr("Messages"), this);
-    auto* leftLayout = new QVBoxLayout(leftBox);
-    m_idList = new QListWidget(leftBox);
-    leftLayout->addWidget(m_idList);
-    mainSplit->addWidget(leftBox);
+    mainSplit->addWidget(setupLeftPanel(mainSplit));
     mainSplit->setStretchFactor(0, 0);
 
-    // ── Center: grid + signal table ─────────────────────────────────────────
-    auto* centerSplit = new QSplitter(Qt::Vertical, this);
+    mainSplit->addWidget(setupCenterPanel(mainSplit));
+    mainSplit->setStretchFactor(1, 1);
 
-    auto* gridContainer = new QWidget(this);
+    mainSplit->addWidget(setupRightForm(mainSplit));
+    mainSplit->setStretchFactor(2, 0);
+
+    mainSplit->setSizes({160, 700, 260});
+
+    setupConnections();
+}
+
+// ── Left panel: message ID list ─────────────────────────────────────────────
+QWidget* DbcBuilderPanel::setupLeftPanel(QSplitter* parent) {
+    auto* box    = new QGroupBox(tr("Messages"), parent);
+    auto* layout = new QVBoxLayout(box);
+    layout->setContentsMargins(6, 6, 6, 6);
+    layout->setSpacing(6);
+    m_idList = new QListWidget(box);
+    layout->addWidget(m_idList);
+    return box;
+}
+
+// ── Center panel: bit grid + signal table ───────────────────────────────────
+QWidget* DbcBuilderPanel::setupCenterPanel(QSplitter* parent) {
+    auto* centerSplit = new QSplitter(Qt::Vertical, parent);
+
+    // Bit grid sub-widget
+    auto* gridContainer = new QWidget(centerSplit);
     auto* gridLayout    = new QVBoxLayout(gridContainer);
+    gridLayout->setContentsMargins(6, 6, 6, 6);
+    gridLayout->setSpacing(6);
     gridLayout->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
 
     m_grid = new BitGridWidget(gridContainer);
     m_noDataLabel = new QLabel(tr("No frame received yet"), gridContainer);
     m_noDataLabel->setAlignment(Qt::AlignCenter);
-    m_noDataLabel->setStyleSheet("color: #6b7280; font-style: italic;");
+    m_noDataLabel->setStyleSheet("color: #7c8fa6; font-style: italic;");
 
     gridLayout->addWidget(m_noDataLabel);
     gridLayout->addWidget(m_grid);
@@ -285,7 +296,8 @@ void DbcBuilderPanel::setupUi() {
 
     centerSplit->addWidget(gridContainer);
 
-    m_sigTable = new QTableWidget(0, 11, this);
+    // Signal table sub-widget
+    m_sigTable = new QTableWidget(0, 11, centerSplit);
     m_sigTable->setHorizontalHeaderLabels({
         tr("Name"), tr("Start"), tr("Len"), tr("BO"), tr("Type"),
         tr("Factor"), tr("Offset"), tr("Unit"), tr("Value"), tr(""), tr("")
@@ -299,100 +311,105 @@ void DbcBuilderPanel::setupUi() {
     m_sigTable->setColumnWidth(9,  46);
     m_sigTable->setColumnWidth(10, 42);
     m_sigTable->setMinimumHeight(120);
+    // Ensure rows are tall enough for embedded Edit/Del buttons
+    m_sigTable->verticalHeader()->setDefaultSectionSize(30);
     m_sigTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_sigTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
     centerSplit->addWidget(m_sigTable);
     centerSplit->setStretchFactor(0, 3);
     centerSplit->setStretchFactor(1, 1);
     centerSplit->setSizes({280, 180});
 
-    mainSplit->addWidget(centerSplit);
-    mainSplit->setStretchFactor(1, 1);
+    return centerSplit;
+}
 
-    // ── Right: signal definition form ───────────────────────────────────────
-    auto* rightBox = new QGroupBox(tr("Define a signal"), this);
-    auto* form = new QFormLayout(rightBox);
+// ── Right panel: signal definition form ─────────────────────────────────────
+QWidget* DbcBuilderPanel::setupRightForm(QSplitter* parent) {
+    auto* box  = new QGroupBox(tr("Define a signal"), parent);
+    auto* form = new QFormLayout(box);
+    form->setContentsMargins(8, 8, 8, 8);
+    form->setSpacing(6);
 
-    m_msgName = new QLineEdit(rightBox);
+    m_msgName = new QLineEdit(box);
     form->addRow(tr("Msg name:"), m_msgName);
 
-    m_sigName = new QLineEdit(rightBox);
+    m_sigName = new QLineEdit(box);
     form->addRow(tr("Sig name:"), m_sigName);
 
-    m_startBit = new QSpinBox(rightBox);
+    m_startBit = new QSpinBox(box);
     m_startBit->setRange(0, 63);
     form->addRow(tr("Start bit:"), m_startBit);
 
-    m_bitLen = new QSpinBox(rightBox);
+    m_bitLen = new QSpinBox(box);
     m_bitLen->setRange(1, 64);
     m_bitLen->setValue(8);
     form->addRow(tr("Length:"), m_bitLen);
 
-    m_byteOrder = new QComboBox(rightBox);
+    m_byteOrder = new QComboBox(box);
     m_byteOrder->addItem(tr("Intel LE"), 1);
     m_byteOrder->addItem(tr("Motorola BE"), 0);
     form->addRow(tr("Byte order:"), m_byteOrder);
 
-    m_valueType = new QComboBox(rightBox);
+    m_valueType = new QComboBox(box);
     m_valueType->addItem(tr("Unsigned"), '+');
     m_valueType->addItem(tr("Signed"),   '-');
     form->addRow(tr("Value type:"), m_valueType);
 
-    m_factor = new QDoubleSpinBox(rightBox);
+    m_factor = new QDoubleSpinBox(box);
     m_factor->setRange(-1e9, 1e9); m_factor->setDecimals(6); m_factor->setValue(1.0);
     m_factor->setLocale(QLocale::c());
     form->addRow(tr("Factor:"), m_factor);
 
-    m_offset = new QDoubleSpinBox(rightBox);
+    m_offset = new QDoubleSpinBox(box);
     m_offset->setRange(-1e9, 1e9); m_offset->setDecimals(6); m_offset->setValue(0.0);
     m_offset->setLocale(QLocale::c());
     form->addRow(tr("Offset:"), m_offset);
 
-    m_minVal = new QDoubleSpinBox(rightBox);
+    m_minVal = new QDoubleSpinBox(box);
     m_minVal->setRange(-1e9, 1e9); m_minVal->setDecimals(6); m_minVal->setValue(0.0);
     m_minVal->setLocale(QLocale::c());
     form->addRow(tr("Min:"), m_minVal);
 
-    m_maxVal = new QDoubleSpinBox(rightBox);
+    m_maxVal = new QDoubleSpinBox(box);
     m_maxVal->setRange(-1e9, 1e9); m_maxVal->setDecimals(6); m_maxVal->setValue(0.0);
     m_maxVal->setLocale(QLocale::c());
     form->addRow(tr("Max:"), m_maxVal);
 
-    m_unit = new QLineEdit(rightBox);
+    m_unit = new QLineEdit(box);
     form->addRow(tr("Unit:"), m_unit);
 
-    m_addBtn = new QPushButton(tr("Add signal"), rightBox);
+    m_addBtn = new QPushButton(tr("Add signal"), box);
     form->addRow(m_addBtn);
 
-    m_cancelEditBtn = new QPushButton(tr("Cancel"), rightBox);
+    m_cancelEditBtn = new QPushButton(tr("Cancel"), box);
     m_cancelEditBtn->hide();
     form->addRow(m_cancelEditBtn);
 
-    m_previewLabel = new QLabel(tr("Aperçu : –"), rightBox);
-    m_previewLabel->setStyleSheet("color: #22c55e; font-weight: 600; padding: 4px 0;");
+    m_previewLabel = new QLabel(tr("Aperçu : –"), box);
+    m_previewLabel->setStyleSheet(QString("color: %1; font-weight: 600; padding: 4px 0;").arg(Palette::kLiveGreen));
     m_previewLabel->setWordWrap(true);
+    m_previewLabel->setMinimumWidth(160);
     form->addRow(m_previewLabel);
 
-    mainSplit->addWidget(rightBox);
-    mainSplit->setStretchFactor(2, 0);
+    return box;
+}
 
-    // Initial splitter sizes
-    mainSplit->setSizes({160, 700, 260});
+// ── Signal connections ───────────────────────────────────────────────────────
+void DbcBuilderPanel::setupConnections() {
+    connect(m_idList,        &QListWidget::currentRowChanged, this, &DbcBuilderPanel::onIdSelected);
+    connect(m_grid,          &BitGridWidget::selectionChanged, this, &DbcBuilderPanel::onBitsSelected);
+    connect(m_addBtn,        &QPushButton::clicked,            this, &DbcBuilderPanel::onAddSignal);
+    connect(m_cancelEditBtn, &QPushButton::clicked,            this, &DbcBuilderPanel::cancelEdit);
+    connect(m_msgName,       &QLineEdit::textEdited,           this, &DbcBuilderPanel::onMsgNameChanged);
 
-    // Connections
-    connect(m_idList,       &QListWidget::currentRowChanged, this, &DbcBuilderPanel::onIdSelected);
-    connect(m_grid,         &BitGridWidget::selectionChanged, this, &DbcBuilderPanel::onBitsSelected);
-    connect(m_addBtn,       &QPushButton::clicked,            this, &DbcBuilderPanel::onAddSignal);
-    connect(m_cancelEditBtn, &QPushButton::clicked,           this, &DbcBuilderPanel::cancelEdit);
-    connect(m_msgName,      &QLineEdit::textEdited,           this, &DbcBuilderPanel::onMsgNameChanged);
-
-    // Feature 1: live grid update when start/length spinboxes change
+    // Live grid update when start/length spinboxes change
     connect(m_startBit, qOverload<int>(&QSpinBox::valueChanged),
             this, &DbcBuilderPanel::onFormBitsChanged);
     connect(m_bitLen, qOverload<int>(&QSpinBox::valueChanged),
             this, &DbcBuilderPanel::onFormBitsChanged);
 
-    // Feature 2: live preview update when any signal parameter changes
+    // Live preview update when any signal parameter changes
     connect(m_byteOrder,  qOverload<int>(&QComboBox::currentIndexChanged),
             this, &DbcBuilderPanel::updatePreview);
     connect(m_valueType,  qOverload<int>(&QComboBox::currentIndexChanged),
@@ -523,7 +540,7 @@ void DbcBuilderPanel::refreshSignalTable() {
             }
         }
         auto* valItem = new QTableWidgetItem(valStr);
-        valItem->setForeground(QColor("#22c55e"));
+        valItem->setForeground(QColor(Palette::kLiveGreen));
         m_sigTable->setItem(i, 8, valItem);
 
         const int idx = i;
@@ -578,6 +595,25 @@ void DbcBuilderPanel::onFormBitsChanged() {
     updatePreview();
 }
 
+socketspy::dbc::Signal DbcBuilderPanel::buildSignalFromForm(const QString& name) const {
+    socketspy::dbc::Signal sig;
+    sig.name       = name.toStdString();
+    sig.start_bit  = static_cast<uint8_t>(m_startBit->value());
+    sig.bit_length = static_cast<uint8_t>(m_bitLen->value());
+    sig.byte_order = m_byteOrder->currentData().toInt() == 1
+                     ? socketspy::dbc::ByteOrder::LittleEndian
+                     : socketspy::dbc::ByteOrder::BigEndian;
+    sig.value_type = m_valueType->currentData().toInt() == '+'
+                     ? socketspy::dbc::ValueType::Unsigned
+                     : socketspy::dbc::ValueType::Signed;
+    sig.factor  = m_factor->value();
+    sig.offset  = m_offset->value();
+    sig.min_val = m_minVal->value();
+    sig.max_val = m_maxVal->value();
+    sig.unit    = m_unit->text().trimmed().toStdString();
+    return sig;
+}
+
 void DbcBuilderPanel::onAddSignal() {
     if (m_selectedId == 0xFFFFFFFF) {
         QMessageBox::warning(this, tr("No message"), tr("Select a message ID first."));
@@ -608,21 +644,7 @@ void DbcBuilderPanel::onAddSignal() {
                     return;
                 }
             }
-            auto& sig      = msg->signals[m_editingIdx];
-            sig.name       = name.toStdString();
-            sig.start_bit  = static_cast<uint8_t>(start);
-            sig.bit_length = static_cast<uint8_t>(len);
-            sig.byte_order = m_byteOrder->currentData().toInt() == 1
-                             ? socketspy::dbc::ByteOrder::LittleEndian
-                             : socketspy::dbc::ByteOrder::BigEndian;
-            sig.value_type = m_valueType->currentData().toInt() == '+'
-                             ? socketspy::dbc::ValueType::Unsigned
-                             : socketspy::dbc::ValueType::Signed;
-            sig.factor  = m_factor->value();
-            sig.offset  = m_offset->value();
-            sig.min_val = m_minVal->value();
-            sig.max_val = m_maxVal->value();
-            sig.unit    = m_unit->text().trimmed().toStdString();
+            msg->signals[m_editingIdx] = buildSignalFromForm(name);
 
             m_editingIdx = -1;
             m_addBtn->setText(tr("Add signal"));
@@ -645,23 +667,7 @@ void DbcBuilderPanel::onAddSignal() {
         }
     }
 
-    socketspy::dbc::Signal sig;
-    sig.name       = name.toStdString();
-    sig.start_bit  = static_cast<uint8_t>(start);
-    sig.bit_length = static_cast<uint8_t>(len);
-    sig.byte_order = m_byteOrder->currentData().toInt() == 1
-                     ? socketspy::dbc::ByteOrder::LittleEndian
-                     : socketspy::dbc::ByteOrder::BigEndian;
-    sig.value_type = m_valueType->currentData().toInt() == '+'
-                     ? socketspy::dbc::ValueType::Unsigned
-                     : socketspy::dbc::ValueType::Signed;
-    sig.factor  = m_factor->value();
-    sig.offset  = m_offset->value();
-    sig.min_val = m_minVal->value();
-    sig.max_val = m_maxVal->value();
-    sig.unit    = m_unit->text().trimmed().toStdString();
-
-    msg->signals.push_back(sig);
+    msg->signals.push_back(buildSignalFromForm(name));
 
     refreshSignalTable();
     refreshGrid();
@@ -840,5 +846,3 @@ void DbcBuilderPanel::loadDbc(const socketspy::dbc::DbcDatabase& db) {
 }
 
 } // namespace socketspy::gui
-
-#pragma pop_macro("signals")

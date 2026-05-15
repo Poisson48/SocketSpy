@@ -95,7 +95,8 @@ void SimProfileEditor::setupUi() {
     // Page 0: placeholder
     auto* emptyPage = new QLabel("Sélectionnez un nœud, un message ou un signal pour l'éditer.", this);
     emptyPage->setAlignment(Qt::AlignCenter);
-    emptyPage->setStyleSheet("color: #888;");
+    // Use theme muted color (#7c8fa6) instead of hardcoded #888
+    emptyPage->setStyleSheet("color: #7c8fa6;");
     m_stack->addWidget(emptyPage);
 
     // Page 1: Node
@@ -167,7 +168,7 @@ void SimProfileEditor::setupUi() {
         "Génère automatiquement un scénario cyclique. "
         "Remplace les points manuels ci-dessous si actif.", waveBox);
     waveHelp->setWordWrap(true);
-    waveHelp->setStyleSheet("color: gray; font-size: 10px;");
+    waveHelp->setStyleSheet("color: #7c8fa6; font-size: 10px;");
     waveLayout->addRow(waveHelp);
 
     m_waveformCombo = new QComboBox(waveBox);

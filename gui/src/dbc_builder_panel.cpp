@@ -291,8 +291,11 @@ void DbcBuilderPanel::setupUi() {
         tr("Factor"), tr("Offset"), tr("Unit"), tr("Value"), tr(""), tr("")
     });
     m_sigTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    m_sigTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_sigTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
     m_sigTable->horizontalHeader()->setStretchLastSection(false);
+    m_sigTable->setColumnWidth(0, 120);
+    m_sigTable->setColumnWidth(9,  46);
+    m_sigTable->setColumnWidth(10, 42);
     m_sigTable->setMinimumHeight(120);
     m_sigTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_sigTable->setEditTriggers(QAbstractItemView::NoEditTriggers);

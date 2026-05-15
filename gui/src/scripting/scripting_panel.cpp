@@ -16,7 +16,11 @@ ScriptingPanel::ScriptingPanel(QWidget* parent)
     setupUi();
 }
 
-ScriptingPanel::~ScriptingPanel() = default;
+ScriptingPanel::~ScriptingPanel()
+{
+    if (m_engine) m_engine->abort();
+    if (m_workerThread.joinable()) m_workerThread.join();
+}
 
 void ScriptingPanel::setupUi()
 {
@@ -101,7 +105,7 @@ void ScriptingPanel::onRun()
 
     // Build engine with a print callback that posts to the GUI thread
     socketspy::scripting::LuaEngine::Config cfg;
-    cfg.watchdog_ms      = 0;         // no time limit
+    cfg.watchdog_ms      = 10000;     // kill runaway scripts after 10 s
     cfg.max_output_bytes = 1u << 20u; // 1 MiB
     cfg.on_print = [this](std::string_view text) {
         // Called from the Lua worker thread — must not touch Qt widgets directly
@@ -113,8 +117,10 @@ void ScriptingPanel::onRun()
 
     m_engine = std::make_unique<socketspy::scripting::LuaEngine>(std::move(cfg));
 
-    // Run in a background thread; report back to the GUI thread when done
-    std::thread([this, code]() {
+    // Run in a background thread; report back to the GUI thread when done.
+    // The thread is stored as a member so the destructor can join it cleanly.
+    if (m_workerThread.joinable()) m_workerThread.join();
+    m_workerThread = std::thread([this, code]() {
         const auto result = m_engine->run(code);
 
         QMetaObject::invokeMethod(this, [this, result]() {
@@ -131,7 +137,7 @@ void ScriptingPanel::onRun()
             setRunning(false);
             m_engine.reset();
         }, Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 void ScriptingPanel::onStop()

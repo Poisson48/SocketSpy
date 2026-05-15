@@ -3,6 +3,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <memory>
+#include <thread>
 #include "lua_engine.h"
 
 namespace socketspy::gui {
@@ -29,6 +30,7 @@ private:
     QPlainTextEdit*  m_console{nullptr};
 
     std::unique_ptr<socketspy::scripting::LuaEngine> m_engine;
+    std::thread m_workerThread;
     bool m_running{false};
 };
 

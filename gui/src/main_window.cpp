@@ -96,6 +96,12 @@ void MainWindow::setupUi() {
             m_graph,   &SignalGraphPanel::addFrameSignals);
     connect(m_replay,  &ReplayPanel::replayFrame,
             m_monitor, &MonitorPanel::onFrameReceived);
+    connect(m_replay,  &ReplayPanel::replayFrame,
+            m_graph,   &SignalGraphPanel::onFrameReceived);
+    connect(m_replay,  &ReplayPanel::replayFrame,
+            m_stats,   &StatsPanel::onFrameReceived);
+    connect(m_replay,  &ReplayPanel::replayFrame,
+            m_protocolPanel, &ProtocolPanel::onFrameReceived);
     connect(m_graph, &SignalGraphPanel::signalAliased,
             this,    &MainWindow::onSignalAliased);
 

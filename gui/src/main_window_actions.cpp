@@ -118,11 +118,17 @@ void MainWindow::onStartRecording() {
 
 void MainWindow::onStopRecording() {
     m_recorder.close();
+    // Disconnect only the recorder lambda (connected to `this` in onStartRecording).
+    // m_monitor and m_graph remain connected from setupCapture() and must not be
+    // reconnected here — doing so would duplicate frames. Use UniqueConnection as
+    // a safety net in case this function is ever called in an unexpected order.
     disconnect(m_capture, &CanCapture::frameReceived, this, nullptr);
     connect(m_capture, &CanCapture::frameReceived,
-            m_monitor, &MonitorPanel::onFrameReceived);
+            m_monitor, &MonitorPanel::onFrameReceived,
+            Qt::UniqueConnection);
     connect(m_capture, &CanCapture::frameReceived,
-            m_graph,   &SignalGraphPanel::onFrameReceived);
+            m_graph,   &SignalGraphPanel::onFrameReceived,
+            Qt::UniqueConnection);
 }
 
 ProjectData MainWindow::collectProject() const {

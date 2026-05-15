@@ -33,6 +33,11 @@ using namespace socketspy::dbc;
 
 namespace socketspy::gui {
 
+void MainWindow::onExportMonitorCsv() {
+    // Delegate to the Monitor panel's own CSV export action
+    m_monitor->onExportCsv();
+}
+
 void MainWindow::onSaveDbc() {
     const auto& db = m_dbcBuilder->database();
     if (db.messages.empty()) {

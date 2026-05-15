@@ -86,6 +86,7 @@ public slots:
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);
     void onFilterChanged(const socketspy::gui::FrameFilter& filter);
     void setAliases(const QHash<QString,QString>& aliases);
+    void onExportCsv();   // also wired from File menu (Ctrl+Shift+E)
 
 signals:
     void signalDoubleClicked(QString signalName, uint32_t msgId);
@@ -112,7 +113,8 @@ private:
     QPushButton*         m_clear{nullptr};
     QCheckBox*           m_pause{nullptr};
     QCheckBox*           m_trackMode{nullptr};
-    QPushButton*         m_filterBtn{nullptr};      // replaces m_changedOnly
+    QPushButton*         m_filterBtn{nullptr};
+    QPushButton*         m_exportCsvBtn{nullptr};
     QCheckBox*           m_autoScrollChk{nullptr};
     QLineEdit*           m_search{nullptr};
     MonitorFilterDialog* m_filterDlg{nullptr};
@@ -130,6 +132,14 @@ private:
         std::vector<uint8_t> lastData;
         int lastDlc{0};
         bool everChanged{false};
+        // Delta / rate tracking
+        uint64_t firstTs{0};      // µs of first frame for this ID
+        uint64_t prevTs{0};       // µs of the frame before the latest
+        uint64_t lastTs{0};       // µs of last frame
+        uint64_t frameCount{0};   // total frames seen for this ID
+        // Per-byte min/max (up to 8 bytes for display)
+        uint8_t  byteMin[8]{0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+        uint8_t  byteMax[8]{};
     };
     std::unordered_map<uint32_t, TrackEntry> m_tracked;
     std::set<uint32_t> m_pinned;

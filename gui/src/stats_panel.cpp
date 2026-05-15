@@ -1,3 +1,6 @@
+// dbc_helper.h must be included before any Qt headers to avoid the
+// `signals` macro collision with socketspy::dbc::Message::signals.
+#include "dbc_helper.h"
 #include "stats_panel.h"
 #include "cancore.h"
 
@@ -16,14 +19,7 @@ StatsPanel::StatsPanel(QWidget* parent) : QWidget(parent) {
 }
 
 void StatsPanel::setupUi() {
-    auto* root = new QVBoxLayout(this);
-    // Consistent outer margin 8px, inner spacing 6px
-    root->setContentsMargins(8, 8, 8, 8);
-    root->setSpacing(6);
-
-    auto* bar = new QHBoxLayout;
-    bar->setSpacing(12);
-
+    // ---- Summary bar (shared across both tabs) ----
     m_totalLabel  = new QLabel("Total frames: 0",  this);
     m_loadLabel   = new QLabel("Bus load: 0.0 %",   this);
     m_errorLabel  = new QLabel("Errors: 0",          this);
@@ -32,17 +28,20 @@ void StatsPanel::setupUi() {
     m_resetBtn->setObjectName("resetBtn");
     m_resetBtn->setFixedWidth(72);
 
+    auto* bar = new QHBoxLayout;
+    bar->setSpacing(12);
     bar->addWidget(m_totalLabel);
     bar->addWidget(m_loadLabel);
     bar->addWidget(m_errorLabel);
     bar->addWidget(m_uptimeLabel);
     bar->addStretch();
     bar->addWidget(m_resetBtn);
-    root->addLayout(bar);
 
-    m_table = new QTableWidget(0, 6, this);
+    // ---- Tab 0 — per-ID bus stats ----
+    m_table = new QTableWidget(0, 8, this);
     m_table->setHorizontalHeaderLabels(
-        {"CAN ID", "Name", "Count", "Rate (f/s)", "Last DLC", "Last data"});
+        {"CAN ID", "Name", "Count", "Rate (f/s)", "Last DLC", "Last data",
+         "B0 min", "B0 max"});
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
     m_table->horizontalHeader()->setSortIndicatorShown(true);
     m_table->setSortingEnabled(true);
@@ -50,13 +49,50 @@ void StatsPanel::setupUi() {
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setAlternatingRowColors(true);
     m_table->verticalHeader()->hide();
-    // Consistent row height matching other tables
     m_table->verticalHeader()->setDefaultSectionSize(26);
     m_table->horizontalHeader()->setStretchLastSection(true);
-
     m_table->sortByColumn(2, Qt::DescendingOrder);
 
-    root->addWidget(m_table);
+    auto* busTab = new QWidget(this);
+    auto* busLayout = new QVBoxLayout(busTab);
+    busLayout->setContentsMargins(0, 4, 0, 0);
+    busLayout->setSpacing(4);
+    busLayout->addWidget(m_table);
+
+    // ---- Tab 1 — per-signal decoded stats (Gap B) ----
+    m_signalTable = new QTableWidget(0, 7, this);
+    m_signalTable->setHorizontalHeaderLabels(
+        {"Message", "Signal", "Count", "Last value", "Min", "Max", "Mean"});
+    m_signalTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_signalTable->horizontalHeader()->setSortIndicatorShown(true);
+    m_signalTable->setSortingEnabled(true);
+    m_signalTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_signalTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_signalTable->setAlternatingRowColors(true);
+    m_signalTable->verticalHeader()->hide();
+    m_signalTable->verticalHeader()->setDefaultSectionSize(26);
+    m_signalTable->horizontalHeader()->setStretchLastSection(true);
+    m_signalTable->sortByColumn(2, Qt::DescendingOrder);
+
+    auto* sigTab = new QWidget(this);
+    auto* sigLayout = new QVBoxLayout(sigTab);
+    sigLayout->setContentsMargins(0, 4, 0, 0);
+    sigLayout->setSpacing(4);
+    sigLayout->addWidget(new QLabel(
+        "Decoded signal statistics — requires a DBC file to be loaded", sigTab));
+    sigLayout->addWidget(m_signalTable);
+
+    // ---- Tab widget ----
+    m_tabs = new QTabWidget(this);
+    m_tabs->addTab(busTab,  "Bus / ID");
+    m_tabs->addTab(sigTab,  "Signals");
+
+    // ---- Root layout ----
+    auto* root = new QVBoxLayout(this);
+    root->setContentsMargins(8, 8, 8, 8);
+    root->setSpacing(6);
+    root->addLayout(bar);
+    root->addWidget(m_tabs);
 
     m_timer = new QTimer(this);
     m_timer->setInterval(1000);
@@ -93,12 +129,103 @@ void StatsPanel::onFrameReceived(CanFrame frame) {
     for (int i = copyBytes; i < 8; ++i)
         s.last_data[i] = 0;
 
+    // Gap B — track byte-0 min/max
+    if (frame.dlc > 0) {
+        s.b0_min = qMin(s.b0_min, frame.data[0]);
+        s.b0_max = qMax(s.b0_max, frame.data[0]);
+        s.b0_sum += frame.data[0];
+    }
+
     m_bitsInWindow += bitsPerFrame(frame);
+
+    // Gap B — decode signals and accumulate stats if DBC is loaded
+    if (m_dbcLoaded) {
+        std::span<const uint8_t> data(frame.data, frame.dlc);
+        auto sigNames = socketspy::gui::dbc_helper::signal_names_for_msg(m_dbc, frame.id);
+        for (const auto& sigName : sigNames) {
+            auto val = socketspy::gui::dbc_helper::decode_signal(
+                m_dbc, frame.id, sigName, data);
+            if (!val.has_value()) continue;
+
+            const QString key = QString("%1::%2")
+                .arg(frame.id, 8, 16, QChar('0')).arg(QString::fromStdString(sigName));
+            auto& ss = m_sigStats[key];
+            if (ss.count == 0) {
+                // First observation — fill metadata
+                for (const auto& msg : m_dbc.messages) {
+                    if (msg.id == (frame.id & 0x1FFFFFFFu)) {
+                        ss.msgName = QString::fromStdString(msg.name);
+                        ss.msgId   = frame.id;
+                        break;
+                    }
+                }
+                ss.sigName = QString::fromStdString(sigName);
+                ss.unit    = QString::fromStdString(
+                    socketspy::gui::dbc_helper::signal_unit(m_dbc, frame.id, sigName));
+            }
+            ++ss.count;
+            ss.valLast = *val;
+            if (*val < ss.valMin) ss.valMin = *val;
+            if (*val > ss.valMax) ss.valMax = *val;
+            ss.valSum += *val;
+        }
+    }
 }
 
 void StatsPanel::onDbcLoaded(socketspy::dbc::DbcDatabase db) {
     m_dbc       = std::move(db);
     m_dbcLoaded = true;
+    m_sigStats.clear();
+    m_signalTable->setRowCount(0);
+}
+
+void StatsPanel::refreshSignalTable() {
+    if (!m_dbcLoaded || m_sigStats.isEmpty()) return;
+
+    m_signalTable->setUpdatesEnabled(false);
+    m_signalTable->setSortingEnabled(false);
+
+    const int needed = m_sigStats.size();
+    const int existing = m_signalTable->rowCount();
+    m_signalTable->setRowCount(needed);
+    for (int r = existing; r < needed; ++r) {
+        for (int c = 0; c < m_signalTable->columnCount(); ++c)
+            m_signalTable->setItem(r, c, new QTableWidgetItem);
+    }
+
+    int row = 0;
+    for (auto it = m_sigStats.cbegin(); it != m_sigStats.cend(); ++it, ++row) {
+        const PerSignalStats& ss = it.value();
+
+        double mean = (ss.count > 0) ? (ss.valSum / static_cast<double>(ss.count)) : 0.0;
+        QString unitSuffix = ss.unit.isEmpty() ? QString() : ("  " + ss.unit);
+
+        auto setCell = [&](int col, const QString& text, QVariant sortKey = {}) {
+            QTableWidgetItem* item = m_signalTable->item(row, col);
+            item->setText(text);
+            if (sortKey.isValid())
+                item->setData(Qt::UserRole, sortKey);
+        };
+
+        setCell(0, ss.msgName);
+        setCell(1, ss.sigName);
+        setCell(2, QString::number(ss.count),
+            QVariant::fromValue<qulonglong>(ss.count));
+        setCell(3, QString::number(ss.valLast, 'f', 3) + unitSuffix);
+        setCell(4, ss.count > 0
+            ? QString::number(ss.valMin, 'f', 3) + unitSuffix
+            : "–");
+        setCell(5, ss.count > 0
+            ? QString::number(ss.valMax, 'f', 3) + unitSuffix
+            : "–");
+        setCell(6, ss.count > 0
+            ? QString::number(mean, 'f', 3) + unitSuffix
+            : "–");
+    }
+
+    m_signalTable->setSortingEnabled(true);
+    m_signalTable->sortByColumn(2, Qt::DescendingOrder);
+    m_signalTable->setUpdatesEnabled(true);
 }
 
 void StatsPanel::setBitrate(int bitrate) {
@@ -177,6 +304,16 @@ void StatsPanel::onTick() {
         setCell(3, QString::number(rate),     QVariant::fromValue<qulonglong>(rate));
         setCell(4, QString::number(ps.last_dlc));
         setCell(5, dataStr);
+        // Gap B — B0 min/max
+        if (ps.last_dlc > 0 && ps.count > 0) {
+            setCell(6, QString::number(ps.b0_min),
+                QVariant::fromValue<uint>(ps.b0_min));
+            setCell(7, QString::number(ps.b0_max),
+                QVariant::fromValue<uint>(ps.b0_max));
+        } else {
+            setCell(6, "–");
+            setCell(7, "–");
+        }
     }
 
     for (auto it = m_stats.begin(); it != m_stats.end(); ++it)
@@ -185,15 +322,20 @@ void StatsPanel::onTick() {
     m_table->setSortingEnabled(true);
     m_table->sortByColumn(2, Qt::DescendingOrder);
     m_table->setUpdatesEnabled(true);
+
+    // Refresh signal stats tab
+    refreshSignalTable();
 }
 
 void StatsPanel::onReset() {
     m_stats.clear();
+    m_sigStats.clear();
     m_totalFrames  = 0;
     m_totalErrors  = 0;
     m_bitsInWindow = 0;
     m_busLoad      = 0.0;
     m_table->setRowCount(0);
+    m_signalTable->setRowCount(0);
     m_uptime.restart();
 
     m_totalLabel->setText("Total frames: 0");

@@ -13,6 +13,11 @@
 #include <QString>
 #include <QLabel>
 #include <QBrush>
+#include <QFileDialog>
+#include <QFile>
+#include <QTextStream>
+#include <QMessageBox>
+#include <algorithm>
 
 using namespace socketspy::core;
 using namespace socketspy::dbc;
@@ -147,6 +152,23 @@ MonitorPanel::MonitorPanel(QWidget* parent) : QWidget(parent) {
 
 MonitorPanel::~MonitorPanel() = default;
 
+// Column indices for the log-mode table (5 cols)
+static constexpr int kColLogTs      = 0;
+static constexpr int kColLogId      = 1;
+static constexpr int kColLogDlc     = 2;
+static constexpr int kColLogData    = 3;
+static constexpr int kColLogDecoded = 4;
+
+// Column indices for the track-mode table (8 cols)
+static constexpr int kColTrkTs      = 0;
+static constexpr int kColTrkId      = 1;
+static constexpr int kColTrkDlc     = 2;
+static constexpr int kColTrkData    = 3;
+static constexpr int kColTrkDecoded = 4;
+static constexpr int kColTrkDelta   = 5;  // Δ since last change (ms)
+static constexpr int kColTrkRate    = 6;  // avg frames/sec
+static constexpr int kColTrkRange   = 7;  // byte[0] min–max
+
 void MonitorPanel::setupUi() {
     m_table = new QTableWidget(0, 5, this);
     m_table->setHorizontalHeaderLabels(
@@ -172,10 +194,14 @@ void MonitorPanel::setupUi() {
     m_filterBtn     = new QPushButton("Filters…", this);
     m_filterBtn->setObjectName("filterBtn");
     m_filterBtn->setProperty("secondary", true);
+    m_exportCsvBtn  = new QPushButton("Export CSV…", this);
+    m_exportCsvBtn->setObjectName("filterBtn");   // reuse secondary style
+    m_exportCsvBtn->setProperty("secondary", true);
+    m_exportCsvBtn->setToolTip("Export visible rows to a CSV file");
     m_autoScrollChk = new QCheckBox("Auto-scroll", this);
     m_autoScrollChk->setChecked(true);
 
-    m_trackMode->setToolTip("One row per CAN ID, updated in place");
+    m_trackMode->setToolTip("One row per CAN ID, updated in place (adds Δt / rate / range columns)");
     m_filterBtn->setToolTip("Open filter configuration panel");
     m_autoScrollChk->setToolTip("Scroll to newest frame automatically");
 
@@ -183,9 +209,10 @@ void MonitorPanel::setupUi() {
     m_filterDlg = new MonitorFilterDialog(this);
     m_filterDlg->setFilter(m_monFilter);
 
-    connect(m_clear,     &QPushButton::clicked, this, &MonitorPanel::onClear);
-    connect(m_trackMode, &QCheckBox::toggled,   this, &MonitorPanel::onTrackModeToggled);
-    connect(m_filterBtn, &QPushButton::clicked, this, &MonitorPanel::onFiltersButtonClicked);
+    connect(m_clear,        &QPushButton::clicked, this, &MonitorPanel::onClear);
+    connect(m_trackMode,    &QCheckBox::toggled,   this, &MonitorPanel::onTrackModeToggled);
+    connect(m_filterBtn,    &QPushButton::clicked, this, &MonitorPanel::onFiltersButtonClicked);
+    connect(m_exportCsvBtn, &QPushButton::clicked, this, &MonitorPanel::onExportCsv);
     connect(m_filterDlg, &MonitorFilterDialog::filterChanged,
             this,        &MonitorPanel::onMonitorFilterChanged);
 
@@ -201,6 +228,7 @@ void MonitorPanel::setupUi() {
     toolbar->addSpacing(12);
     toolbar->addWidget(m_trackMode);
     toolbar->addWidget(m_filterBtn);
+    toolbar->addWidget(m_exportCsvBtn);
     toolbar->addWidget(m_autoScrollChk);
     toolbar->addSpacing(12);
     toolbar->addWidget(new QLabel("ID:", this));
@@ -289,8 +317,9 @@ void MonitorPanel::appendLogRow(const CanFrame& frame) {
 
 void MonitorPanel::updateTrackingRow(const CanFrame& frame) {
     std::vector<uint8_t> data(frame.data, frame.data + frame.dlc);
-    bool isPinned   = m_pinned.count(frame.id) > 0;
+    bool isPinned    = m_pinned.count(frame.id) > 0;
     bool dataChanged = false;
+    bool isNew       = false;
     int  row         = -1;
 
     auto it = m_tracked.find(frame.id);
@@ -298,7 +327,20 @@ void MonitorPanel::updateTrackingRow(const CanFrame& frame) {
         // New ID: append a row
         row = m_table->rowCount();
         m_table->insertRow(row);
-        m_tracked[frame.id] = {row, data, frame.dlc, false};
+        TrackEntry entry;
+        entry.row        = row;
+        entry.lastData   = data;
+        entry.lastDlc    = frame.dlc;
+        entry.firstTs    = frame.timestamp_us;
+        entry.lastTs     = frame.timestamp_us;
+        entry.frameCount = 1;
+        // Init min/max with first byte values
+        for (int b = 0; b < frame.dlc && b < 8; ++b) {
+            entry.byteMin[b] = frame.data[b];
+            entry.byteMax[b] = frame.data[b];
+        }
+        m_tracked[frame.id] = std::move(entry);
+        isNew = true;
     } else {
         auto& entry  = it->second;
         row          = entry.row;
@@ -308,7 +350,17 @@ void MonitorPanel::updateTrackingRow(const CanFrame& frame) {
             entry.lastData    = data;
             entry.lastDlc     = frame.dlc;
         }
+        entry.prevTs = entry.lastTs;
+        entry.lastTs = frame.timestamp_us;
+        ++entry.frameCount;
+        // Update per-byte min/max
+        for (int b = 0; b < frame.dlc && b < 8; ++b) {
+            entry.byteMin[b] = std::min(entry.byteMin[b], frame.data[b]);
+            entry.byteMax[b] = std::max(entry.byteMax[b], frame.data[b]);
+        }
     }
+
+    auto& entry = m_tracked[frame.id];
 
     QColor rowBg  = isPinned ? kPinBg : QColor{};
     QColor dataBg = dataChanged ? kChangedBg : rowBg;
@@ -317,11 +369,44 @@ void MonitorPanel::updateTrackingRow(const CanFrame& frame) {
         ? QString("* %1").arg(frame.id, 8, 16, QChar('0')).toUpper()
         : QString("%1").arg(frame.id, 8, 16, QChar('0')).toUpper();
 
-    setCell(m_table, row, 0, QString::number(frame.timestamp_us), rowBg);
-    setCell(m_table, row, 1, idStr, rowBg);
-    setCell(m_table, row, 2, QString::number(frame.dlc), rowBg);
-    setCell(m_table, row, 3, bytesToHex(frame.data, frame.dlc), dataBg);
-    setCell(m_table, row, 4, decodeFrame(frame), rowBg);
+    setCell(m_table, row, kColTrkTs,      QString::number(frame.timestamp_us), rowBg);
+    setCell(m_table, row, kColTrkId,      idStr, rowBg);
+    setCell(m_table, row, kColTrkDlc,     QString::number(frame.dlc), rowBg);
+    setCell(m_table, row, kColTrkData,    bytesToHex(frame.data, frame.dlc), dataBg);
+    setCell(m_table, row, kColTrkDecoded, decodeFrame(frame), rowBg);
+
+    // --- Gap A: Δt, rate, byte range columns ---
+    // Δt: ms between the two most recent frames for this ID (blank until 2nd frame)
+    if (isNew || entry.frameCount <= 1) {
+        setCell(m_table, row, kColTrkDelta, "–", rowBg);
+        setCell(m_table, row, kColTrkRate,  "–", rowBg);
+        setCell(m_table, row, kColTrkRange, "–", rowBg);
+    } else {
+        // Instantaneous Δt (last two frames)
+        double delta_ms = static_cast<double>(entry.lastTs - entry.prevTs) / 1000.0;
+
+        // Average rate over entire observation window
+        uint64_t elapsed_us = entry.lastTs - entry.firstTs;
+        double elapsed_s    = static_cast<double>(elapsed_us) / 1e6;
+        double rate         = (elapsed_s > 0.0)
+                            ? (static_cast<double>(entry.frameCount - 1) / elapsed_s)
+                            : 0.0;
+
+        setCell(m_table, row, kColTrkDelta,
+            QString::number(delta_ms, 'f', 1) + " ms", rowBg);
+        setCell(m_table, row, kColTrkRate,
+            QString::number(rate, 'f', 1), rowBg);
+
+        // Byte 0 range (most representative byte for quick range check)
+        if (frame.dlc > 0) {
+            setCell(m_table, row, kColTrkRange,
+                QString("B0: %1–%2")
+                    .arg(entry.byteMin[0]).arg(entry.byteMax[0]),
+                rowBg);
+        } else {
+            setCell(m_table, row, kColTrkRange, "–", rowBg);
+        }
+    }
 
     applyRowVisibility(row, frame.id);
 }
@@ -347,11 +432,23 @@ void MonitorPanel::applyRowVisibility(int row, uint32_t id) {
 // ---------------------------------------------------------------------------
 // Slots
 
-void MonitorPanel::onTrackModeToggled(bool /*checked*/) {
+void MonitorPanel::onTrackModeToggled(bool tracking) {
     m_table->setRowCount(0);
     m_tracked.clear();
     m_pinned.clear();
     m_logLastSeen.clear();
+
+    if (tracking) {
+        m_table->setColumnCount(8);
+        m_table->setHorizontalHeaderLabels(
+            {"Timestamp (µs)", "ID (hex)", "DLC", "Data (hex)", "Decoded",
+             "Δt (ms)", "Rate (f/s)", "B0 min–max"});
+    } else {
+        m_table->setColumnCount(5);
+        m_table->setHorizontalHeaderLabels(
+            {"Timestamp (µs)", "ID (hex)", "DLC", "Data (hex)", "Decoded"});
+    }
+    m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
 
 void MonitorPanel::applyMonitorFilter(const MonitorFilter& f) {
@@ -465,6 +562,8 @@ void MonitorPanel::onContextMenu(const QPoint& pos) {
     if (!ok) return;
 
     QMenu menu(this);
+    auto* exportAct = menu.addAction(tr("Export visible rows to CSV…"));
+    menu.addSeparator();
     QMenu* graphMenu = menu.addMenu(tr("Add to graph"));
     auto* graphAllAct = graphMenu->addAction(
         tr("All signals of 0x%1").arg(id, 0, 16).toUpper());
@@ -489,6 +588,11 @@ void MonitorPanel::onContextMenu(const QPoint& pos) {
     }
 
     auto* chosen = menu.exec(m_table->viewport()->mapToGlobal(pos));
+
+    if (chosen == exportAct) {
+        onExportCsv();
+        return;
+    }
 
     if (chosen == graphAllAct) {
         emit frameGraphRequested(id);
@@ -533,6 +637,61 @@ void MonitorPanel::onContextMenu(const QPoint& pos) {
 
 void MonitorPanel::setAliases(const QHash<QString,QString>& aliases) {
     m_aliases = aliases;
+}
+
+// ---------------------------------------------------------------------------
+// Gap C — CSV export
+
+void MonitorPanel::onExportCsv() {
+    const int rowCount = m_table->rowCount();
+    const int colCount = m_table->columnCount();
+    if (rowCount == 0) {
+        QMessageBox::information(this, tr("Export CSV"), tr("No data to export."));
+        return;
+    }
+
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export Monitor CSV"), {},
+        tr("CSV Files (*.csv);;All Files (*)"));
+    if (path.isEmpty()) return;
+
+    QFile file(path.endsWith(".csv") ? path : path + ".csv");
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Export CSV"),
+            tr("Cannot write file: %1").arg(file.errorString()));
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // Write header row from current column labels
+    QStringList header;
+    for (int c = 0; c < colCount; ++c) {
+        auto* h = m_table->horizontalHeaderItem(c);
+        header << (h ? h->text() : QString("Col%1").arg(c));
+    }
+    out << header.join(',') << '\n';
+
+    // Write visible data rows
+    int exported = 0;
+    for (int r = 0; r < rowCount; ++r) {
+        if (m_table->isRowHidden(r)) continue;
+        QStringList row;
+        for (int c = 0; c < colCount; ++c) {
+            auto* item = m_table->item(r, c);
+            QString val = item ? item->text() : QString();
+            // Escape commas and quotes per RFC 4180
+            if (val.contains(',') || val.contains('"') || val.contains('\n')) {
+                val = '"' + val.replace('"', "\"\"") + '"';
+            }
+            row << val;
+        }
+        out << row.join(',') << '\n';
+        ++exported;
+    }
+
+    QMessageBox::information(this, tr("Export CSV"),
+        tr("Exported %1 rows to:\n%2").arg(exported).arg(file.fileName()));
 }
 
 QString MonitorPanel::decodeFrame(const CanFrame& f) const {

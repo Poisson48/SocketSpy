@@ -4,6 +4,7 @@
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGroupBox>
 #include <QPushButton>
 #include <cerrno>
 #include <cstring>
@@ -22,8 +23,9 @@ void TransmitPanel::setupUi() {
     m_iface->setMinimumWidth(120);
 
     auto* refreshBtn = new QPushButton("↺", this);
+    refreshBtn->setObjectName("refreshBtn");
     refreshBtn->setFixedWidth(28);
-    refreshBtn->setToolTip("Rafraîchir la liste des interfaces");
+    refreshBtn->setToolTip("Refresh interface list");
     connect(refreshBtn, &QPushButton::clicked, this, &TransmitPanel::refreshIfaces);
 
     auto* ifaceRow = new QHBoxLayout;
@@ -37,7 +39,7 @@ void TransmitPanel::setupUi() {
     m_data->setPlaceholderText("DE AD BE EF ...");
     m_extended = new QCheckBox("Extended ID (29-bit)", this);
     m_fd       = new QCheckBox("FD frame", this);
-    m_send     = new QPushButton("Send", this);
+    m_send     = new QPushButton("Send once", this);
     m_status   = new QLabel(this);
 
     connect(m_fd, &QCheckBox::toggled, this, [this](bool checked) {
@@ -60,12 +62,44 @@ void TransmitPanel::setupUi() {
     btnRow->addWidget(m_status);
     btnRow->addStretch();
 
+    // ----- Periodic send group (Gap E) -----
+    auto* periodicGroup = new QGroupBox("Periodic send", this);
+    m_periodicChk  = new QCheckBox("Enable periodic transmit", periodicGroup);
+    m_periodicChk->setToolTip("Send the frame above repeatedly at the chosen interval");
+
+    m_intervalMs = new QSpinBox(periodicGroup);
+    m_intervalMs->setRange(1, 60000);
+    m_intervalMs->setValue(100);
+    m_intervalMs->setSuffix(" ms");
+    m_intervalMs->setSingleStep(10);
+    m_intervalMs->setToolTip("Transmission interval (1 ms – 60 s)");
+
+    m_periodicStatus = new QLabel("–", periodicGroup);
+    m_periodicStatus->setStyleSheet("color: #7c8fa6;");
+
+    auto* periodicForm = new QFormLayout(periodicGroup);
+    periodicForm->setSpacing(6);
+    periodicForm->addRow(m_periodicChk);
+    periodicForm->addRow("Interval:", m_intervalMs);
+    periodicForm->addRow("Sent:", m_periodicStatus);
+
+    m_periodicTimer = new QTimer(this);
+    connect(m_periodicTimer, &QTimer::timeout, this, &TransmitPanel::onPeriodicTick);
+    connect(m_periodicChk, &QCheckBox::toggled, this, &TransmitPanel::onTogglePeriodic);
+    // Changing interval while running: update the timer period immediately
+    connect(m_intervalMs, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            [this](int ms) {
+                if (m_periodicTimer->isActive())
+                    m_periodicTimer->setInterval(ms);
+            });
+
     auto* layout = new QVBoxLayout(this);
     // Consistent outer margin 8px, inner spacing 6px
     layout->setContentsMargins(8, 8, 8, 8);
     layout->setSpacing(6);
     layout->addLayout(form);
     layout->addLayout(btnRow);
+    layout->addWidget(periodicGroup);
     layout->addStretch();
 
     connect(m_send, &QPushButton::clicked, this, &TransmitPanel::onSend);
@@ -112,14 +146,11 @@ bool TransmitPanel::validate(QString& err) const {
     return true;
 }
 
-void TransmitPanel::onSend() {
-    QString err;
-    if (!validate(err)) { m_status->setText("<font color='red'>" + err + "</font>"); return; }
-
+bool TransmitPanel::sendFrame() {
     IfaceHandle h = can_open(m_iface->currentText().toStdString());
     if (!h.valid()) {
         m_status->setText(QString("<font color='red'>can_open: %1</font>").arg(strerror(errno)));
-        return;
+        return false;
     }
 
     const bool isFd = m_fd->isChecked();
@@ -127,7 +158,7 @@ void TransmitPanel::onSend() {
         if (!can_set_fd_mode(h, true)) {
             m_status->setText("<font color='red'>can_set_fd_mode failed</font>");
             can_close(h);
-            return;
+            return false;
         }
     }
 
@@ -143,8 +174,64 @@ void TransmitPanel::onSend() {
 
     bool ok = can_send(h, f);
     can_close(h);
+    return ok;
+}
+
+void TransmitPanel::onSend() {
+    QString err;
+    if (!validate(err)) { m_status->setText("<font color='red'>" + err + "</font>"); return; }
+
+    bool ok = sendFrame();
     m_status->setText(ok ? "<font color='green'>OK</font>"
                          : QString("<font color='red'>send failed: %1</font>").arg(strerror(errno)));
+}
+
+void TransmitPanel::onTogglePeriodic(bool checked) {
+    if (checked) {
+        // Validate before starting
+        QString err;
+        if (!validate(err)) {
+            m_status->setText("<font color='red'>" + err + "</font>");
+            m_periodicChk->setChecked(false);
+            return;
+        }
+        m_periodicCount = 0;
+        m_periodicStatus->setText("0");
+        m_periodicStatus->setStyleSheet("color: #22c55e;");
+        m_periodicTimer->start(m_intervalMs->value());
+        // Disable send controls while periodic is active to avoid mid-run edits
+        m_send->setEnabled(false);
+        m_id->setEnabled(false);
+        m_dlc->setEnabled(false);
+        m_data->setEnabled(false);
+        m_extended->setEnabled(false);
+        m_fd->setEnabled(false);
+        m_status->setText("<font color='#6366f1'>Periodic running…</font>");
+    } else {
+        m_periodicTimer->stop();
+        m_periodicStatus->setStyleSheet("color: #7c8fa6;");
+        m_send->setEnabled(true);
+        m_id->setEnabled(true);
+        m_dlc->setEnabled(true);
+        m_data->setEnabled(true);
+        m_extended->setEnabled(true);
+        m_fd->setEnabled(true);
+        m_status->setText(tr("Periodic stopped — %1 frames sent").arg(m_periodicCount));
+    }
+}
+
+void TransmitPanel::onPeriodicTick() {
+    bool ok = sendFrame();
+    if (ok) {
+        ++m_periodicCount;
+        m_periodicStatus->setText(QString::number(m_periodicCount));
+    } else {
+        // Stop periodic on send error to avoid spamming bad frames
+        m_periodicChk->setChecked(false);
+        m_status->setText(
+            QString("<font color='red'>Periodic stopped: send failed — %1</font>")
+            .arg(strerror(errno)));
+    }
 }
 
 } // namespace socketspy::gui

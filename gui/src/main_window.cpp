@@ -192,6 +192,8 @@ void MainWindow::setupMenuBar() {
     addF(tr("&Save Project"),      &MainWindow::onSaveProject,    QKeySequence::Save);
     addF(tr("Save Project &As…"),  &MainWindow::onSaveProjectAs);
     fileMenu->addSeparator();
+    addF(tr("Export Monitor &CSV…"), &MainWindow::onExportMonitorCsv, QKeySequence("Ctrl+Shift+E"));
+    fileMenu->addSeparator();
     addF(tr("E&xit"),              &MainWindow::onExit,           QKeySequence::Quit);
 
     auto* viewMenu = menuBar()->addMenu(tr("&View"));

@@ -76,6 +76,7 @@ private slots:
     void onSaveDbc();
     void onWelcomeOpenProject(const QString& path);
     void onWelcomeQuickConnect();
+    void onExportMonitorCsv();
 
 private:
     void setupUi();

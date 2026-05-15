@@ -6,6 +6,7 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QTimer>
 
 namespace socketspy::gui {
 
@@ -21,10 +22,13 @@ public slots:
 
 private slots:
     void onSend();
+    void onTogglePeriodic(bool checked);
+    void onPeriodicTick();
 
 private:
     void setupUi();
     bool validate(QString& errorMsg) const;
+    bool sendFrame();   // shared by onSend and onPeriodicTick
 
     QComboBox*   m_iface{nullptr};
     QLineEdit*   m_id{nullptr};
@@ -34,6 +38,13 @@ private:
     QCheckBox*   m_fd{nullptr};
     QPushButton* m_send{nullptr};
     QLabel*      m_status{nullptr};
+
+    // Periodic send controls
+    QCheckBox*   m_periodicChk{nullptr};    // enable/disable periodic mode
+    QSpinBox*    m_intervalMs{nullptr};      // period in milliseconds
+    QLabel*      m_periodicStatus{nullptr};  // sent counter
+    QTimer*      m_periodicTimer{nullptr};
+    int          m_periodicCount{0};
 };
 
 } // namespace socketspy::gui

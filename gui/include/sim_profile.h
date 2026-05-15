@@ -54,5 +54,6 @@ struct SimProfile {
 };
 
 SimProfile load_sim_profile(const QString& json_path);
+bool       save_sim_profile(const SimProfile& profile, const QString& json_path);
 
 } // namespace socketspy::gui

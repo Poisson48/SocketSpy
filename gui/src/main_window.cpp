@@ -14,6 +14,7 @@
 #include "protocol_panel.h"
 #include "dbc_builder_panel.h"
 #include "welcome_screen.h"
+#include "mcp_panel.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
@@ -68,6 +69,7 @@ void MainWindow::setupUi() {
     m_scriptPanel   = new ScriptingPanel(this);
     m_protocolPanel = new ProtocolPanel(this);
     m_dbcBuilder    = new DbcBuilderPanel(this);
+    m_mcpPanel      = new McpPanel(this);
 
     m_tabs->addTab(m_welcomeScreen, QString::fromUtf8("\xe2\x8c\x82  ") + tr("Home"));
     m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
@@ -80,6 +82,7 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_scriptPanel,   QString::fromUtf8("λ  ") + tr("Scripts"));
     m_tabs->addTab(m_protocolPanel, QString::fromUtf8("⊕  ") + tr("Protocols"));
     m_tabs->addTab(m_dbcBuilder,   QString::fromUtf8("✏  ") + tr("DBC Builder"));
+    m_tabs->addTab(m_mcpPanel,     QString::fromUtf8("⚙  ") + tr("MCP"));
 
     m_statusLabel = new QLabel(m_iface + "  \xc2\xb7  0 fps", this);
     m_statusLabel->setObjectName("statusFps");
@@ -324,6 +327,7 @@ void MainWindow::onNetChanged(const QString&) {
 
 void MainWindow::onBitrateChanged(int index) {
     m_bitrate = m_bitrateCombo->itemData(index).toInt();
+    m_stats->setBitrate(m_bitrate);
     if (!canIfaceIsVirtual(m_iface) && !m_iface.startsWith("slcan:")) {
         if (canIfaceApply(m_iface, m_bitrate)) setupCapture(m_iface);
         else statusBar()->showMessage("Erreur : impossible de configurer " + m_iface, 5000);

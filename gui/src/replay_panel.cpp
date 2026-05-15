@@ -30,6 +30,10 @@ void ReplayWorker::setSpeed(double multiplier) {
     m_speed = multiplier;
 }
 
+void ReplayWorker::setStartIndex(int index) {
+    m_startIndex = qBound(0, index, qMax(0, m_frames.size() - 1));
+}
+
 void ReplayWorker::play() {
     m_state.storeRelaxed(1);
     m_cond.wakeAll();
@@ -54,10 +58,16 @@ void ReplayWorker::run() {
     double endTs   = m_frames.last().first;
     double duration = endTs - startTs;
 
+    // When starting from a seek position, offset the wall clock so timing
+    // is relative to the seek point, not the beginning of the log.
+    double seekRelTs = (m_startIndex > 0)
+        ? m_frames[m_startIndex].first - startTs
+        : 0.0;
+
     QElapsedTimer wallTimer;
     wallTimer.start();
 
-    for (int i = 0; i < m_frames.size(); ++i) {
+    for (int i = m_startIndex; i < m_frames.size(); ++i) {
         int state = m_state.loadRelaxed();
         if (state == 0) break;
 
@@ -69,7 +79,7 @@ void ReplayWorker::run() {
         }
 
         double relTs = m_frames[i].first - startTs;
-        double wallExpected = relTs / m_speed;
+        double wallExpected = (relTs - seekRelTs) / m_speed;
         double wallElapsed  = wallTimer.elapsed() / 1000.0;
         double sleepSec     = wallExpected - wallElapsed;
 
@@ -188,6 +198,7 @@ void ReplayPanel::setupUi() {
     connect(m_stopBtn,    &QPushButton::clicked,              this, &ReplayPanel::onStop);
     connect(m_speedCombo, qOverload<int>(&QComboBox::currentIndexChanged),
             this, &ReplayPanel::onSpeedChanged);
+    connect(m_slider,     &QSlider::sliderMoved,              this, &ReplayPanel::onSeekRequested);
 }
 
 QString ReplayPanel::formatTime(double secs) const {
@@ -288,6 +299,7 @@ void ReplayPanel::onPlay() {
     m_worker = new ReplayWorker(this);
     m_worker->load(m_frames, m_ifaces);
     m_worker->setSpeed(m_speedCombo->currentData().toDouble());
+    m_worker->setStartIndex(m_seekIndex);
 
     connect(m_worker, &ReplayWorker::frameReady,
             this,     &ReplayPanel::onFrameReplayed,
@@ -320,6 +332,7 @@ void ReplayPanel::onStop() {
         delete m_worker;
         m_worker = nullptr;
     }
+    m_seekIndex = 0;
     m_slider->setValue(0);
     m_timeLabel->setText("00:00.000 / " + formatTime(m_duration));
     m_playBtn->setEnabled(!m_frames.isEmpty());
@@ -331,12 +344,49 @@ void ReplayPanel::onSpeedChanged(int /*index*/) {
     if (m_worker) m_worker->setSpeed(m_speedCombo->currentData().toDouble());
 }
 
+void ReplayPanel::onSeekRequested(int permille) {
+    if (m_frames.isEmpty()) return;
+
+    // Find the frame index closest to the requested position.
+    double targetTs = m_frames.first().first + (permille / 1000.0) * m_duration;
+    int idx = 0;
+    for (int i = 0; i < m_frames.size(); ++i) {
+        if (m_frames[i].first >= targetTs) { idx = i; break; }
+        idx = i;
+    }
+    m_seekIndex = idx;
+
+    // Update time label immediately so the user gets feedback while dragging.
+    double relTs = m_frames[idx].first - m_frames.first().first;
+    m_timeLabel->setText(formatTime(relTs) + " / " + formatTime(m_duration));
+
+    // Detect if playback was active (pauseBtn enabled ↔ play is active, not paused).
+    m_wasPlaying = m_worker && m_worker->isRunning()
+                   && m_pauseBtn->isEnabled();
+
+    if (m_worker && m_worker->isRunning()) {
+        m_worker->stop();
+        m_worker->wait();
+        delete m_worker;
+        m_worker = nullptr;
+        m_playBtn->setEnabled(!m_frames.isEmpty());
+        m_pauseBtn->setEnabled(false);
+        m_stopBtn->setEnabled(false);
+    }
+
+    // If playback was active before the seek, restart from the new position.
+    if (m_wasPlaying) {
+        onPlay();
+    }
+}
+
 void ReplayPanel::onWorkerProgress(int permille, double currentSec) {
     m_slider->setValue(permille);
     m_timeLabel->setText(formatTime(currentSec) + " / " + formatTime(m_duration));
 }
 
 void ReplayPanel::onWorkerFinished() {
+    m_seekIndex = 0;
     m_playBtn->setEnabled(!m_frames.isEmpty());
     m_pauseBtn->setEnabled(false);
     m_stopBtn->setEnabled(false);

@@ -101,8 +101,13 @@ void StatsPanel::onDbcLoaded(socketspy::dbc::DbcDatabase db) {
     m_dbcLoaded = true;
 }
 
+void StatsPanel::setBitrate(int bitrate) {
+    if (bitrate > 0)
+        m_bitrate = static_cast<uint64_t>(bitrate);
+}
+
 void StatsPanel::onTick() {
-    m_busLoad = static_cast<double>(m_bitsInWindow) / static_cast<double>(kBitRate) * 100.0;
+    m_busLoad = static_cast<double>(m_bitsInWindow) / static_cast<double>(m_bitrate) * 100.0;
     if (m_busLoad > 100.0) m_busLoad = 100.0;
     m_bitsInWindow = 0;
 

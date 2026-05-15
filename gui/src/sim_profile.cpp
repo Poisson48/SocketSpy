@@ -1,5 +1,7 @@
 #include "sim_profile.h"
 #include <QFile>
+#include <QDir>
+#include <QFileInfo>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -74,6 +76,78 @@ SimProfile load_sim_profile(const QString& json_path) {
     } catch (...) {
         return {};
     }
+}
+
+static int waveformToInt(WaveformType w) {
+    switch (w) {
+    case WaveformType::Sine:   return 1;
+    case WaveformType::Ramp:   return 2;
+    case WaveformType::Square: return 3;
+    case WaveformType::Random: return 4;
+    default:                   return 0;
+    }
+}
+
+bool save_sim_profile(const SimProfile& profile, const QString& json_path) {
+    json j;
+    j["name"]        = profile.name.toStdString();
+    j["description"] = profile.description.toStdString();
+
+    json nodesArr = json::array();
+    for (const auto& node : profile.nodes) {
+        json nodeObj;
+        nodeObj["name"] = node.name.toStdString();
+
+        json msgsArr = json::array();
+        for (const auto& msg : node.messages) {
+            json msgObj;
+            msgObj["id"]        = "0x" + std::to_string(msg.id);
+            msgObj["period_ms"] = msg.period_ms;
+            msgObj["dlc"]       = msg.dlc;
+
+            json sigsArr = json::array();
+            for (const auto& sig : msg.sigs) {
+                json sigObj;
+                sigObj["name"]       = sig.name.toStdString();
+                sigObj["start_bit"]  = sig.start_bit;
+                sigObj["length"]     = sig.length;
+                sigObj["factor"]     = sig.factor;
+                sigObj["offset"]     = sig.offset;
+                sigObj["min"]        = sig.min;
+                sigObj["max"]        = sig.max;
+                sigObj["default"]    = sig.current_value;
+                sigObj["waveform"]   = waveformToInt(sig.waveform);
+                sigObj["num_points"] = sig.num_points;
+                sigObj["step_ms"]    = sig.step_ms;
+
+                if (!sig.scenario.empty()) {
+                    json scen = json::array();
+                    for (const auto& pt : sig.scenario) {
+                        json ptObj;
+                        ptObj["t_ms"]  = static_cast<double>(pt.t_ms);
+                        ptObj["value"] = pt.value;
+                        scen.push_back(ptObj);
+                    }
+                    sigObj["scenario"] = scen;
+                }
+                sigsArr.push_back(sigObj);
+            }
+            msgObj["signals"] = sigsArr;
+            msgsArr.push_back(msgObj);
+        }
+        nodeObj["messages"] = msgsArr;
+        nodesArr.push_back(nodeObj);
+    }
+    j["nodes"] = nodesArr;
+
+    // Ensure the parent directory exists before writing
+    QDir().mkpath(QFileInfo(json_path).absolutePath());
+
+    QFile f(json_path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+    const std::string dump = j.dump(2);
+    f.write(dump.c_str(), static_cast<qint64>(dump.size()));
+    return true;
 }
 
 } // namespace socketspy::gui

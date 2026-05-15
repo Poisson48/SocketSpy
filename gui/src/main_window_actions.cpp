@@ -106,7 +106,7 @@ void MainWindow::onToggleGraph(bool v) {
 
 void MainWindow::onStartRecording() {
     QString path = QFileDialog::getSaveFileName(
-        this, tr("Save CAN Log"), {}, tr("CAN Log Files (*.log);;All Files (*)"));
+        this, tr("Save CAN Log"), m_defaultLogPath, tr("CAN Log Files (*.log);;All Files (*)"));
     if (path.isEmpty()) return;
     m_recorder.open(path);
     if (!m_recorder.isOpen()) return;
@@ -162,6 +162,8 @@ void MainWindow::applyProject(const ProjectData& p) {
                 m_dbcBuilder->loadDbc(*m_dbc); }
         }
     }
+    if (!p.logPath.isEmpty())
+        m_defaultLogPath = p.logPath;
 }
 
 void MainWindow::onNewProject() {

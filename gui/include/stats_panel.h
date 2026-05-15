@@ -32,13 +32,14 @@ public:
 public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);
+    void setBitrate(int bitrate);
 
 private slots:
     void onTick();
     void onReset();
 
 private:
-    static constexpr uint64_t kBitRate = 500'000;
+    uint64_t m_bitrate = 500'000;  // dynamic, updated via setBitrate()
 
     void setupUi();
     static uint64_t bitsPerFrame(const socketspy::core::CanFrame& f);

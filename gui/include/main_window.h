@@ -39,6 +39,7 @@ class ScriptingPanel;
 class ProtocolPanel;
 class DbcBuilderPanel;
 class WelcomeScreen;
+class McpPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -104,6 +105,7 @@ private:
     ScriptingPanel*      m_scriptPanel{nullptr};
     ProtocolPanel*       m_protocolPanel{nullptr};
     DbcBuilderPanel*     m_dbcBuilder{nullptr};
+    McpPanel*            m_mcpPanel{nullptr};
 
     CanCapture*          m_capture{nullptr};
     QComboBox*           m_ifaceCombo{nullptr};
@@ -124,6 +126,7 @@ private:
     TriggerConfig   m_lastTriggerCfg;
     QString         m_projectPath;
     QString         m_dbcPath;
+    QString         m_defaultLogPath;   // restored from ProjectData.logPath
     ProjectRegistry m_projectRegistry;
     QHash<QString, QString> m_signalAliases;
 };

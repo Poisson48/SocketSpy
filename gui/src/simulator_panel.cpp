@@ -474,6 +474,14 @@ void SimulatorPanel::openWaveformConfig(int ni, int mi, int si) {
         s.step_ms    = newStep;
     }
 
+    // Persist waveform changes for custom (non-built-in) profiles
+    const int curIdx = m_profileCombo->currentIndex();
+    if (curIdx >= 0) {
+        const QString profilePath = m_profileCombo->itemData(curIdx).toString();
+        if (!profilePath.startsWith(':'))
+            save_sim_profile(m_currentProfile, profilePath);
+    }
+
     populateTree();
 }
 

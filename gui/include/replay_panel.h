@@ -24,6 +24,7 @@ public:
     void load(const QVector<QPair<double, socketspy::core::CanFrame>>& frames,
               const QVector<QString>& ifaces);
     void setSpeed(double multiplier);
+    void setStartIndex(int index);
     void play();
     void pause();
     void stop();
@@ -40,6 +41,7 @@ private:
     QVector<QPair<double, socketspy::core::CanFrame>> m_frames;
     QVector<QString>  m_ifaces;
     double            m_speed{1.0};
+    int               m_startIndex{0};
     QAtomicInt        m_state{0}; // 0=stop, 1=play, 2=pause
     QMutex            m_mutex;
     QWaitCondition    m_cond;
@@ -65,6 +67,7 @@ private slots:
     void onSpeedChanged(int index);
     void onWorkerProgress(int permille, double currentSec);
     void onWorkerFinished();
+    void onSeekRequested(int permille);
 
 private:
     void setupUi();
@@ -86,6 +89,8 @@ private:
     QVector<QPair<double, socketspy::core::CanFrame>> m_frames;
     QVector<QString> m_ifaces;
     double m_duration{0.0};
+    int    m_seekIndex{0};   // frame index to start from on next play / after seek
+    bool   m_wasPlaying{false}; // used during seek to resume playback if needed
 };
 
 } // namespace socketspy::gui

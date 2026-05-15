@@ -34,6 +34,7 @@ set(GUI_HEADERS
     include/project_browser.h
     include/dbc_builder_panel.h
     include/welcome_screen.h
+    include/mcp_panel.h
 )
 
 add_executable(socketspy
@@ -66,6 +67,7 @@ add_executable(socketspy
     src/project_browser.cpp
     src/dbc_builder_panel.cpp
     src/welcome_screen.cpp
+    src/mcp_panel.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

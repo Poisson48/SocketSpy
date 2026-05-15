@@ -35,6 +35,12 @@ set(GUI_HEADERS
     include/dbc_builder_panel.h
     include/welcome_screen.h
     include/mcp_panel.h
+    include/fuzzer_panel.h
+    include/diff_panel.h
+    include/uds_panel.h
+    include/uds_transport.h
+    include/blf_writer.h
+    include/mdf4_writer.h
 )
 
 add_executable(socketspy
@@ -68,6 +74,12 @@ add_executable(socketspy
     src/dbc_builder_panel.cpp
     src/welcome_screen.cpp
     src/mcp_panel.cpp
+    src/fuzzer_panel.cpp
+    src/diff_panel.cpp
+    src/uds_panel.cpp
+    src/uds_transport.cpp
+    src/blf_writer.cpp
+    src/mdf4_writer.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

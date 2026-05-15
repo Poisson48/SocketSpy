@@ -83,6 +83,7 @@ public:
 
 public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
+    void onFrameReceivedOnBus(socketspy::core::CanFrame frame, QString busName);
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);
     void onFilterChanged(const socketspy::gui::FrameFilter& filter);
     void setAliases(const QHash<QString,QString>& aliases);
@@ -104,8 +105,8 @@ private slots:
 private:
     void setupUi();
     QString decodeFrame(const socketspy::core::CanFrame& f) const;
-    void appendLogRow(const socketspy::core::CanFrame& frame);
-    void updateTrackingRow(const socketspy::core::CanFrame& frame);
+    void appendLogRow(const socketspy::core::CanFrame& frame, const QString& busName = {});
+    void updateTrackingRow(const socketspy::core::CanFrame& frame, const QString& busName = {});
     void applyRowVisibility(int row, uint32_t id);
     bool passesMonitorFilter(const socketspy::core::CanFrame& frame) const;
 
@@ -116,6 +117,7 @@ private:
     QPushButton*         m_filterBtn{nullptr};
     QPushButton*         m_exportCsvBtn{nullptr};
     QCheckBox*           m_autoScrollChk{nullptr};
+    QCheckBox*           m_showBusChk{nullptr};
     QLineEdit*           m_search{nullptr};
     MonitorFilterDialog* m_filterDlg{nullptr};
 

@@ -13,6 +13,10 @@
 #include "project_browser.h"
 #include "dbc_builder_panel.h"
 #include "protocol_panel.h"
+#include "blf_writer.h"
+#include "mdf4_writer.h"
+#include "iface_detector.h"
+#include "can_capture.h"
 
 // Permanently undef Qt's `signals` macro so we can access dbc::Message::signals.
 #include "dbc_compat.h"
@@ -28,6 +32,8 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QStatusBar>
+#include <QInputDialog>
+#include <QTableWidget>
 
 using namespace socketspy::dbc;
 
@@ -393,6 +399,112 @@ SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"
     else
         QMessageBox::critical(this, tr("Error"),
             "Cannot install udev rules.\nCheck that pkexec is installed.");
+}
+
+// ---------------------------------------------------------------------------
+// Helpers: collect all visible frames from the monitor table
+// We re-parse the table text since MonitorPanel owns the data model.
+// For a cleaner architecture a getFrames() API could be added later.
+
+static std::vector<socketspy::core::CanFrame> collectMonitorFrames(MonitorPanel* monitor) {
+    std::vector<socketspy::core::CanFrame> frames;
+    QTableWidget* table = monitor->findChild<QTableWidget*>();
+    if (!table) return frames;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        if (table->isRowHidden(r)) continue;
+        auto* tsItem   = table->item(r, 0);
+        auto* idItem   = table->item(r, 1);
+        auto* dlcItem  = table->item(r, 2);
+        auto* dataItem = table->item(r, 3);
+        if (!tsItem || !idItem || !dlcItem || !dataItem) continue;
+
+        socketspy::core::CanFrame f{};
+        f.timestamp_us = tsItem->text().toULongLong();
+        f.id           = idItem->text().trimmed().startsWith("* ")
+                       ? idItem->text().mid(2).trimmed().toUInt(nullptr, 16)
+                       : idItem->text().trimmed().toUInt(nullptr, 16);
+        f.dlc          = static_cast<uint8_t>(dlcItem->text().toUInt());
+        // Parse hex bytes
+        QString hex = dataItem->text().remove(' ');
+        for (int i = 0; i < static_cast<int>(hex.length() / 2) && i < 64; ++i)
+            f.data[i] = static_cast<uint8_t>(hex.mid(i * 2, 2).toUInt(nullptr, 16));
+        frames.push_back(f);
+    }
+    return frames;
+}
+
+void MainWindow::onExportBlf() {
+    auto frames = collectMonitorFrames(m_monitor);
+    if (frames.empty()) {
+        QMessageBox::information(this, tr("Export BLF"), tr("No visible data to export."));
+        return;
+    }
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export BLF"), {}, tr("BLF Files (*.blf);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const QString outPath = path.endsWith(".blf") ? path : path + ".blf";
+    if (BlfWriter::write(outPath, frames))
+        statusBar()->showMessage(tr("BLF exported: %1 frames → %2").arg(frames.size()).arg(outPath), 5000);
+    else
+        QMessageBox::critical(this, tr("Export BLF"), tr("Failed to write BLF file."));
+}
+
+void MainWindow::onExportMdf4() {
+    auto frames = collectMonitorFrames(m_monitor);
+    if (frames.empty()) {
+        QMessageBox::information(this, tr("Export MDF4"), tr("No visible data to export."));
+        return;
+    }
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export MDF4"), {}, tr("MDF4 Files (*.mf4);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const QString outPath = path.endsWith(".mf4") ? path : path + ".mf4";
+    if (Mdf4Writer::write(outPath, frames))
+        statusBar()->showMessage(tr("MDF4 exported: %1 frames → %2").arg(frames.size()).arg(outPath), 5000);
+    else
+        QMessageBox::critical(this, tr("Export MDF4"), tr("Failed to write MDF4 file."));
+}
+
+void MainWindow::onAddBus() {
+    QStringList ifaces = IfaceDetector::scanCanIfaces();
+    ifaces.removeAll(m_iface);  // exclude already active interface
+    if (ifaces.isEmpty()) {
+        QMessageBox::information(this, tr("Add Bus"),
+            tr("No additional CAN interfaces found."));
+        return;
+    }
+    bool ok = false;
+    const QString iface = QInputDialog::getItem(
+        this, tr("Add Second Bus"), tr("Select interface:"), ifaces, 0, false, &ok);
+    if (!ok || iface.isEmpty()) return;
+
+    if (m_capture2) {
+        m_capture2->stop();
+        m_capture2->wait();
+        delete m_capture2;
+        m_capture2 = nullptr;
+    }
+
+    m_capture2 = new CanCapture(iface, this);
+    const QString busLabel = iface;
+    connect(m_capture2, &CanCapture::frameReceived,
+            this, [this, busLabel](socketspy::core::CanFrame frame) {
+                m_monitor->onFrameReceivedOnBus(frame, busLabel);
+            });
+    m_capture2->start();
+    statusBar()->showMessage(tr("Second bus added: %1").arg(iface), 5000);
+}
+
+void MainWindow::onRemoveBus() {
+    if (!m_capture2) {
+        statusBar()->showMessage(tr("No second bus active"), 3000);
+        return;
+    }
+    m_capture2->stop();
+    m_capture2->wait();
+    delete m_capture2;
+    m_capture2 = nullptr;
+    statusBar()->showMessage(tr("Second bus removed"), 3000);
 }
 
 } // namespace socketspy::gui

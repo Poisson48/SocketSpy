@@ -152,12 +152,13 @@ MonitorPanel::MonitorPanel(QWidget* parent) : QWidget(parent) {
 
 MonitorPanel::~MonitorPanel() = default;
 
-// Column indices for the log-mode table (5 cols)
+// Column indices for the log-mode table (5 cols base, 6 with Bus)
 static constexpr int kColLogTs      = 0;
 static constexpr int kColLogId      = 1;
 static constexpr int kColLogDlc     = 2;
 static constexpr int kColLogData    = 3;
 static constexpr int kColLogDecoded = 4;
+static constexpr int kColLogBus     = 5;
 
 // Column indices for the track-mode table (8 cols)
 static constexpr int kColTrkTs      = 0;
@@ -200,6 +201,8 @@ void MonitorPanel::setupUi() {
     m_exportCsvBtn->setToolTip("Export visible rows to a CSV file");
     m_autoScrollChk = new QCheckBox("Auto-scroll", this);
     m_autoScrollChk->setChecked(true);
+    m_showBusChk = new QCheckBox("Show Bus", this);
+    m_showBusChk->setToolTip("Show/hide the Bus column (for multi-bus capture)");
 
     m_trackMode->setToolTip("One row per CAN ID, updated in place (adds Δt / rate / range columns)");
     m_filterBtn->setToolTip("Open filter configuration panel");
@@ -211,6 +214,10 @@ void MonitorPanel::setupUi() {
 
     connect(m_clear,        &QPushButton::clicked, this, &MonitorPanel::onClear);
     connect(m_trackMode,    &QCheckBox::toggled,   this, &MonitorPanel::onTrackModeToggled);
+    connect(m_showBusChk,   &QCheckBox::toggled,   this, [this](bool) {
+        onTrackModeToggled(m_trackMode->isChecked());
+        onClear();
+    });
     connect(m_filterBtn,    &QPushButton::clicked, this, &MonitorPanel::onFiltersButtonClicked);
     connect(m_exportCsvBtn, &QPushButton::clicked, this, &MonitorPanel::onExportCsv);
     connect(m_filterDlg, &MonitorFilterDialog::filterChanged,
@@ -230,6 +237,7 @@ void MonitorPanel::setupUi() {
     toolbar->addWidget(m_filterBtn);
     toolbar->addWidget(m_exportCsvBtn);
     toolbar->addWidget(m_autoScrollChk);
+    toolbar->addWidget(m_showBusChk);
     toolbar->addSpacing(12);
     toolbar->addWidget(new QLabel("ID:", this));
     toolbar->addWidget(m_search);
@@ -264,20 +272,24 @@ bool MonitorPanel::passesMonitorFilter(const CanFrame& frame) const {
 // Frame routing
 
 void MonitorPanel::onFrameReceived(CanFrame frame) {
+    onFrameReceivedOnBus(frame, {});
+}
+
+void MonitorPanel::onFrameReceivedOnBus(CanFrame frame, QString busName) {
     if (m_pause->isChecked()) return;
     if (!m_filter.accepts(frame)) return;
     if (!passesMonitorFilter(frame)) return;
 
     if (m_trackMode->isChecked())
-        updateTrackingRow(frame);
+        updateTrackingRow(frame, busName);
     else
-        appendLogRow(frame);
+        appendLogRow(frame, busName);
 }
 
 // ---------------------------------------------------------------------------
 // Log mode
 
-void MonitorPanel::appendLogRow(const CanFrame& frame) {
+void MonitorPanel::appendLogRow(const CanFrame& frame, const QString& busName) {
     if (m_monFilter.changedOnly) {
         std::vector<uint8_t> data(frame.data, frame.data + frame.dlc);
         auto it = m_logLastSeen.find(frame.id);
@@ -299,6 +311,8 @@ void MonitorPanel::appendLogRow(const CanFrame& frame) {
     setCell(m_table, row, 2, QString::number(frame.dlc));
     setCell(m_table, row, 3, bytesToHex(frame.data, frame.dlc));
     setCell(m_table, row, 4, decodeFrame(frame));
+    if (m_table->columnCount() > kColLogBus)
+        setCell(m_table, row, kColLogBus, busName);
 
     // Apply active search filter to the new row
     const QString filter = m_search->text().trimmed().toLower();
@@ -315,7 +329,7 @@ void MonitorPanel::appendLogRow(const CanFrame& frame) {
 // ---------------------------------------------------------------------------
 // Tracking mode
 
-void MonitorPanel::updateTrackingRow(const CanFrame& frame) {
+void MonitorPanel::updateTrackingRow(const CanFrame& frame, const QString& busName) {
     std::vector<uint8_t> data(frame.data, frame.data + frame.dlc);
     bool isPinned    = m_pinned.count(frame.id) > 0;
     bool dataChanged = false;
@@ -408,6 +422,9 @@ void MonitorPanel::updateTrackingRow(const CanFrame& frame) {
         }
     }
 
+    if (m_table->columnCount() > kColTrkRange + 1)
+        setCell(m_table, row, kColTrkRange + 1, busName, rowBg);
+
     applyRowVisibility(row, frame.id);
 }
 
@@ -438,15 +455,18 @@ void MonitorPanel::onTrackModeToggled(bool tracking) {
     m_pinned.clear();
     m_logLastSeen.clear();
 
+    bool showBus = m_showBusChk && m_showBusChk->isChecked();
     if (tracking) {
-        m_table->setColumnCount(8);
-        m_table->setHorizontalHeaderLabels(
-            {"Timestamp (µs)", "ID (hex)", "DLC", "Data (hex)", "Decoded",
-             "Δt (ms)", "Rate (f/s)", "B0 min–max"});
+        m_table->setColumnCount(showBus ? 9 : 8);
+        QStringList hdrs = {"Timestamp (µs)", "ID (hex)", "DLC", "Data (hex)", "Decoded",
+                            "Δt (ms)", "Rate (f/s)", "B0 min–max"};
+        if (showBus) hdrs << "Bus";
+        m_table->setHorizontalHeaderLabels(hdrs);
     } else {
-        m_table->setColumnCount(5);
-        m_table->setHorizontalHeaderLabels(
-            {"Timestamp (µs)", "ID (hex)", "DLC", "Data (hex)", "Decoded"});
+        m_table->setColumnCount(showBus ? 6 : 5);
+        QStringList hdrs = {"Timestamp (µs)", "ID (hex)", "DLC", "Data (hex)", "Decoded"};
+        if (showBus) hdrs << "Bus";
+        m_table->setHorizontalHeaderLabels(hdrs);
     }
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }

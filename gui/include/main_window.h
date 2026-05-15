@@ -40,6 +40,9 @@ class ProtocolPanel;
 class DbcBuilderPanel;
 class WelcomeScreen;
 class McpPanel;
+class FuzzerPanel;
+class DiffPanel;
+class UdsPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -77,6 +80,10 @@ private slots:
     void onWelcomeOpenProject(const QString& path);
     void onWelcomeQuickConnect();
     void onExportMonitorCsv();
+    void onExportBlf();
+    void onExportMdf4();
+    void onAddBus();
+    void onRemoveBus();
 
 private:
     void setupUi();
@@ -108,8 +115,12 @@ private:
     ProtocolPanel*       m_protocolPanel{nullptr};
     DbcBuilderPanel*     m_dbcBuilder{nullptr};
     McpPanel*            m_mcpPanel{nullptr};
+    FuzzerPanel*         m_fuzzerPanel{nullptr};
+    DiffPanel*           m_diffPanel{nullptr};
+    UdsPanel*            m_udsPanel{nullptr};
 
     CanCapture*          m_capture{nullptr};
+    CanCapture*          m_capture2{nullptr};  // optional second bus
     QComboBox*           m_ifaceCombo{nullptr};
     QComboBox*           m_bitrateCombo{nullptr};
     QFileSystemWatcher*  m_netWatcher{nullptr};

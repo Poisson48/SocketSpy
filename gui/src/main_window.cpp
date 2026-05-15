@@ -15,6 +15,9 @@
 #include "dbc_builder_panel.h"
 #include "welcome_screen.h"
 #include "mcp_panel.h"
+#include "fuzzer_panel.h"
+#include "diff_panel.h"
+#include "uds_panel.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
@@ -50,6 +53,10 @@ MainWindow::~MainWindow() {
         m_capture->stop();
         m_capture->wait();
     }
+    if (m_capture2) {
+        m_capture2->stop();
+        m_capture2->wait();
+    }
 }
 
 void MainWindow::setupUi() {
@@ -72,6 +79,9 @@ void MainWindow::setupUi() {
     m_protocolPanel = new ProtocolPanel(this);
     m_dbcBuilder    = new DbcBuilderPanel(this);
     m_mcpPanel      = new McpPanel(this);
+    m_fuzzerPanel   = new FuzzerPanel(this);
+    m_diffPanel     = new DiffPanel(this);
+    m_udsPanel      = new UdsPanel(this);
 
     m_tabs->addTab(m_welcomeScreen, QString::fromUtf8("\xe2\x8c\x82  ") + tr("Home"));
     m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
@@ -85,6 +95,9 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_protocolPanel, QString::fromUtf8("⊕  ") + tr("Protocols"));
     m_tabs->addTab(m_dbcBuilder,   QString::fromUtf8("✏  ") + tr("DBC Builder"));
     m_tabs->addTab(m_mcpPanel,     QString::fromUtf8("⚙  ") + tr("MCP"));
+    m_tabs->addTab(m_fuzzerPanel,  QString::fromUtf8("⚡  ") + tr("Fuzzer"));
+    m_tabs->addTab(m_diffPanel,    QString::fromUtf8("≠  ") + tr("Diff"));
+    m_tabs->addTab(m_udsPanel,     QString::fromUtf8("🔧  ") + tr("UDS"));
 
     m_recLabel = new QLabel(this);
     m_recLabel->setObjectName("recLabel");
@@ -193,6 +206,8 @@ void MainWindow::setupMenuBar() {
     addF(tr("Save Project &As…"),  &MainWindow::onSaveProjectAs);
     fileMenu->addSeparator();
     addF(tr("Export Monitor &CSV…"), &MainWindow::onExportMonitorCsv, QKeySequence("Ctrl+Shift+E"));
+    addF(tr("Export BLF…"),          &MainWindow::onExportBlf);
+    addF(tr("Export MDF4…"),         &MainWindow::onExportMdf4);
     fileMenu->addSeparator();
     addF(tr("E&xit"),              &MainWindow::onExit,           QKeySequence::Quit);
 
@@ -221,6 +236,11 @@ void MainWindow::setupMenuBar() {
     auto* permsAct   = toolsMenu->addAction(tr("Configure CAN permissions (one-time)…"));
     connect(rulesAct,  &QAction::triggered, this, &MainWindow::onInstallUdevRules);
     connect(permsAct,  &QAction::triggered, this, &MainWindow::onGrantCanPermissions);
+    toolsMenu->addSeparator();
+    auto* addBusAct    = toolsMenu->addAction(tr("+ Add Second Bus…"));
+    auto* removeBusAct = toolsMenu->addAction(tr("- Remove Second Bus"));
+    connect(addBusAct,    &QAction::triggered, this, &MainWindow::onAddBus);
+    connect(removeBusAct, &QAction::triggered, this, &MainWindow::onRemoveBus);
 
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
     auto* aboutAct = helpMenu->addAction(tr("About SocketSpy"));

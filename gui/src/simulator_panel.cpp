@@ -93,10 +93,10 @@ void SimulatorPanel::setupUi() {
     m_tree->setHeaderLabels({"Signal", "Valeur", "Plage", "Forme d'onde"});
     m_tree->header()->setMinimumSectionSize(60);
     m_tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
-    m_tree->header()->resizeSection(0, 160);
+    m_tree->header()->resizeSection(0, 150);
     m_tree->header()->setSectionResizeMode(1, QHeaderView::Interactive);
-    m_tree->header()->resizeSection(1, 120);
-    m_tree->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    m_tree->header()->resizeSection(1, 110);
+    m_tree->header()->setSectionResizeMode(2, QHeaderView::Stretch);
     m_tree->header()->setSectionResizeMode(3, QHeaderView::Fixed);
     m_tree->header()->resizeSection(3, 80);
     m_tree->header()->setStretchLastSection(false);

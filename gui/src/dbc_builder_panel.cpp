@@ -2,6 +2,7 @@
 
 #include <QPainter>
 #include <QMouseEvent>
+#include <QResizeEvent>
 #include <QSplitter>
 #include <QGroupBox>
 #include <QFormLayout>
@@ -36,14 +37,23 @@ static constexpr int kNumSigColors = static_cast<int>(sizeof(kSigColors) / sizeo
 
 BitGridWidget::BitGridWidget(QWidget* parent) : QWidget(parent) {
     setMouseTracking(true);
-    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setMinimumSize(200, 180);
+}
+
+int BitGridWidget::cellPx() const {
+    int availW = width()  - kLeftPad;
+    int availH = height() - kTopPad;
+    int szW = (availW - 7 * kGap) / 8;
+    int szH = (availH - 7 * kGap) / 8;
+    return std::max(18, std::min(szW, szH));
 }
 
 QSize BitGridWidget::sizeHint() const {
-    return { kLeftPad + 8 * (kCellPx + kGap), kTopPad + 8 * (kCellPx + kGap) };
+    return { kLeftPad + 8 * (22 + kGap), kTopPad + 8 * (22 + kGap) };
 }
 
-QSize BitGridWidget::minimumSizeHint() const { return sizeHint(); }
+QSize BitGridWidget::minimumSizeHint() const { return { 200, 180 }; }
 
 void BitGridWidget::setData(const uint8_t* data, int dlc) {
     m_dlc = dlc;
@@ -79,22 +89,24 @@ void BitGridWidget::setSelection(int startBit, int length) {
 static int toFlatBit(int row, int col) { return row * 8 + (7 - col); }
 
 QRect BitGridWidget::cellRect(int bitIdx) const {
+    const int cp = cellPx();
     int row = bitIdx / 8;
     int col = 7 - (bitIdx % 8);
-    int x = kLeftPad + col * (kCellPx + kGap);
-    int y = kTopPad  + row * (kCellPx + kGap);
-    return { x, y, kCellPx, kCellPx };
+    int x = kLeftPad + col * (cp + kGap);
+    int y = kTopPad  + row * (cp + kGap);
+    return { x, y, cp, cp };
 }
 
 int BitGridWidget::bitAt(QPoint pos) const {
-    int col = (pos.x() - kLeftPad) / (kCellPx + kGap);
-    int row = (pos.y() - kTopPad)  / (kCellPx + kGap);
+    const int cp = cellPx();
+    int col = (pos.x() - kLeftPad) / (cp + kGap);
+    int row = (pos.y() - kTopPad)  / (cp + kGap);
     if (col < 0 || col > 7 || row < 0 || row > 7) return -1;
     // Verify click is inside the cell (not in the gap)
-    int cx = kLeftPad + col * (kCellPx + kGap);
-    int cy = kTopPad  + row * (kCellPx + kGap);
-    if (pos.x() < cx || pos.x() >= cx + kCellPx) return -1;
-    if (pos.y() < cy || pos.y() >= cy + kCellPx) return -1;
+    int cx = kLeftPad + col * (cp + kGap);
+    int cy = kTopPad  + row * (cp + kGap);
+    if (pos.x() < cx || pos.x() >= cx + cp) return -1;
+    if (pos.y() < cy || pos.y() >= cy + cp) return -1;
     return toFlatBit(row, col);
 }
 
@@ -116,6 +128,8 @@ static std::vector<int> motorolaBits(const socketspy::dbc::Signal& sig) {
 void BitGridWidget::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, false);
+
+    const int cp = cellPx();
 
     // Background
     p.fillRect(rect(), QColor("#1e1e2e"));
@@ -148,17 +162,17 @@ void BitGridWidget::paintEvent(QPaintEvent*) {
     // Column headers (7..0)
     p.setPen(QColor("#9ca3af"));
     for (int col = 0; col < 8; ++col) {
-        int x = kLeftPad + col * (kCellPx + kGap);
-        p.drawText(QRect(x, 0, kCellPx, kTopPad - 2),
+        int x = kLeftPad + col * (cp + kGap);
+        p.drawText(QRect(x, 0, cp, kTopPad - 2),
                    Qt::AlignHCenter | Qt::AlignVCenter,
                    QString::number(7 - col));
     }
 
     // Row labels (B0..B7) and cells
     for (int row = 0; row < 8; ++row) {
-        int y = kTopPad + row * (kCellPx + kGap);
+        int y = kTopPad + row * (cp + kGap);
         p.setPen(QColor("#9ca3af"));
-        p.drawText(QRect(0, y, kLeftPad - 4, kCellPx),
+        p.drawText(QRect(0, y, kLeftPad - 4, cp),
                    Qt::AlignRight | Qt::AlignVCenter,
                    QString("B%1").arg(row));
 
@@ -220,6 +234,11 @@ void BitGridWidget::mouseReleaseEvent(QMouseEvent* ev) {
     update();
 }
 
+void BitGridWidget::resizeEvent(QResizeEvent* ev) {
+    QWidget::resizeEvent(ev);
+    update();
+}
+
 void BitGridWidget::emitSelection() {
     if (m_dragStart < 0 || m_dragEnd < 0) return;
     int startBit = std::min(m_dragStart, m_dragEnd);
@@ -271,12 +290,15 @@ void DbcBuilderPanel::setupUi() {
         tr("Factor"), tr("Offset"), tr("Unit"), tr(""), tr("")
     });
     m_sigTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_sigTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     m_sigTable->horizontalHeader()->setStretchLastSection(false);
+    m_sigTable->setMinimumHeight(120);
     m_sigTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_sigTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     centerSplit->addWidget(m_sigTable);
     centerSplit->setStretchFactor(0, 3);
     centerSplit->setStretchFactor(1, 1);
+    centerSplit->setSizes({280, 180});
 
     mainSplit->addWidget(centerSplit);
     mainSplit->setStretchFactor(1, 1);
@@ -349,7 +371,7 @@ void DbcBuilderPanel::setupUi() {
     mainSplit->setStretchFactor(2, 0);
 
     // Initial splitter sizes
-    mainSplit->setSizes({180, 600, 280});
+    mainSplit->setSizes({160, 700, 260});
 
     // Connections
     connect(m_idList,       &QListWidget::currentRowChanged, this, &DbcBuilderPanel::onIdSelected);

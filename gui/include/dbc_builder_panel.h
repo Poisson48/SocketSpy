@@ -23,7 +23,6 @@ namespace socketspy::gui {
 class BitGridWidget : public QWidget {
     Q_OBJECT
 public:
-    static constexpr int kCellPx  = 22;
     static constexpr int kGap     = 2;
     static constexpr int kLeftPad = 52;
     static constexpr int kTopPad  = 22;
@@ -46,8 +45,10 @@ protected:
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
 
 private:
+    int   cellPx() const;
     int   bitAt(QPoint pos) const;
     QRect cellRect(int bitIdx) const;
     void  emitSelection();

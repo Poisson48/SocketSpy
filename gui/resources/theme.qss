@@ -89,17 +89,18 @@ QTabWidget::pane {
 }
 QTabBar {
     background: #1a2235;
+    qproperty-usesScrollButtons: true;
 }
 QTabBar::tab {
     background: transparent;
     color: #7c8fa6;
-    padding: 8px 20px;
+    padding: 8px 14px;
     border: none;
     border-bottom: 3px solid transparent;
     font-weight: 500;
     font-size: 12px;
     letter-spacing: 0.3px;
-    min-width: 80px;
+    min-width: 60px;
 }
 QTabBar::tab:selected {
     color: #6366f1;

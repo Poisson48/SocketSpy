@@ -53,6 +53,7 @@ MainWindow::~MainWindow() {
 void MainWindow::setupUi() {
     setWindowTitle(QString("SocketSpy v%1").arg(APP_VERSION));
     resize(1200, 700);
+    setMinimumSize(800, 500);
 
     m_tabs = new QTabWidget(this);
     setCentralWidget(m_tabs);

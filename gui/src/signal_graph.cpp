@@ -161,7 +161,15 @@ void SignalGraphPanel::addTrace(TrackedSignal t) {
         // Per-signal Y axis with DBC-sourced range and unit
         auto* ay = new QValueAxis(m_chart);
         double lo = t.minVal, hi = t.maxVal;
-        if (hi <= lo) hi = lo + 1.0;
+        // If the DBC defines no range (both zero) or range is degenerate,
+        // use a sensible default and let auto-scaling take over at runtime.
+        if (lo == 0.0 && hi == 0.0) {
+            lo = -100.0; hi = 100.0;
+        } else if (hi <= lo) {
+            // Boolean / single-value signal: force a visible unit range
+            lo = std::min(lo, 0.0);
+            hi = lo + 1.0;
+        }
         ay->setRange(lo, hi);
         if (!t.unit.empty())
             ay->setTitleText(QString::fromStdString(t.unit));
@@ -189,7 +197,9 @@ void SignalGraphPanel::addSignal(QString signalName, uint32_t msgId) {
     const std::string sigStd = signalName.toStdString();
     for (const auto& t : m_traces)
         if (!t.isRaw && t.msgId == msgId && t.signalName == sigStd) return;
-    double minVal = 0.0, maxVal = 1.0;
+    // Initialize to 0/0 so that addTrace() detects "no DBC range defined"
+    // and falls back to the sensible default with auto-scaling enabled.
+    double minVal = 0.0, maxVal = 0.0;
     dbc_helper::signal_range(*m_dbc, msgId, sigStd, minVal, maxVal);
     std::string unit = dbc_helper::signal_unit(*m_dbc, msgId, sigStd);
     addTrace({sigStd, {}, unit, msgId, nullptr, nullptr, 0.0, minVal, maxVal, false, 0});
@@ -284,6 +294,36 @@ void SignalGraphPanel::onFrameReceived(CanFrame frame) {
         }
         trace.lastValue = val;
         trace.series->append(relT, val);
+
+        // Auto-scale the per-signal Y axis so that incoming values are always
+        // visible.  We only ever expand the range — never shrink it — so that
+        // historical points remain in view.
+        if (!trace.isRaw && trace.axisY) {
+            double axMin = trace.axisY->min();
+            double axMax = trace.axisY->max();
+            bool changed = false;
+            if (val < axMin) {
+                // Expand downward with a 10 % margin (or at least 1 unit).
+                double span   = axMax - axMin;
+                double margin = std::max(std::abs(val) * 0.1, span * 0.1);
+                margin = std::max(margin, 1.0);
+                trace.axisY->setMin(val - margin);
+                changed = true;
+            }
+            if (val > axMax) {
+                double span   = axMax - axMin;
+                double margin = std::max(std::abs(val) * 0.1, span * 0.1);
+                margin = std::max(margin, 1.0);
+                trace.axisY->setMax(val + margin);
+                changed = true;
+            }
+            // Keep the stored minVal/maxVal in sync so rescaleY() stays consistent
+            if (changed) {
+                trace.minVal = trace.axisY->min();
+                trace.maxVal = trace.axisY->max();
+            }
+        }
+
         while (trace.series->count() > kMaxSeriesPts) {
             auto pts = trace.series->points();
             trace.series->remove(pts.first());
@@ -313,7 +353,8 @@ void SignalGraphPanel::onScrollAxis() {
     m_currentMaxT = maxT;
     double lo = std::max(0.0, maxT - kWindowSec);
     m_axisX->setRange(lo, lo + kWindowSec);
-    // Per-signal axes have static DBC-sourced ranges; only update shared fallback
+    // Per-signal axes are auto-scaled live in onFrameReceived(); only update the
+    // shared fallback axis used by raw byte traces.
     rescaleY();
     updateMarkerPositions();
 }

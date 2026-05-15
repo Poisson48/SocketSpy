@@ -90,6 +90,7 @@ private:
     WelcomeScreen*       m_welcomeScreen{nullptr};
     QLabel*              m_statusLabel{nullptr};
     QLabel*              m_connStatusLabel{nullptr};
+    QLabel*              m_recLabel{nullptr};
 
     MonitorPanel*        m_monitor{nullptr};
     TransmitPanel*       m_transmit{nullptr};

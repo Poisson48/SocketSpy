@@ -48,6 +48,12 @@ class SimulatorPanel : public QWidget {
 public:
     explicit SimulatorPanel(QWidget* parent = nullptr);
 
+    // Returns the display text of the currently selected profile combo entry.
+    QString currentProfileName() const { return m_profileCombo ? m_profileCombo->currentText() : QString(); }
+
+    // Selects the profile whose combo text matches name (no-op if not found).
+    void setProfileByName(const QString& name);
+
 signals:
     void frameGenerated(socketspy::core::CanFrame frame);
 
@@ -55,6 +61,7 @@ private slots:
     void onStartStop();
     void onProfileChanged(int index);
     void onNewProfile();
+    void onEditProfile();
     void onDeleteProfile();
     void onAnimationTick();
 
@@ -77,6 +84,7 @@ private:
     QPushButton*  m_startBtn{nullptr};
     QPushButton*  m_resetBtn{nullptr};
     QPushButton*  m_newBtn{nullptr};
+    QPushButton*  m_editBtn{nullptr};
     QPushButton*  m_deleteBtn{nullptr};
     QLabel*       m_descLabel{nullptr};
     QProgressBar* m_progressBar{nullptr};

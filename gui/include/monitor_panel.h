@@ -75,6 +75,12 @@ public:
 
     static constexpr int kMaxRows = 2000;
 
+    // Returns the current monitor-local filter state.
+    MonitorFilter currentMonitorFilter() const { return m_monFilter; }
+
+    // Pushes a filter into both the dialog UI and the active filter state.
+    void applyMonitorFilter(const MonitorFilter& f);
+
 public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
     void onDbcLoaded(socketspy::dbc::DbcDatabase db);

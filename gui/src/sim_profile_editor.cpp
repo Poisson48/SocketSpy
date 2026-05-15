@@ -636,4 +636,17 @@ SimProfile SimProfileEditor::result() const {
     return buildProfile();
 }
 
+void SimProfileEditor::loadProfile(const SimProfile& profile) {
+    m_profileName->setText(profile.name);
+    m_tree->clear();
+    for (const auto& node : profile.nodes) {
+        auto* nodeItem = addNodeItem(node.name);
+        for (const auto& msg : node.messages) {
+            auto* msgItem = addMessageItem(nodeItem, msg.id, msg.period_ms, msg.dlc);
+            for (const auto& sig : msg.sigs)
+                addSignalItem(msgItem, sig);
+        }
+    }
+}
+
 } // namespace socketspy::gui

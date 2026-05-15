@@ -63,16 +63,25 @@ bool projectSave(const ProjectData& p, const QString& path, QString& error) {
     for (auto it = p.signalAliases.begin(); it != p.signalAliases.end(); ++it)
         aliases[it.key()] = it.value();
 
+    QJsonObject monFilt;
+    monFilt["changed_only"]  = p.monitorFilter.changedOnly;
+    monFilt["dlc"]           = p.monitorFilter.dlc;
+    monFilt["use_timestamp"] = p.monitorFilter.useTimestamp;
+    monFilt["ts_min"]        = p.monitorFilter.tsMin;
+    monFilt["ts_max"]        = p.monitorFilter.tsMax;
+
     QJsonObject root;
-    root["version"]        = 1;
-    root["iface"]          = p.iface;
-    root["bitrate"]        = p.bitrate;
-    root["dbc_path"]       = p.dbcPath;
-    root["log_path"]       = p.logPath;
-    root["graph_signals"]  = sigs;
-    root["signal_aliases"] = aliases;
-    root["filter"]         = filterToJson(p.filter);
-    root["trigger"]        = triggerToJson(p.trigger);
+    root["version"]           = 1;
+    root["iface"]             = p.iface;
+    root["bitrate"]           = p.bitrate;
+    root["dbc_path"]          = p.dbcPath;
+    root["log_path"]          = p.logPath;
+    root["graph_signals"]     = sigs;
+    root["signal_aliases"]    = aliases;
+    root["filter"]            = filterToJson(p.filter);
+    root["trigger"]           = triggerToJson(p.trigger);
+    root["simulator_profile"] = p.simulatorProfile;
+    root["monitor_filter"]    = monFilt;
 
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly)) { error = f.errorString(); return false; }
@@ -110,6 +119,16 @@ bool projectLoad(ProjectData& p, const QString& path, QString& error) {
 
     p.filter  = filterFromJson(root["filter"].toObject());
     p.trigger = triggerFromJson(root["trigger"].toObject());
+
+    p.simulatorProfile = root["simulator_profile"].toString();
+
+    const auto mf = root["monitor_filter"].toObject();
+    p.monitorFilter.changedOnly  = mf["changed_only"].toBool(false);
+    p.monitorFilter.dlc          = mf["dlc"].toInt(0);
+    p.monitorFilter.useTimestamp = mf["use_timestamp"].toBool(false);
+    p.monitorFilter.tsMin        = mf["ts_min"].toDouble(0.0);
+    p.monitorFilter.tsMax        = mf["ts_max"].toDouble(0.0);
+
     return true;
 }
 

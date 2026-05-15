@@ -5,6 +5,7 @@
 #include <memory>
 #include <thread>
 #include "lua_engine.h"
+#include "cancore.h"
 
 namespace socketspy::gui {
 
@@ -14,6 +15,9 @@ class ScriptingPanel : public QWidget {
 public:
     explicit ScriptingPanel(QWidget* parent = nullptr);
     ~ScriptingPanel() override;
+
+public slots:
+    void onFrameReceived(socketspy::core::CanFrame frame);
 
 private slots:
     void onOpen();

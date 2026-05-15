@@ -5,6 +5,11 @@
 #include <QTableWidget>
 #include "cancore.h"
 
+#pragma push_macro("signals")
+#undef signals
+#include "dbc_types.h"
+#pragma pop_macro("signals")
+
 namespace socketspy::gui {
 
 class ProtocolPanel : public QWidget {
@@ -14,6 +19,7 @@ public:
 
 public slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
+    void onDbcLoaded(const socketspy::dbc::DbcDatabase& db);
 
 private:
     void setupUi();
@@ -30,6 +36,8 @@ private:
     QComboBox*    m_protoCombo{nullptr};  // "All", "CANopen", "ISO-TP", "J1939", "UDS/OBD-II", "NMEA 2000"
     QPushButton*  m_clearBtn{nullptr};
     QTableWidget* m_table{nullptr};       // Timestamp, Protocol, Type, ID, Details
+
+    socketspy::dbc::DbcDatabase m_dbc;
 };
 
 } // namespace socketspy::gui

@@ -15,6 +15,15 @@ struct GraphSignalConfig {
     int      rawByteIdx{0};
 };
 
+// Persistent snapshot of the monitor-local filter (distinct from FrameFilter).
+struct MonitorFilterData {
+    bool   changedOnly  = false;
+    int    dlc          = 0;      // 0 = any
+    bool   useTimestamp = false;
+    double tsMin        = 0.0;
+    double tsMax        = 0.0;
+};
+
 struct ProjectData {
     QString iface   = "vcan0";
     int     bitrate = 500000;
@@ -22,8 +31,10 @@ struct ProjectData {
     QString logPath;
     QList<GraphSignalConfig>  graphSignals;
     QHash<QString, QString>   signalAliases;  // canonical name → display alias
-    FrameFilter   filter;
-    TriggerConfig trigger;
+    FrameFilter       filter;
+    TriggerConfig     trigger;
+    QString           simulatorProfile;  // display text of active profile combo entry
+    MonitorFilterData monitorFilter;
 };
 
 bool projectSave(const ProjectData& p, const QString& path, QString& error);

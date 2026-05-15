@@ -20,8 +20,13 @@ void LogRecorder::close() {
     }
 }
 
+void LogRecorder::setFilter(const FrameFilter& f) {
+    m_filter = f;
+}
+
 void LogRecorder::write(const socketspy::core::CanFrame& frame, const QString& iface) {
     if (!m_file.isOpen()) return;
+    if (m_filter.enabled && !m_filter.accepts(frame)) return;
 
     double ts = static_cast<double>(frame.timestamp_us) / 1'000'000.0;
 

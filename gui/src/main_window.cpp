@@ -28,7 +28,9 @@
 #include <QPushButton>
 #include <QDockWidget>
 #include <QKeySequence>
+#include <QShortcut>
 #include <QMessageBox>
+#include <QInputDialog>
 
 using namespace socketspy::dbc;
 
@@ -84,6 +86,11 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_dbcBuilder,   QString::fromUtf8("✏  ") + tr("DBC Builder"));
     m_tabs->addTab(m_mcpPanel,     QString::fromUtf8("⚙  ") + tr("MCP"));
 
+    m_recLabel = new QLabel(this);
+    m_recLabel->setObjectName("recLabel");
+    m_recLabel->hide();
+    statusBar()->addPermanentWidget(m_recLabel);
+
     m_statusLabel = new QLabel(m_iface + "  \xc2\xb7  0 fps", this);
     m_statusLabel->setObjectName("statusFps");
     statusBar()->addPermanentWidget(m_statusLabel);
@@ -114,6 +121,7 @@ void MainWindow::setupUi() {
         connect(src, sig, m_stats,         &StatsPanel::onFrameReceived);
         connect(src, sig, m_protocolPanel, &ProtocolPanel::onFrameReceived);
         connect(src, sig, m_dbcBuilder,    &DbcBuilderPanel::onFrameReceived);
+        connect(src, sig, m_scriptPanel,   &ScriptingPanel::onFrameReceived);
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
@@ -159,6 +167,15 @@ void MainWindow::setupUi() {
     m_triggerDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
     addDockWidget(Qt::RightDockWidgetArea, m_triggerDock);
     m_triggerDock->hide();
+
+    // Ctrl+1..9: switch to tab N
+    for (int n = 1; n <= 9; ++n) {
+        auto* sc = new QShortcut(QKeySequence(Qt::CTRL | static_cast<Qt::Key>(Qt::Key_0 + n)), this);
+        connect(sc, &QShortcut::activated, this, [this, n]() {
+            if (n - 1 < m_tabs->count())
+                m_tabs->setCurrentIndex(n - 1);
+        });
+    }
 }
 
 void MainWindow::setupMenuBar() {
@@ -231,6 +248,7 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_stats,         &StatsPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_protocolPanel, &ProtocolPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_dbcBuilder,    &DbcBuilderPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_scriptPanel,   &ScriptingPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, this,            &MainWindow::onAnyFrameReceived,
             Qt::DirectConnection);
     connect(m_capture, &CanCapture::errorOccurred, this,      &MainWindow::onCaptureError);
@@ -262,8 +280,10 @@ void MainWindow::setupToolBar() {
     tb->addWidget(new QLabel(tr("Bitrate: "), this));
     m_bitrateCombo = new QComboBox(this);
     for (auto [label, val] : {std::pair{"125 kbit/s",125000},{"250 kbit/s",250000},
-                                         {"500 kbit/s",500000},{"1000 kbit/s",1000000}})
+                                         {"500 kbit/s",500000},{"800 kbit/s",800000},
+                                         {"1000 kbit/s",1000000}})
         m_bitrateCombo->addItem(label, val);
+    m_bitrateCombo->addItem(tr("Custom\xe2\x80\xa6"), -1);
     m_bitrateCombo->setCurrentIndex(2);
     tb->addWidget(m_bitrateCombo); tb->addSeparator();
 
@@ -326,7 +346,23 @@ void MainWindow::onNetChanged(const QString&) {
 }
 
 void MainWindow::onBitrateChanged(int index) {
-    m_bitrate = m_bitrateCombo->itemData(index).toInt();
+    const int val = m_bitrateCombo->itemData(index).toInt();
+    if (val == -1) {
+        // Custom entry: prompt user for a free bitrate value
+        bool ok = false;
+        const int custom = QInputDialog::getInt(this, tr("Custom bitrate"),
+            tr("Enter bitrate (bit/s):"), m_bitrate, 1000, 8000000, 1000, &ok);
+        if (!ok) {
+            // Revert to the previously selected item without re-triggering this slot
+            m_bitrateCombo->blockSignals(true);
+            m_bitrateCombo->setCurrentIndex(m_bitrateCombo->findData(m_bitrate));
+            m_bitrateCombo->blockSignals(false);
+            return;
+        }
+        m_bitrate = custom;
+    } else {
+        m_bitrate = val;
+    }
     m_stats->setBitrate(m_bitrate);
     if (!canIfaceIsVirtual(m_iface) && !m_iface.startsWith("slcan:")) {
         if (canIfaceApply(m_iface, m_bitrate)) setupCapture(m_iface);

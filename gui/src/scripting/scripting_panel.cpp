@@ -145,4 +145,11 @@ void ScriptingPanel::onStop()
     if (m_engine) m_engine->abort();
 }
 
+void ScriptingPanel::onFrameReceived(socketspy::core::CanFrame /*frame*/)
+{
+    // Reserved for future Lua frame-injection API.
+    // Frames from live capture, simulator, and ELM327 are routed here so the
+    // engine can observe them once the Lua API exposes a can.on_frame() hook.
+}
+
 } // namespace socketspy::gui

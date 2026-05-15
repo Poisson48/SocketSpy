@@ -7,6 +7,8 @@
 #include <QString>
 #include <QDateTime>
 
+#include "dbc_compat.h"
+
 #include "canopen_nmt.h"
 #include "canopen_emcy.h"
 #include "canopen_sdo.h"
@@ -414,13 +416,51 @@ void ProtocolPanel::onFrameReceived(socketspy::core::CanFrame frame)
 {
     const QString proto = m_protoCombo->currentText();
 
-    if (proto == "CANopen")    { decodeCanopen(frame);  return; }
-    if (proto == "ISO-TP")     { decodeIsoTp(frame);    return; }
-    if (proto == "J1939")      { decodeJ1939(frame);    return; }
-    if (proto == "UDS/OBD-II") { decodeUdsObd(frame);   return; }
-    if (proto == "NMEA 2000")  { decodeNmea2000(frame); return; }
-    // "All"
-    decodeAll(frame);
+    if (proto == "CANopen")    { decodeCanopen(frame);  }
+    else if (proto == "ISO-TP")     { decodeIsoTp(frame);    }
+    else if (proto == "J1939")      { decodeJ1939(frame);    }
+    else if (proto == "UDS/OBD-II") { decodeUdsObd(frame);   }
+    else if (proto == "NMEA 2000")  { decodeNmea2000(frame); }
+    else { decodeAll(frame); }
+
+    // DBC decoding: if the frame ID matches a known DBC message, add decoded signals
+    const uint32_t rawId = frame.id & ~0x80000000u; // strip EFF flag if present
+    for (const auto& msg : m_dbc.messages) {
+        if (msg.id != rawId) continue;
+        for (const auto& sig : msg.signals) {
+            // Extract raw value (little-endian Intel byte order assumed for simplicity)
+            uint64_t raw = 0;
+            const int startBit = sig.start_bit;
+            const int bitLen   = sig.bit_length;
+            for (int b = 0; b < bitLen; ++b) {
+                const int bitPos = startBit + b;
+                const int byteIdx = bitPos / 8;
+                const int bitIdx  = bitPos % 8;
+                if (byteIdx < frame.dlc && (frame.data[byteIdx] >> bitIdx) & 1u)
+                    raw |= (uint64_t(1) << b);
+            }
+            // Sign-extend for signed signals
+            double phys = 0.0;
+            if (sig.value_type == socketspy::dbc::ValueType::Signed && bitLen > 0 && (raw >> (bitLen - 1)) & 1u) {
+                int64_t sraw = static_cast<int64_t>(raw) - (int64_t(1) << bitLen);
+                phys = sraw * sig.factor + sig.offset;
+            } else {
+                phys = static_cast<double>(raw) * sig.factor + sig.offset;
+            }
+            // Build detail string
+            QString details = QString("%1 = %2%3")
+                .arg(QString::fromStdString(sig.name))
+                .arg(phys, 0, 'g', 6)
+                .arg(sig.unit.empty() ? QString() : " " + QString::fromStdString(sig.unit));
+            addRow("DBC", QString::fromStdString(msg.name), frame.id, details);
+        }
+        break;
+    }
+}
+
+void ProtocolPanel::onDbcLoaded(const socketspy::dbc::DbcDatabase& db)
+{
+    m_dbc = db;
 }
 
 } // namespace socketspy::gui

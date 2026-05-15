@@ -22,6 +22,8 @@ public:
     SimProfile result() const;
     QString    savedPath() const { return m_savedPath; }
 
+    void loadProfile(const SimProfile& profile);
+
 private slots:
     void onAddNode();
     void onAddMessage();

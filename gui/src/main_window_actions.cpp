@@ -1,6 +1,7 @@
 #include "main_window.h"
 #include "welcome_screen.h"
 #include "monitor_panel.h"
+#include "simulator_panel.h"
 #include "transmit_panel.h"
 #include "signal_graph.h"
 #include "stats_panel.h"
@@ -11,6 +12,7 @@
 #include "project.h"
 #include "project_browser.h"
 #include "dbc_builder_panel.h"
+#include "protocol_panel.h"
 
 // Permanently undef Qt's `signals` macro so we can access dbc::Message::signals.
 #include "dbc_compat.h"
@@ -85,6 +87,7 @@ void MainWindow::onOpenDbc() {
     m_graph->onDbcLoaded(*m_dbc);
     m_stats->onDbcLoaded(*m_dbc);
     m_dbcBuilder->loadDbc(*m_dbc);
+    m_protocolPanel->onDbcLoaded(*m_dbc);
     statusBar()->showMessage("DBC: " + QString::number(m_dbc->messages.size()) + " messages", 5000);
 }
 
@@ -110,10 +113,14 @@ void MainWindow::onStartRecording() {
     if (path.isEmpty()) return;
     m_recorder.open(path);
     if (!m_recorder.isOpen()) return;
+    m_recorder.setFilter(m_filterPanel->currentFilter());
     connect(m_capture, &CanCapture::frameReceived,
             this, [this](socketspy::core::CanFrame frame) {
                 m_recorder.write(frame, m_iface);
             });
+    m_recLabel->setText(QString::fromUtf8("\xe2\x97\x8f  REC"));
+    m_recLabel->setStyleSheet("color: #ef4444; font-weight: 700;");
+    m_recLabel->show();
 }
 
 void MainWindow::onStopRecording() {
@@ -129,6 +136,8 @@ void MainWindow::onStopRecording() {
     connect(m_capture, &CanCapture::frameReceived,
             m_graph,   &SignalGraphPanel::onFrameReceived,
             Qt::UniqueConnection);
+    m_recLabel->hide();
+    m_recLabel->clear();
 }
 
 ProjectData MainWindow::collectProject() const {
@@ -140,6 +149,15 @@ ProjectData MainWindow::collectProject() const {
     p.signalAliases = m_signalAliases;
     p.filter        = m_filterPanel->currentFilter();
     p.trigger       = m_triggerPanel->currentConfig();
+    p.simulatorProfile = m_simulator->currentProfileName();
+    {
+        const auto mf    = m_monitor->currentMonitorFilter();
+        p.monitorFilter.changedOnly  = mf.changedOnly;
+        p.monitorFilter.dlc          = mf.dlc;
+        p.monitorFilter.useTimestamp = mf.useTimestamp;
+        p.monitorFilter.tsMin        = mf.tsMin;
+        p.monitorFilter.tsMax        = mf.tsMax;
+    }
     return p;
 }
 
@@ -159,11 +177,22 @@ void MainWindow::applyProject(const ProjectData& p) {
             auto res = socketspy::dbc::parse_dbc(QTextStream(&f).readAll().toStdString());
             if (res) { *m_dbc = *res; m_dbcPath = p.dbcPath;
                 m_monitor->onDbcLoaded(*m_dbc); m_graph->onDbcLoaded(*m_dbc); m_stats->onDbcLoaded(*m_dbc);
-                m_dbcBuilder->loadDbc(*m_dbc); }
+                m_dbcBuilder->loadDbc(*m_dbc); m_protocolPanel->onDbcLoaded(*m_dbc); }
         }
     }
     if (!p.logPath.isEmpty())
         m_defaultLogPath = p.logPath;
+    if (!p.simulatorProfile.isEmpty())
+        m_simulator->setProfileByName(p.simulatorProfile);
+    {
+        MonitorFilter mf;
+        mf.changedOnly  = p.monitorFilter.changedOnly;
+        mf.dlc          = p.monitorFilter.dlc;
+        mf.useTimestamp = p.monitorFilter.useTimestamp;
+        mf.tsMin        = p.monitorFilter.tsMin;
+        mf.tsMax        = p.monitorFilter.tsMax;
+        m_monitor->applyMonitorFilter(mf);
+    }
 }
 
 void MainWindow::onNewProject() {

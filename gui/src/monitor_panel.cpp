@@ -354,6 +354,11 @@ void MonitorPanel::onTrackModeToggled(bool /*checked*/) {
     m_logLastSeen.clear();
 }
 
+void MonitorPanel::applyMonitorFilter(const MonitorFilter& f) {
+    m_filterDlg->setFilter(f);
+    onMonitorFilterChanged(f);
+}
+
 void MonitorPanel::onMonitorFilterChanged(const MonitorFilter& f) {
     m_monFilter = f;
 

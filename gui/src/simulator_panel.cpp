@@ -53,10 +53,14 @@ void SimulatorPanel::setupUi() {
     topBar->addWidget(m_profileCombo, 1);
 
     m_newBtn    = new QPushButton("Nouveau…", this);
+    m_editBtn   = new QPushButton("Éditer…", this);
+    m_editBtn->setEnabled(false);
+    m_editBtn->setToolTip("Modifier ce profil custom");
     m_deleteBtn = new QPushButton("Supprimer", this);
     m_deleteBtn->setEnabled(false);
     m_deleteBtn->setToolTip("Supprime ce profil (profils intégrés non supprimables)");
     topBar->addWidget(m_newBtn);
+    topBar->addWidget(m_editBtn);
     topBar->addWidget(m_deleteBtn);
 
     m_resetBtn = new QPushButton("↺", this);
@@ -112,6 +116,7 @@ void SimulatorPanel::setupUi() {
     connect(m_profileCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SimulatorPanel::onProfileChanged);
     connect(m_newBtn,    &QPushButton::clicked, this, &SimulatorPanel::onNewProfile);
+    connect(m_editBtn,   &QPushButton::clicked, this, &SimulatorPanel::onEditProfile);
     connect(m_deleteBtn, &QPushButton::clicked, this, &SimulatorPanel::onDeleteProfile);
     connect(m_resetBtn,  &QPushButton::clicked, this, [this]() {
         m_simulator->resetElapsed();
@@ -163,9 +168,16 @@ void SimulatorPanel::populateProfiles() {
 
 void SimulatorPanel::updateDeleteButton() {
     const int idx = m_profileCombo->currentIndex();
-    if (idx < 0) { m_deleteBtn->setEnabled(false); return; }
+    if (idx < 0) {
+        m_deleteBtn->setEnabled(false);
+        m_editBtn->setVisible(false);
+        return;
+    }
     const QString path = m_profileCombo->itemData(idx).toString();
-    m_deleteBtn->setEnabled(!path.startsWith(':') && !m_simulator->isRunning());
+    const bool isCustom = !path.startsWith(':');
+    m_deleteBtn->setEnabled(isCustom && !m_simulator->isRunning());
+    m_editBtn->setVisible(isCustom);
+    m_editBtn->setEnabled(isCustom && !m_simulator->isRunning());
 }
 
 void SimulatorPanel::updateRunningState(bool running) {
@@ -326,6 +338,45 @@ void SimulatorPanel::onNewProfile() {
     populateProfiles();
     const int idx = m_profileCombo->findData(editor.savedPath());
     if (idx >= 0) m_profileCombo->setCurrentIndex(idx);
+}
+
+void SimulatorPanel::onEditProfile() {
+    const int idx = m_profileCombo->currentIndex();
+    if (idx < 0) return;
+    const QString path = m_profileCombo->itemData(idx).toString();
+    if (path.startsWith(':')) return;  // built-in profiles are not editable
+
+    SimProfileEditor editor(this);
+    editor.loadProfile(m_currentProfile);
+    if (editor.exec() != QDialog::Accepted) return;
+
+    // Re-save to the same path and reload
+    const SimProfile updated = editor.result();
+    save_sim_profile(updated, path);
+    populateProfiles();
+    const int newIdx = m_profileCombo->findData(path);
+    if (newIdx >= 0) m_profileCombo->setCurrentIndex(newIdx);
+}
+
+void SimulatorPanel::setProfileByName(const QString& name) {
+    if (name.isEmpty()) return;
+    // The combo stores display text with a leading icon prefix (e.g. "⚙ Renault…"),
+    // so try an exact match first, then a suffix match.
+    for (int i = 0; i < m_profileCombo->count(); ++i) {
+        if (m_profileCombo->itemText(i) == name) {
+            m_profileCombo->setCurrentIndex(i);
+            return;
+        }
+    }
+    // Fallback: match by the part after the icon prefix + space
+    for (int i = 0; i < m_profileCombo->count(); ++i) {
+        const QString text = m_profileCombo->itemText(i);
+        const int sp = text.indexOf(' ');
+        if (sp >= 0 && text.mid(sp + 1) == name) {
+            m_profileCombo->setCurrentIndex(i);
+            return;
+        }
+    }
 }
 
 void SimulatorPanel::onDeleteProfile() {

@@ -3,6 +3,7 @@
 #include <QTextStream>
 #include <QString>
 #include "cancore.h"
+#include "filter_model.h"
 
 namespace socketspy::gui {
 
@@ -12,10 +13,12 @@ public:
     void close();
     void write(const socketspy::core::CanFrame& frame, const QString& iface);
     bool isOpen() const;
+    void setFilter(const FrameFilter& f);
 
 private:
     QFile       m_file;
     QTextStream m_stream;
+    FrameFilter m_filter;
 };
 
 } // namespace socketspy::gui

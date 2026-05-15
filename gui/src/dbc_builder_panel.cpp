@@ -292,6 +292,8 @@ void DbcBuilderPanel::setupUi() {
     });
     m_sigTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_sigTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_sigTable->horizontalHeader()->setSectionResizeMode(9,  QHeaderView::Fixed);
+    m_sigTable->horizontalHeader()->setSectionResizeMode(10, QHeaderView::Fixed);
     m_sigTable->horizontalHeader()->setStretchLastSection(false);
     m_sigTable->setColumnWidth(0, 120);
     m_sigTable->setColumnWidth(9,  46);
@@ -524,18 +526,33 @@ void DbcBuilderPanel::refreshSignalTable() {
         valItem->setForeground(QColor("#22c55e"));
         m_sigTable->setItem(i, 8, valItem);
 
+        const int idx = i;
+
+        // Edit button — wrapped in a centered container so it fills the cell cleanly
         auto* editBtn = new QPushButton("Edit");
         editBtn->setObjectName("editSigBtn");
-        editBtn->setFixedSize(40, 22);
-        const int idx = i;
         connect(editBtn, &QPushButton::clicked, this, [this, idx]() { onEditSignal(idx); });
-        m_sigTable->setCellWidget(i, 9, editBtn);
+        auto* editContainer = new QWidget();
+        editContainer->setObjectName("sigBtnContainer");
+        auto* editLayout = new QHBoxLayout(editContainer);
+        editLayout->setContentsMargins(2, 2, 2, 2);
+        editLayout->setSpacing(0);
+        editLayout->addWidget(editBtn);
+        m_sigTable->setCellWidget(i, 9, editContainer);
 
+        // Del button — same container pattern
         auto* delBtn = new QPushButton("Del");
         delBtn->setObjectName("delSigBtn");
-        delBtn->setFixedSize(36, 22);
         connect(delBtn, &QPushButton::clicked, this, [this, idx]() { onDeleteSignal(idx); });
-        m_sigTable->setCellWidget(i, 10, delBtn);
+        auto* delContainer = new QWidget();
+        delContainer->setObjectName("sigBtnContainer");
+        auto* delLayout = new QHBoxLayout(delContainer);
+        delLayout->setContentsMargins(2, 2, 2, 2);
+        delLayout->setSpacing(0);
+        delLayout->addWidget(delBtn);
+        m_sigTable->setCellWidget(i, 10, delContainer);
+
+        m_sigTable->setRowHeight(i, 28);
     }
 }
 

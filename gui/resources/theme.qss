@@ -425,27 +425,38 @@ QToolBar QPushButton:checked {
 }
 
 /* ── Signal table edit/del buttons ───────────────────── */
+QWidget#sigBtnContainer {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
 QPushButton#editSigBtn {
     background: transparent;
     border: 1px solid #3d5270;
     color: #7c8fa6;
-    padding: 1px 4px;
+    padding: 0px 2px;
     font-size: 11px;
     font-weight: 500;
     border-radius: 4px;
+    min-height: 20px;
+    max-height: 24px;
 }
 QPushButton#editSigBtn:hover {
     border-color: #6366f1;
     color: #f1f5f9;
+    background: rgba(99,102,241,0.12);
 }
 QPushButton#delSigBtn {
     background: transparent;
     border: 1px solid #3d5270;
     color: #ef4444;
-    padding: 1px 4px;
+    padding: 0px 2px;
     font-size: 11px;
     font-weight: 500;
     border-radius: 4px;
+    min-height: 20px;
+    max-height: 24px;
 }
 QPushButton#delSigBtn:hover {
     border-color: #ef4444;

@@ -56,8 +56,8 @@ bool Mdf4Writer::write(const QString& path,
     // Block sizes:
     //   ID  block: 64 bytes
     //   HD  block: 24 (hdr) + 6*8 (links) + 32 (data) = 104 bytes
-    //   FH  block: 24 (hdr) + 2*8 (links) + 8+128 (data) = 168 bytes (rounded)
-    //   DG  block: 24 + 4*8 + 8 = 72 bytes (1 link to CG, 1 to DT)
+    //   FH  block: 24 (hdr) + 2*8 (links) + 8(ts) + 2+2+1+3(tz/dst/flags/res) + 128(comment) = 184 bytes
+    //   DG  block: 24 + 4*8 + 8 = 64 bytes (1 link to CG, 1 to DT)
     //   CG  block: 24 + 6*8 + 26 = 98 bytes → pad to 104
     //   CN1 (timestamp): 24 + 8*8 + 80 = 168 bytes
     //   CN2 (data):      24 + 8*8 + 80 = 168 bytes
@@ -66,15 +66,15 @@ bool Mdf4Writer::write(const QString& path,
     const uint64_t offHD  = 64;
     const uint64_t szHD   = 24 + 6*8 + 32;          // = 104
     const uint64_t offFH  = offHD + szHD;             // = 168
-    const uint64_t szFH   = 24 + 2*8 + 8 + 128;      // = 176
-    const uint64_t offDG  = offFH + szFH;             // = 344
+    const uint64_t szFH   = 24 + 2*8 + 8 + 8 + 128; // = 184 (8=ts, 8=tz/dst/flags/res, 128=comment)
+    const uint64_t offDG  = offFH + szFH;             // = 352
     const uint64_t szDG   = 24 + 4*8 + 8;            // = 64
-    const uint64_t offCG  = offDG + szDG;             // = 408
+    const uint64_t offCG  = offDG + szDG;             // = 416
     const uint64_t szCG   = 24 + 6*8 + 26 + 6;       // = 104 (6 bytes padding)
-    const uint64_t offCN1 = offCG + szCG;             // = 512
+    const uint64_t offCN1 = offCG + szCG;             // = 520
     const uint64_t szCN   = 24 + 8*8 + 80;           // = 168
-    const uint64_t offCN2 = offCN1 + szCN;            // = 680
-    const uint64_t offDT  = offCN2 + szCN;            // = 848
+    const uint64_t offCN2 = offCN1 + szCN;            // = 688
+    const uint64_t offDT  = offCN2 + szCN;            // = 856
     const uint64_t szDT   = 24 + n * kRecordSize;
 
     // ---- ID block (64 bytes) ----
@@ -112,7 +112,8 @@ bool Mdf4Writer::write(const QString& path,
     // Remaining to fill szHD = 104: 24hdr+48links+16data = 88 done, need 16 more
     writeZero(f, szHD - 24 - 6*8 - 24); // = 104 - 24 - 48 - 24 = 8
 
-    // ---- FH block (176 bytes) ----
+    // ---- FH block (184 bytes) ----
+    // 24(hdr) + 2*8(links) + 8(fh_time_ns) + 2+2+1+3(tz/dst/flags/res) + 128(comment) = 184
     f.write("##FH", 4); writeZero(f, 4);
     writeLE<uint64_t>(f, szFH);
     writeLE<uint64_t>(f, 2);          // link_count
@@ -120,25 +121,15 @@ bool Mdf4Writer::write(const QString& path,
     writeLE<uint64_t>(f, 0);          // fh_md_comment
     // Data: fh_time_ns(8) + fh_tz_offset(2) + fh_dst_offset(2) + fh_time_flags(1) + reserved(3)
     writeLE<uint64_t>(f, 0);          // fh_time_ns
-    writeLE<uint16_t>(f, 0);
-    writeLE<uint16_t>(f, 0);
-    writeLE<uint8_t>(f, 0);
-    writeZero(f, 3);
+    writeLE<int16_t>(f, 0);           // fh_tz_offset_min
+    writeLE<int16_t>(f, 0);           // fh_dst_offset_min
+    writeLE<uint8_t>(f, 0);           // fh_time_flags
+    writeZero(f, 3);                   // reserved
     // Comment string (128 bytes, padded)
     {
         const char* comment = "Exported by SocketSpy";
         writeStr(f, comment, 128);
     }
-    // Padding to szFH
-    // 24 + 2*8 + 8 + 2+2+1+3 + 128 = 24+16+8+8+128 = 184 — need to shrink
-    // Recalculate: szFH = 24 + 2*8 + 8 + 128 = 176 ok (the 8 bytes is the timestamp data area)
-    // Actually written: 24 + 16 (links) + 8 (ts) + 4+1+3 (tz/dst/flags/res) + 128 = 184
-    // We overshoot by 8. Adjust: skip comment padding
-    // This is getting complex; pad FH to szFH = 176 exactly
-    // Current pos after this block will be 168+176=344 = offDG. Let's just be precise.
-    // Written so far for FH: 24 + 16 + 8 + 2+2+1+3 + 128 = 184
-    // We set szFH=176 but wrote 184. Fix by removing 8 from comment.
-    // Easiest: don't write comment inline, set szFH accordingly.
 
     // ---- DG block (64 bytes) ----
     f.write("##DG", 4); writeZero(f, 4);

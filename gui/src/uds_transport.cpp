@@ -10,9 +10,17 @@ namespace socketspy::gui {
 UdsTransport::UdsTransport(QObject* parent)
     : QObject(parent)
     , m_timeoutTimer(new QTimer(this))
+    , m_fcTimeoutTimer(new QTimer(this))
+    , m_stminTimer(new QTimer(this))
 {
     m_timeoutTimer->setSingleShot(true);
     connect(m_timeoutTimer, &QTimer::timeout, this, &UdsTransport::onTimeout);
+
+    m_fcTimeoutTimer->setSingleShot(true);
+    connect(m_fcTimeoutTimer, &QTimer::timeout, this, &UdsTransport::onFcTimeout);
+
+    m_stminTimer->setSingleShot(true);
+    connect(m_stminTimer, &QTimer::timeout, this, &UdsTransport::sendNextCf);
 }
 
 void UdsTransport::setInterface(const QString& iface) {
@@ -61,7 +69,16 @@ void UdsTransport::sendCanFrame(const std::vector<uint8_t>& payload) {
         f.data[0] = static_cast<uint8_t>(len & 0x0F);
         for (int i = 0; i < len; ++i) f.data[i + 1] = payload[i];
         can_send(h, f);
+        can_close(h);
     } else {
+        // Multi-frame: send First Frame, then wait for Flow Control before sending CFs.
+        // Save payload and state for the FC/CF state machine.
+        m_txPayload    = payload;
+        m_txOffset     = 6;   // first 6 bytes go in the FF
+        m_txSN         = 1;
+        m_txBsRemaining = 0;
+        m_txStmin      = 0;
+
         // First frame (FF): PCI = 0x1X XX (12-bit length)
         CanFrame f{};
         f.id  = m_txId;
@@ -70,21 +87,103 @@ void UdsTransport::sendCanFrame(const std::vector<uint8_t>& payload) {
         f.data[1] = static_cast<uint8_t>(len & 0xFF);
         for (int i = 0; i < 6 && i < len; ++i) f.data[i + 2] = payload[i];
         can_send(h, f);
-        // Consecutive frames are sent after receiving Flow Control — simplified: send immediately
-        int offset = 6;
-        uint8_t sn = 1;
-        while (offset < len) {
-            CanFrame cf{};
-            cf.id  = m_txId;
-            cf.dlc = 8;
-            cf.data[0] = static_cast<uint8_t>(0x20 | (sn & 0x0F));
-            ++sn;
-            for (int i = 1; i <= 7 && offset < len; ++i, ++offset)
-                cf.data[i] = payload[offset];
-            can_send(h, cf);
-        }
+        can_close(h);
+
+        // Wait for FC from ECU (use P2 timeout)
+        m_waitingFc = true;
+        m_fcTimeoutTimer->start(m_p2Timeout);
     }
+}
+
+void UdsTransport::processFcFrame(const CanFrame& frame) {
+    // FC frame: byte0 = 0x3N, byte1 = BS, byte2 = STmin
+    uint8_t fcFlag = frame.data[0] & 0x0F;
+
+    if (fcFlag == 0x01) {
+        // Wait — restart FC timeout
+        m_fcTimeoutTimer->start(m_p2Timeout);
+        return;
+    }
+    if (fcFlag == 0x02) {
+        // Overflow — abort TX
+        m_waitingFc = false;
+        resetTx();
+        emit errorOccurred("FC Overflow — ECU buffer full");
+        return;
+    }
+    // ContinueToSend (0x00)
+    m_waitingFc = false;
+    m_fcTimeoutTimer->stop();
+
+    uint8_t bs    = frame.data[1];
+    uint8_t stRaw = frame.data[2];
+
+    // ISO 15765-2 STmin decoding
+    if (stRaw <= 0x7F) {
+        m_txStmin = static_cast<int>(stRaw); // 0–127 ms
+    } else if (stRaw >= 0xF1 && stRaw <= 0xF9) {
+        m_txStmin = 1; // 100–900 µs → round up to 1 ms
+    } else {
+        m_txStmin = 0;
+    }
+
+    m_txBsRemaining = (bs == 0) ? -1 : static_cast<int>(bs); // -1 = unlimited
+
+    // Start sending CFs
+    sendNextCf();
+}
+
+void UdsTransport::sendNextCf() {
+    if (m_txPayload.empty()) return;
+
+    const int len = static_cast<int>(m_txPayload.size());
+
+    // Block size countdown: if we've sent BS frames, wait for next FC
+    if (m_txBsRemaining == 0) {
+        // Need another FC
+        m_waitingFc = true;
+        m_fcTimeoutTimer->start(m_p2Timeout);
+        return;
+    }
+
+    IfaceHandle h = can_open(m_iface.toStdString());
+    if (!h.valid()) {
+        emit errorOccurred(QString("can_open: %1").arg(strerror(errno)));
+        resetTx();
+        return;
+    }
+
+    CanFrame cf{};
+    cf.id  = m_txId;
+    cf.dlc = 8;
+    cf.data[0] = static_cast<uint8_t>(0x20 | (m_txSN & 0x0F));
+    ++m_txSN;
+    for (int i = 1; i <= 7 && m_txOffset < len; ++i, ++m_txOffset)
+        cf.data[i] = m_txPayload[m_txOffset];
+    can_send(h, cf);
     can_close(h);
+
+    if (m_txBsRemaining > 0) --m_txBsRemaining;
+
+    if (m_txOffset >= len) {
+        // All CFs sent
+        resetTx();
+        return;
+    }
+
+    // Schedule next CF after STmin
+    if (m_txStmin > 0) {
+        m_stminTimer->start(m_txStmin);
+    } else {
+        sendNextCf();
+    }
+}
+
+void UdsTransport::onFcTimeout() {
+    if (!m_waitingFc) return;
+    m_waitingFc = false;
+    resetTx();
+    emit errorOccurred("FC timeout — no Flow Control received from ECU");
 }
 
 void UdsTransport::sendFlowControl() {
@@ -101,8 +200,18 @@ void UdsTransport::sendFlowControl() {
 }
 
 void UdsTransport::onFrameReceived(CanFrame frame) {
-    if (!m_waitingResp) return;
     if (frame.id != m_rxId) return;
+
+    // Check if this is a Flow Control frame for our multi-frame TX
+    if (m_waitingFc && frame.dlc >= 3) {
+        uint8_t pciType = (frame.data[0] >> 4) & 0x0F;
+        if (pciType == 3) {
+            processFcFrame(frame);
+            return;
+        }
+    }
+
+    if (!m_waitingResp) return;
     processRxFrame(frame);
 }
 
@@ -158,6 +267,17 @@ void UdsTransport::resetRx() {
     m_expectedLen  = 0;
     m_nextSN       = 1;
     m_rxBuf.clear();
+}
+
+void UdsTransport::resetTx() {
+    m_waitingFc     = false;
+    m_txPayload.clear();
+    m_txOffset      = 6;
+    m_txSN          = 1;
+    m_txBsRemaining = 0;
+    m_txStmin       = 0;
+    m_fcTimeoutTimer->stop();
+    m_stminTimer->stop();
 }
 
 } // namespace socketspy::gui

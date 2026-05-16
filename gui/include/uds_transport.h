@@ -33,13 +33,17 @@ signals:
 private slots:
     void onFrameReceived(socketspy::core::CanFrame frame);
     void onTimeout();
+    void onFcTimeout();
+    void sendNextCf();
 
 private:
     void sendCanFrame(const std::vector<uint8_t>& payload);
     void sendFlowControl();
     void processRxFrame(const socketspy::core::CanFrame& frame);
+    void processFcFrame(const socketspy::core::CanFrame& frame);
     void assembleAndEmit();
     void resetRx();
+    void resetTx();
 
     QString  m_iface;
     uint32_t m_txId{0x7DF};
@@ -48,12 +52,22 @@ private:
 
     CanCapture* m_capture{nullptr};
     QTimer*     m_timeoutTimer{nullptr};
+    QTimer*     m_fcTimeoutTimer{nullptr};  // wait for FC after FF
+    QTimer*     m_stminTimer{nullptr};      // STmin gap between CFs
 
-    // Reassembly state
+    // Reassembly state (RX)
     bool                 m_waitingResp{false};
     int                  m_expectedLen{0};
     int                  m_nextSN{1};
     std::vector<uint8_t> m_rxBuf;
+
+    // Multi-frame TX state
+    bool                 m_waitingFc{false};     // true while waiting for FC after FF
+    std::vector<uint8_t> m_txPayload;            // full payload being sent
+    int                  m_txOffset{6};          // bytes of payload already sent (FF carries first 6)
+    uint8_t              m_txSN{1};              // consecutive frame sequence number
+    int                  m_txBsRemaining{0};     // block size countdown (0 = unlimited)
+    int                  m_txStmin{0};           // STmin in ms
 };
 
 } // namespace socketspy::gui

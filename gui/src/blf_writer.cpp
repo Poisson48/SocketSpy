@@ -74,7 +74,7 @@ struct BlfStatistics {
 // Full BLF file header (216 bytes)
 struct BlfFileHeader {
     char          signature[4];   // "BLF0"
-    uint32_t      statistics_size; // total size of header = 144
+    uint32_t      statistics_size; // total size of header = 254
     uint16_t      api_version;    // 0x0403
     uint8_t       app_name[128];
     uint8_t       app_build_ver[4];
@@ -124,7 +124,11 @@ bool BlfWriter::write(const QString& path,
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
 
-    const uint32_t kStatSize = 144; // documented statistics block size
+    // Exact bytes written before first LOBJ object:
+    // "BLF0"(4) + statistics_size(4) + api_version(2) + app_name(128) +
+    // app_build_ver(4) + app_ver(4) + measure_start_time(16) + last_object_time(16) +
+    // object_count(4) + reserved(72) = 254
+    const uint32_t kStatSize = 254;
 
     // --- File Header ---
     // "BLF0200" marker as 4+2+1 doesn't exist as struct; we write "BLF0" then version 0x0200

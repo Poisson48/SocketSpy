@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QProgressBar>
+#include <QEvent>
 #include <cstdint>
 #include "cancore.h"
 
@@ -99,6 +100,10 @@ private:
     // Données live
     QHash<uint32_t, FrameStats> m_stats;
     QTimer* m_autoRefresh{nullptr};
+
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    void setupCopyable(QTableWidget* table);
+    void copySelectedCells(QTableWidget* table);
 
     static constexpr int kMaxDeltaHistory  = 64;
     static constexpr int kWiggleDurationMs = 3000;

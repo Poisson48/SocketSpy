@@ -132,12 +132,12 @@ void OpenDbcPanel::onDownload() {
 
     QDir().mkpath(m_cacheDir);
 
-    // Fetch listing from GitHub API
+    // Use the Git Trees API with recursive=1 to find ALL .dbc files
+    // regardless of how deep they are in the repo directory tree.
     QNetworkRequest req(QUrl(
-        "https://api.github.com/repos/commaai/opendbc/contents/opendbc/dbc"));
+        "https://api.github.com/repos/commaai/opendbc/git/trees/HEAD?recursive=1"));
     req.setRawHeader("Accept", "application/vnd.github.v3+json");
     req.setRawHeader("User-Agent", "SocketSpy");
-    // Tag this reply so onListingReady can distinguish it from file replies
     req.setAttribute(QNetworkRequest::User, QVariant("listing"));
     m_nam->get(req);
 }
@@ -148,7 +148,7 @@ void OpenDbcPanel::onListingReady(QNetworkReply* reply) {
     const QVariant tag = reply->request().attribute(QNetworkRequest::User);
 
     if (tag.toString() == "listing") {
-        // --- Handle directory listing ---
+        // --- Handle recursive tree listing ---
         if (reply->error() != QNetworkReply::NoError) {
             QMessageBox::warning(this, "OpenDBC",
                 "Network error: " + reply->errorString());
@@ -157,18 +157,24 @@ void OpenDbcPanel::onListingReady(QNetworkReply* reply) {
             return;
         }
         const QByteArray data = reply->readAll();
-        const QJsonArray arr = QJsonDocument::fromJson(data).array();
+        const QJsonObject root = QJsonDocument::fromJson(data).object();
+        const QJsonArray tree  = root["tree"].toArray();
 
         m_queue.clear();
         m_doneFiles = 0;
         m_activeDownloads = 0;
 
-        for (const QJsonValue& val : arr) {
+        // tree entries: { "path": "opendbc/dbc/toyota_camry.dbc", "type": "blob", ... }
+        for (const QJsonValue& val : tree) {
             QJsonObject obj = val.toObject();
-            const QString name = obj["name"].toString();
-            const QString url  = obj["download_url"].toString();
-            if (name.endsWith(".dbc", Qt::CaseInsensitive) && !url.isEmpty())
-                m_queue.append({name, url});
+            if (obj["type"].toString() != "blob") continue;
+            const QString path = obj["path"].toString();
+            if (!path.endsWith(".dbc", Qt::CaseInsensitive)) continue;
+            // Use the flat filename as the local cache name (strip path)
+            const QString name = path.mid(path.lastIndexOf('/') + 1);
+            // Raw download URL
+            const QString url = "https://raw.githubusercontent.com/commaai/opendbc/HEAD/" + path;
+            m_queue.append({name, url});
         }
 
         m_totalFiles = m_queue.size();

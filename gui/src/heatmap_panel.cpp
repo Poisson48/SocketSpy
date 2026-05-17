@@ -90,12 +90,14 @@ void HeatmapPanel::onFrameReceived(const socketspy::core::CanFrame& frame) {
         const uint8_t mask  = static_cast<uint8_t>(1u << bit);
         const uint8_t val   = (frame.data[byte] & mask) ? 1u : 0u;
 
+        if (st.first_seen_ms[i] == 0)
+            st.first_seen_ms[i] = nowMs;
+
         if (val != st.last_val[i]) {
             ++st.toggle_count[i];
             st.last_toggle_ms[i] = nowMs;
             st.last_val[i]       = val;
         } else if (st.last_toggle_ms[i] == 0) {
-            // First time we see this bit — record it even without a toggle
             st.last_toggle_ms[i] = nowMs;
             st.last_val[i]       = val;
         }
@@ -169,6 +171,7 @@ void HeatmapPanel::pushBitsToWidget() {
     for (int i = 0; i < 64; ++i) {
         bits[i].toggle_count   = st.toggle_count[i];
         bits[i].last_toggle_ms = st.last_toggle_ms[i];
+        bits[i].first_seen_ms  = st.first_seen_ms[i];
         bits[i].last_val       = st.last_val[i];
     }
     m_heatmap->setBits(bits);

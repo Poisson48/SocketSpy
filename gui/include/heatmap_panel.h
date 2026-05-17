@@ -17,6 +17,7 @@ class HeatmapWidget;
 struct HeatmapState {
     uint32_t toggle_count[64]{};
     qint64   last_toggle_ms[64]{};
+    qint64   first_seen_ms[64]{};   // timestamp of first observation per bit
     uint8_t  last_val[64]{};
     uint64_t frame_count{0};
 };

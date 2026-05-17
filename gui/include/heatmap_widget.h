@@ -9,6 +9,7 @@ namespace socketspy::gui {
 struct BitState {
     uint32_t toggle_count{0};
     qint64   last_toggle_ms{0};  // 0 = never toggled
+    qint64   first_seen_ms{0};   // timestamp of first observation
     uint8_t  last_val{0};        // last known bit value
 };
 

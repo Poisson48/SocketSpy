@@ -37,14 +37,14 @@ QColor HeatmapWidget::colourForBit(int idx) const {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const qint64 agems = nowMs - b.last_toggle_ms;
 
-    // Compute toggle rate: approximate from last 1-second window.
-    // toggle_count is cumulative so we use a simple proxy: if the last
-    // toggle was < 100 ms ago the bit is considered "active right now".
-    // A rough rate estimate: we don't store a rate, so we use a sliding
-    // heuristic: if agems < 1000 ms, rate ≈ toggle_count ÷ (elapsed_s+ε).
-    // We cap elapsed at 10 s so an old, high-count bit fades gracefully.
-    const double elapsed_s = std::max(static_cast<double>(agems) / 1000.0, 0.1);
-    const double rate      = static_cast<double>(b.toggle_count) / elapsed_s;
+    // Rate = average toggles/s over the full observation window.
+    // Using (now - first_seen) avoids the inflation caused by dividing
+    // a growing cumulative count by only the small "time since last toggle".
+    const qint64 window_ms = (b.first_seen_ms > 0)
+        ? std::max(nowMs - b.first_seen_ms, qint64(1))
+        : std::max(agems, qint64(1));
+    const double rate = static_cast<double>(b.toggle_count) * 1000.0
+                        / static_cast<double>(window_ms);
 
     QColor vivid;
     if (rate > 10.0) {

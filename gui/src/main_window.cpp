@@ -22,6 +22,7 @@
 #include "heatmap_panel.h"
 #include "bisect_panel.h"
 #include "range_state_panel.h"
+#include "signal_detective_panel.h"
 #include "xcp_panel.h"
 #include "doip_panel.h"
 #include "opendbc_panel.h"
@@ -91,7 +92,8 @@ void MainWindow::setupUi() {
     m_temporalPanel   = new TemporalPanel(this);
     m_heatmapPanel    = new HeatmapPanel(this);
     m_bisectPanel     = new BisectPanel(this);
-    m_rangeStatePanel = new RangeStatePanel(this);
+    m_rangeStatePanel    = new RangeStatePanel(this);
+    m_signalDetective   = new SignalDetectivePanel(this);
     m_xcpPanel        = new XcpPanel(this);
     m_doipPanel       = new DoipPanel(this);
     m_openDbcPanel    = new OpenDbcPanel(this);
@@ -118,6 +120,7 @@ void MainWindow::setupUi() {
     m_sidebar->addPanel("\xe2\xac\x9c",  tr("Heatmap"),    m_heatmapPanel);
     m_sidebar->addPanel("\xe2\xac\xa1",  tr("Bisect"),     m_bisectPanel);
     m_sidebar->addPanel("\xe2\x8a\x99",  tr("RngScan"),    m_rangeStatePanel);
+    m_sidebar->addPanel("\xf0\x9f\x94\x8d", tr("Detect"),     m_signalDetective);
     m_sidebar->addPanel("X",             tr("XCP"),         m_xcpPanel);
     m_sidebar->addPanel("\xe2\xac\xa6",  tr("DoIP"),        m_doipPanel);
     m_sidebar->addPanel("\xe2\xac\x87",  tr("OpenDBC"),     m_openDbcPanel);
@@ -169,6 +172,7 @@ void MainWindow::setupUi() {
         connect(src, sig, m_temporalPanel,   &TemporalPanel::onFrameReceived);
         connect(src, sig, m_heatmapPanel,    &HeatmapPanel::onFrameReceived);
         connect(src, sig, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
+        connect(src, sig, m_signalDetective,  &SignalDetectivePanel::onFrameReceived);
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
@@ -316,6 +320,7 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_temporalPanel,   &TemporalPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_heatmapPanel,    &HeatmapPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_signalDetective,  &SignalDetectivePanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, this,              &MainWindow::onAnyFrameReceived,
             Qt::DirectConnection);
     connect(m_capture, &CanCapture::frameReceived, m_simulator, &SimulatorPanel::onFrameReceived);

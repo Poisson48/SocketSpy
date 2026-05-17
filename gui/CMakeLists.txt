@@ -52,6 +52,7 @@ set(GUI_HEADERS
     include/bisect_panel.h
     include/range_state_panel.h
     include/range_state_scan.h
+    include/signal_detective_panel.h
     include/monitor_delegate.h
     include/xcp_panel.h
     include/doip_panel.h
@@ -108,6 +109,7 @@ add_executable(socketspy
     src/bisect_panel.cpp
     src/range_state_panel.cpp
     src/range_state_scan.cpp
+    src/signal_detective_panel.cpp
     src/monitor_delegate.cpp
     src/xcp_panel.cpp
     src/doip_panel.cpp

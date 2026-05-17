@@ -46,6 +46,7 @@ class TemporalPanel;
 class HeatmapPanel;
 class BisectPanel;
 class RangeStatePanel;
+class SignalDetectivePanel;
 class XcpPanel;
 class DoipPanel;
 class OpenDbcPanel;
@@ -137,6 +138,7 @@ private:
     HeatmapPanel*        m_heatmapPanel{nullptr};
     BisectPanel*         m_bisectPanel{nullptr};
     RangeStatePanel*     m_rangeStatePanel{nullptr};
+    SignalDetectivePanel* m_signalDetective{nullptr};
     XcpPanel*            m_xcpPanel{nullptr};
     DoipPanel*           m_doipPanel{nullptr};
     OpenDbcPanel*        m_openDbcPanel{nullptr};

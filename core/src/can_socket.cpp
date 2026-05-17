@@ -38,7 +38,7 @@ IfaceHandle can_open(std::string_view iface_name) {
     iface_name.copy(ifname, sizeof(ifname) - 1);
 
     struct ifreq ifr {};
-    std::strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+    std::memcpy(ifr.ifr_name, ifname, sizeof(ifname));
     if (::ioctl(fd, SIOCGIFINDEX, &ifr) < 0) {
         ::close(fd);
         return kInvalidHandle;

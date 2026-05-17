@@ -157,12 +157,12 @@ static void handle_tcp_connection(int client_fd, McpServer* server) {
             const json req  = json::parse(line);
             const json resp = server->handle_request(req); // delegated
             const std::string out = resp.dump() + "\n";
-            ::write(client_fd, out.c_str(), out.size());
+            if (::write(client_fd, out.c_str(), out.size()) < 0) break;
         } catch (...) {
             const std::string err =
                 R"({"jsonrpc":"2.0","id":null,"error":{"code":-32700,"message":"parse error"}})"
                 "\n";
-            ::write(client_fd, err.c_str(), err.size());
+            if (::write(client_fd, err.c_str(), err.size()) < 0) break;
         }
     }
     ::close(client_fd);

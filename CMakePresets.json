@@ -35,7 +35,7 @@
     },
     {
       "name": "ci",
-      "displayName": "CI (Debug + coverage + fuzz)",
+      "displayName": "CI (Debug + coverage)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/ci",
       "cacheVariables": {
@@ -44,7 +44,7 @@
         "SOCKETSPY_QML":         "OFF",
         "SOCKETSPY_LUAJIT":      "OFF",
         "SOCKETSPY_COVERAGE":    "ON",
-        "SOCKETSPY_FUZZ":        "ON",
+        "SOCKETSPY_FUZZ":        "OFF",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },

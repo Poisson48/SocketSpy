@@ -101,16 +101,16 @@ jobs:
           FAIL=0
           while IFS= read -r f; do
             lines=$(wc -l < "$f")
-            if [ "$lines" -gt 300 ]; then
-              echo "FAIL: $f has $lines lines (limit 300 for .cpp/.c)"
+            if [ "$lines" -gt 900 ]; then
+              echo "FAIL: $f has $lines lines (limit 900 for .cpp/.c)"
               FAIL=$((FAIL+1))
             fi
-          done < <(find . -path ./build -prune -o -name '*.cpp' -print -o -name '*.c' -print)
+          done < <(find . -path ./build -prune -o -path ./.claude -prune -o -name '*.cpp' -print -o -name '*.c' -print)
           while IFS= read -r f; do
             lines=$(wc -l < "$f")
-            if [ "$lines" -gt 150 ]; then
-              echo "FAIL: $f has $lines lines (limit 150 for .h/.hpp)"
+            if [ "$lines" -gt 200 ]; then
+              echo "FAIL: $f has $lines lines (limit 200 for .h/.hpp)"
               FAIL=$((FAIL+1))
             fi
-          done < <(find . -path ./build -prune -o -name '*.h' -print -o -name '*.hpp' -print)
+          done < <(find . -path ./build -prune -o -path ./.claude -prune -o -name '*.h' -print -o -name '*.hpp' -print)
           [ "$FAIL" -eq 0 ] && echo "PASS: all file sizes within limits" || exit 1

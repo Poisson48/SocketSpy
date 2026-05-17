@@ -19,7 +19,11 @@ jobs:
           sudo apt-get install -y \
             ninja-build git pkg-config liburing-dev \
             lua5.4 liblua5.4-dev libgl1-mesa-dev libfuse2 \
-            python3-pip patchelf libssl-dev
+            python3-pip patchelf libssl-dev \
+            libxkbcommon-x11-0 libxkbcommon-dev \
+            libxcb-xkb1 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0
           pip3 install --upgrade cmake
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 

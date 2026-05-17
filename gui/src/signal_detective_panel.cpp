@@ -128,7 +128,9 @@ QWidget* SignalDetectivePanel::buildClassifyTab() {
     m_classTable->setAlternatingRowColors(true);
     m_classTable->setSortingEnabled(true);
 
-    m_refreshBtn  = new QPushButton(tr("Refresh"), w);
+    m_refreshBtn  = new QPushButton(QString::fromUtf8("\xe2\x86\xba"), w);
+    m_refreshBtn->setObjectName("refreshBtn");
+    m_refreshBtn->setFixedWidth(28);
     m_classStatus = new QLabel(tr("Waiting for frames..."), w);
 
     auto* topRow = new QHBoxLayout;

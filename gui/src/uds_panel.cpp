@@ -7,6 +7,7 @@
 #include <QHeaderView>
 #include <QTableWidgetItem>
 #include <QSplitter>
+#include <QScrollArea>
 
 namespace socketspy::gui {
 
@@ -56,6 +57,7 @@ void UdsPanel::setupUi() {
 
     auto* refreshBtn = new QPushButton(QString::fromUtf8("↺"), this);
     refreshBtn->setFixedWidth(28);
+    refreshBtn->setObjectName("refreshBtn");
     connect(refreshBtn, &QPushButton::clicked, this, &UdsPanel::refreshIfaces);
 
     auto* ifaceRow = new QHBoxLayout;
@@ -70,22 +72,22 @@ void UdsPanel::setupUi() {
     m_p2->setValue(50);
     m_p2->setSuffix(" ms");
 
-    m_applyBtn = new QPushButton("Apply", this);
+    m_applyBtn = new QPushButton(tr("Apply"), this);
 
-    auto* configGroup = new QGroupBox("ECU Configuration", this);
+    auto* configGroup = new QGroupBox(tr("ECU Configuration"), this);
     auto* configForm  = new QFormLayout(configGroup);
-    configForm->addRow("Interface:", ifaceRow);
-    configForm->addRow("TX ID (hex):", m_txId);
-    configForm->addRow("RX ID (hex):", m_rxId);
-    configForm->addRow("P2 Timeout:", m_p2);
+    configForm->addRow(tr("Interface:"), ifaceRow);
+    configForm->addRow(tr("TX ID (hex):"), m_txId);
+    configForm->addRow(tr("RX ID (hex):"), m_rxId);
+    configForm->addRow(tr("P2 Timeout:"), m_p2);
     configForm->addRow("", m_applyBtn);
 
-    m_sessionLabel = new QLabel("Session: Default (0x01)", this);
+    m_sessionLabel = new QLabel(tr("Session: Default (0x01)"), this);
     m_sessionLabel->setStyleSheet("font-weight: bold; color: #3b82f6;");
 
-    m_readDtcBtn  = new QPushButton("Read DTC",   this);
-    m_clearDtcBtn = new QPushButton("Clear DTC",  this);
-    m_ecuInfoBtn  = new QPushButton("Read ECU Info", this);
+    m_readDtcBtn  = new QPushButton(tr("Read DTC"),    this);
+    m_clearDtcBtn = new QPushButton(tr("Clear DTC"),   this);
+    m_ecuInfoBtn  = new QPushButton(tr("Read ECU Info"), this);
 
     auto* btnRow = new QHBoxLayout;
     btnRow->addWidget(m_readDtcBtn);
@@ -97,7 +99,7 @@ void UdsPanel::setupUi() {
     m_statusLabel->setStyleSheet("color: #6b7280;");
 
     m_table = new QTableWidget(0, 4, this);
-    m_table->setHorizontalHeaderLabels({"Source", "Key", "Value", "Details"});
+    m_table->setHorizontalHeaderLabels({tr("Source"), tr("Key"), tr("Value"), tr("Details")});
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->verticalHeader()->hide();
@@ -117,8 +119,15 @@ void UdsPanel::setupUi() {
 
     m_scanner = new UdsScannerWidget(m_transport, this);
 
+    auto* scroll = new QScrollArea(this);
+    scroll->setWidget(topWidget);
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setFrameShape(QFrame::NoFrame);
+
     auto* splitter = new QSplitter(Qt::Vertical, this);
-    splitter->addWidget(topWidget);
+    splitter->addWidget(scroll);
     splitter->addWidget(m_scanner);
     splitter->setStretchFactor(0, 2);
     splitter->setStretchFactor(1, 3);

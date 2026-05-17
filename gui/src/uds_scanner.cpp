@@ -112,7 +112,7 @@ void UdsScannerWidget::onScan() {
     connect(m_transport, &UdsTransport::responseReceived,
             this, &UdsScannerWidget::onScanResponse, Qt::UniqueConnection);
     connect(m_transport, &UdsTransport::errorOccurred,
-            this, [this](const QString&) { onScanTimeout(); }, Qt::UniqueConnection);
+            this, &UdsScannerWidget::onScanError, Qt::UniqueConnection);
 
     startStep();
 }
@@ -164,6 +164,8 @@ void UdsScannerWidget::onScanResponse(std::vector<uint8_t> data) {
 
     m_stepTimer->start(10);
 }
+
+void UdsScannerWidget::onScanError(const QString&) { onScanTimeout(); }
 
 void UdsScannerWidget::onScanTimeout() {
     if (!m_scanning) return;

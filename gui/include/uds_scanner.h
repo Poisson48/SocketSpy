@@ -29,6 +29,7 @@ private slots:
     void onStep();
     void onScanResponse(std::vector<uint8_t> data);
     void onScanTimeout();
+    void onScanError(const QString&);
 
 private:
     void setupUi();

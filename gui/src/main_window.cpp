@@ -25,6 +25,7 @@
 #include "xcp_panel.h"
 #include "doip_panel.h"
 #include "opendbc_panel.h"
+#include "sidebar_nav.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
@@ -37,6 +38,7 @@
 #include <QStatusBar>
 #include <QPushButton>
 #include <QDockWidget>
+#include <QHBoxLayout>
 #include <QKeySequence>
 #include <QShortcut>
 #include <QMessageBox>
@@ -71,9 +73,6 @@ void MainWindow::setupUi() {
     resize(1200, 700);
     setMinimumSize(800, 500);
 
-    m_tabs = new QTabWidget(this);
-    setCentralWidget(m_tabs);
-
     m_welcomeScreen = new WelcomeScreen(m_projectRegistry, this);
     m_monitor   = new MonitorPanel(this);
     m_transmit  = new TransmitPanel(this);
@@ -96,29 +95,40 @@ void MainWindow::setupUi() {
     m_xcpPanel        = new XcpPanel(this);
     m_doipPanel       = new DoipPanel(this);
     m_openDbcPanel    = new OpenDbcPanel(this);
+    connect(m_openDbcPanel, &OpenDbcPanel::dbcFileSelected,
+            this,           &MainWindow::loadDbcFromPath);
 
-    m_tabs->addTab(m_welcomeScreen, QString::fromUtf8("\xe2\x8c\x82  ") + tr("Home"));
-    m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
-    m_tabs->addTab(m_transmit,      QString::fromUtf8("↑  ") + tr("Transmit"));
-    m_tabs->addTab(m_graph,         QString::fromUtf8("∿  ") + tr("Graph"));
-    m_tabs->addTab(m_replay,        QString::fromUtf8("▶  ") + tr("Replay"));
-    m_tabs->addTab(m_stats,         QString::fromUtf8("≡  ") + tr("Stats"));
-    m_tabs->addTab(m_elm327Panel,   QString::fromUtf8("⚡  ") + tr("OBD2"));
-    m_tabs->addTab(m_simulator,     QString::fromUtf8("⚙  ") + tr("Simulator"));
-    m_tabs->addTab(m_scriptPanel,   QString::fromUtf8("λ  ") + tr("Scripts"));
-    m_tabs->addTab(m_protocolPanel, QString::fromUtf8("⊕  ") + tr("Protocols"));
-    m_tabs->addTab(m_dbcBuilder,   QString::fromUtf8("✏  ") + tr("DBC Builder"));
-    m_tabs->addTab(m_mcpPanel,     QString::fromUtf8("⚙  ") + tr("MCP"));
-    m_tabs->addTab(m_fuzzerPanel,  QString::fromUtf8("⚡  ") + tr("Fuzzer"));
-    m_tabs->addTab(m_diffPanel,       QString::fromUtf8("≠  ")  + tr("Diff"));
-    m_tabs->addTab(m_udsPanel,        QString::fromUtf8("🔧  ")  + tr("UDS"));
-    m_tabs->addTab(m_temporalPanel,   QString::fromUtf8("⏱  ")  + tr("Temporal"));
-    m_tabs->addTab(m_heatmapPanel,    QString::fromUtf8("⬜  ")  + tr("Heatmap"));
-    m_tabs->addTab(m_bisectPanel,     QString::fromUtf8("⬡  ")  + tr("Bisect"));
-    m_tabs->addTab(m_rangeStatePanel, QString::fromUtf8("⊙  ")  + tr("Range Scan"));
-    m_tabs->addTab(m_xcpPanel,        QString::fromUtf8("X  ")   + tr("XCP"));
-    m_tabs->addTab(m_doipPanel,       QString::fromUtf8("⬦  ")  + tr("DoIP"));
-    m_tabs->addTab(m_openDbcPanel,    QString::fromUtf8("⬇  ")  + tr("OpenDBC"));
+    m_sidebar = new SidebarNav(this);
+    m_sidebar->addPanel("\xe2\x8c\x82",  tr("Home"),       m_welcomeScreen);
+    m_sidebar->addPanel("\xe2\x8a\x9e",  tr("Monitor"),    m_monitor);
+    m_sidebar->addPanel("\xe2\x86\x91",  tr("Transmit"),   m_transmit);
+    m_sidebar->addPanel("\xe2\x88\xbf",  tr("Graph"),      m_graph);
+    m_sidebar->addPanel("\xe2\x96\xb6",  tr("Replay"),     m_replay);
+    m_sidebar->addPanel("\xe2\x89\xa1",  tr("Stats"),      m_stats);
+    m_sidebar->addPanel("\xe2\x9a\xa1",  tr("OBD2"),       m_elm327Panel);
+    m_sidebar->addPanel("\xe2\x9a\x99",  tr("Simulator"),  m_simulator);
+    m_sidebar->addPanel("\xce\xbb",      tr("Scripts"),    m_scriptPanel);
+    m_sidebar->addPanel("\xe2\x8a\x95",  tr("Protocols"),  m_protocolPanel);
+    m_sidebar->addPanel("\xe2\x9c\x8f",  tr("DBC Bld"),    m_dbcBuilder);
+    m_sidebar->addPanel("\xe2\x9a\x99",  tr("MCP"),        m_mcpPanel);
+    m_sidebar->addPanel("\xe2\x9a\xa1",  tr("Fuzzer"),     m_fuzzerPanel);
+    m_sidebar->addPanel("\xe2\x89\xa0",  tr("Diff"),       m_diffPanel);
+    m_sidebar->addPanel("\xf0\x9f\x94\xa7", tr("UDS"),     m_udsPanel);
+    m_sidebar->addPanel("\xe2\x8f\xb1",  tr("Temporal"),   m_temporalPanel);
+    m_sidebar->addPanel("\xe2\xac\x9c",  tr("Heatmap"),    m_heatmapPanel);
+    m_sidebar->addPanel("\xe2\xac\xa1",  tr("Bisect"),     m_bisectPanel);
+    m_sidebar->addPanel("\xe2\x8a\x99",  tr("RngScan"),    m_rangeStatePanel);
+    m_sidebar->addPanel("X",             tr("XCP"),         m_xcpPanel);
+    m_sidebar->addPanel("\xe2\xac\xa6",  tr("DoIP"),        m_doipPanel);
+    m_sidebar->addPanel("\xe2\xac\x87",  tr("OpenDBC"),     m_openDbcPanel);
+
+    auto* central = new QWidget(this);
+    auto* hbox = new QHBoxLayout(central);
+    hbox->setContentsMargins(0, 0, 0, 0);
+    hbox->setSpacing(0);
+    hbox->addWidget(m_sidebar);
+    hbox->addWidget(m_sidebar->stack(), 1);
+    setCentralWidget(central);
 
     m_recLabel = new QLabel(this);
     m_recLabel->setObjectName("recLabel");
@@ -185,9 +195,9 @@ void MainWindow::setupUi() {
     connect(m_welcomeScreen, &WelcomeScreen::quickConnectRequested,
             this,            &MainWindow::onWelcomeQuickConnect);
     connect(m_welcomeScreen, &WelcomeScreen::showSimulatorRequested,
-            this, [this]() { m_tabs->setCurrentWidget(m_simulator); });
+            this, [this]() { m_sidebar->showPanel(m_simulator); });
     connect(m_welcomeScreen, &WelcomeScreen::showMonitorRequested,
-            this, [this]() { m_tabs->setCurrentWidget(m_monitor); });
+            this, [this]() { m_sidebar->showPanel(m_monitor); });
 
     m_filterPanel = new FilterPanel(this);
     m_filterDock  = new QDockWidget(tr("Filter"), this);
@@ -205,12 +215,12 @@ void MainWindow::setupUi() {
     addDockWidget(Qt::RightDockWidgetArea, m_triggerDock);
     m_triggerDock->hide();
 
-    // Ctrl+1..9: switch to tab N
+    // Ctrl+1..9: switch to nth panel
     for (int n = 1; n <= 9; ++n) {
         auto* sc = new QShortcut(QKeySequence(Qt::CTRL | static_cast<Qt::Key>(Qt::Key_0 + n)), this);
         connect(sc, &QShortcut::activated, this, [this, n]() {
-            if (n - 1 < m_tabs->count())
-                m_tabs->setCurrentIndex(n - 1);
+            auto* w = m_sidebar->stack()->widget(n - 1);
+            if (w) m_sidebar->showPanel(w);
         });
     }
 }

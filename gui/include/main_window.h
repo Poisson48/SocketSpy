@@ -1,6 +1,5 @@
 #pragma once
 #include <QMainWindow>
-#include <QTabWidget>
 #include <QLabel>
 #include <QComboBox>
 #include <QToolBar>
@@ -50,6 +49,7 @@ class RangeStatePanel;
 class XcpPanel;
 class DoipPanel;
 class OpenDbcPanel;
+class SidebarNav;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -60,6 +60,7 @@ public:
 
 private slots:
     void onOpenDbc();
+    void loadDbcFromPath(const QString& path);
     void onExit();
     void onAnyFrameReceived();
     void onFpsTick();
@@ -108,7 +109,7 @@ private:
     ProjectData collectProject() const;
     void applyProject(const ProjectData& p);
 
-    QTabWidget*          m_tabs{nullptr};
+    SidebarNav*          m_sidebar{nullptr};
     WelcomeScreen*       m_welcomeScreen{nullptr};
     QLabel*              m_statusLabel{nullptr};
     QLabel*              m_connStatusLabel{nullptr};

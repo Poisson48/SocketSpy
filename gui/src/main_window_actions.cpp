@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "sidebar_nav.h"
 #include "welcome_screen.h"
 #include "monitor_panel.h"
 #include "simulator_panel.h"
@@ -76,11 +77,7 @@ void MainWindow::onTriggerFired() {
     }
 }
 
-void MainWindow::onOpenDbc() {
-    QString path = QFileDialog::getOpenFileName(
-        this, tr("Open DBC File"), {}, tr("DBC Files (*.dbc);;All Files (*)"));
-    if (path.isEmpty()) return;
-
+void MainWindow::loadDbcFromPath(const QString& path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::critical(this, tr("Error"),
@@ -106,21 +103,16 @@ void MainWindow::onOpenDbc() {
     statusBar()->showMessage("DBC: " + QString::number(m_dbc->messages.size()) + " messages", 5000);
 }
 
-void MainWindow::onToggleMonitor(bool v) {
-    int i = m_tabs->indexOf(m_monitor);
-    if (v && i==-1) m_tabs->insertTab(0, m_monitor, QString::fromUtf8("⊞  ") + tr("Monitor"));
-    else if (!v && i!=-1) m_tabs->removeTab(i);
+void MainWindow::onOpenDbc() {
+    QString path = QFileDialog::getOpenFileName(
+        this, tr("Open DBC File"), {}, tr("DBC Files (*.dbc);;All Files (*)"));
+    if (path.isEmpty()) return;
+    loadDbcFromPath(path);
 }
-void MainWindow::onToggleTransmit(bool v) {
-    int i = m_tabs->indexOf(m_transmit);
-    if (v && i==-1) m_tabs->addTab(m_transmit, QString::fromUtf8("↑  ") + tr("Transmit"));
-    else if (!v && i!=-1) m_tabs->removeTab(i);
-}
-void MainWindow::onToggleGraph(bool v) {
-    int i = m_tabs->indexOf(m_graph);
-    if (v && i==-1) m_tabs->addTab(m_graph, QString::fromUtf8("∿  ") + tr("Graph"));
-    else if (!v && i!=-1) m_tabs->removeTab(i);
-}
+
+void MainWindow::onToggleMonitor(bool v)  { m_sidebar->setPanelVisible(m_monitor,  v); }
+void MainWindow::onToggleTransmit(bool v) { m_sidebar->setPanelVisible(m_transmit, v); }
+void MainWindow::onToggleGraph(bool v)    { m_sidebar->setPanelVisible(m_graph,    v); }
 
 void MainWindow::onStartRecording() {
     QString path = QFileDialog::getSaveFileName(
@@ -282,7 +274,7 @@ void MainWindow::onWelcomeOpenProject(const QString& path) {
     applyProject(p);
     setWindowTitle("SocketSpy \xe2\x80\x94 " + QFileInfo(path).baseName());
     // Navigate to Monitor after loading
-    m_tabs->setCurrentWidget(m_monitor);
+    m_sidebar->showPanel(m_monitor);
 }
 
 void MainWindow::onWelcomeQuickConnect() {
@@ -291,7 +283,7 @@ void MainWindow::onWelcomeQuickConnect() {
                          : (!m_knownIfaces.isEmpty() ? m_knownIfaces.first() : QString());
     if (!target.isEmpty())
         m_ifaceCombo->setCurrentText(target);
-    m_tabs->setCurrentWidget(m_monitor);
+    m_sidebar->showPanel(m_monitor);
 }
 
 void MainWindow::setConnStatus(bool active) {
@@ -547,7 +539,7 @@ void MainWindow::onImportAsc() {
         ifaces.append("1");
     }
     m_replay->loadFrames(replayFrames, ifaces, QFileInfo(path).fileName());
-    m_tabs->setCurrentWidget(m_replay);
+    m_sidebar->showPanel(m_replay);
     statusBar()->showMessage(
         tr("ASC imported: %1 frames from %2").arg(frames.size()).arg(path), 5000);
 }
@@ -657,7 +649,7 @@ void MainWindow::onImportCsv() {
     }
     QVector<QString> ifaces(frames.size());
     m_replay->loadFrames(frames, ifaces, QFileInfo(path).fileName());
-    m_tabs->setCurrentWidget(m_replay);
+    m_sidebar->showPanel(m_replay);
     statusBar()->showMessage(tr("CSV imported: %1 frames").arg(frames.size()), 5000);
 }
 

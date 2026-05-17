@@ -30,6 +30,7 @@ public:
         lay->setContentsMargins(0, 0, 0, 0);
         panel->setParent(this);
         lay->addWidget(panel);
+        panel->show();
     }
 
 protected:

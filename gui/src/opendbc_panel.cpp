@@ -130,7 +130,12 @@ void OpenDbcPanel::onDownload() {
     m_progress->setVisible(true);
     m_progress->setValue(0);
 
-    QDir().mkpath(m_cacheDir);
+    // Clear stale cache so renamed files don't accumulate
+    QDir dir(m_cacheDir);
+    if (dir.exists())
+        for (const QString& f : dir.entryList({"*.dbc"}, QDir::Files))
+            dir.remove(f);
+    dir.mkpath(".");
 
     // Use the Git Trees API with recursive=1 to find ALL .dbc files
     // regardless of how deep they are in the repo directory tree.
@@ -164,15 +169,21 @@ void OpenDbcPanel::onListingReady(QNetworkReply* reply) {
         m_doneFiles = 0;
         m_activeDownloads = 0;
 
-        // tree entries: { "path": "opendbc/dbc/toyota_camry.dbc", "type": "blob", ... }
+        // tree entries: { "path": "opendbc/dbc/toyota/toyota_camry.dbc", "type": "blob", ... }
+        // Use the full relative path (slashes → "__") as the cache filename to avoid
+        // collisions when two files share the same basename in different subdirectories.
         for (const QJsonValue& val : tree) {
             QJsonObject obj = val.toObject();
             if (obj["type"].toString() != "blob") continue;
             const QString path = obj["path"].toString();
             if (!path.endsWith(".dbc", Qt::CaseInsensitive)) continue;
-            // Use the flat filename as the local cache name (strip path)
-            const QString name = path.mid(path.lastIndexOf('/') + 1);
-            // Raw download URL
+            // Strip leading common prefix (up to and including the first "dbc/" segment)
+            // so display names stay short, e.g. "toyota/toyota_camry.dbc"
+            QString name = path;
+            const int dbcIdx = name.indexOf("dbc/");
+            if (dbcIdx >= 0) name = name.mid(dbcIdx + 4); // skip "dbc/"
+            // Replace remaining slashes with "__" for a flat cache filename
+            name.replace('/', "__");
             const QString url = "https://raw.githubusercontent.com/commaai/opendbc/HEAD/" + path;
             m_queue.append({name, url});
         }

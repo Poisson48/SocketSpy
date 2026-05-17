@@ -7,7 +7,7 @@ on:
 
 jobs:
   appimage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -17,9 +17,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y \
-            cmake ninja-build git pkg-config liburing-dev \
+            ninja-build git pkg-config liburing-dev \
             lua5.4 liblua5.4-dev libgl1-mesa-dev libfuse2 \
             python3-pip patchelf libssl-dev
+          pip3 install --upgrade cmake
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install aqtinstall and Qt 6.6 static
         run: bash scripts/dev/install_qt_static.sh
@@ -34,9 +36,9 @@ jobs:
 
       - name: CMake configure (release preset)
         run: |
-          Qt6_DIR="${HOME}/Qt/6.6.3/gcc_64/lib/cmake/Qt6"
+          QT_PREFIX="${HOME}/Qt/6.6.3/gcc_64"
           cmake --preset release \
-            -DQt6_DIR="${Qt6_DIR}" \
+            -DCMAKE_PREFIX_PATH="${QT_PREFIX}" \
             -DCMAKE_TOOLCHAIN_FILE="${HOME}/.local/share/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       - name: CMake build (release preset)
@@ -54,7 +56,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           DESTDIR=/tmp/appdir cmake --install build/release
-          QMAKE="${HOME}/Qt/6.6.3/gcc_64/bin/qmake" \
+          QMAKE="${HOME}/Qt/6.6.3/gcc_64/bin/qmake6" \
           EXTRA_QT_PLUGINS="charts;serialbus;serialport" \
           /tmp/linuxdeploy \
             --appdir /tmp/appdir \

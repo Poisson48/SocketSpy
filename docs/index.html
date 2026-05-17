@@ -257,7 +257,7 @@
 
 <!-- ── HERO ──────────────────────────────────────────────────────── -->
 <div class="hero">
-  <div class="badge">v0.5.0 — Linux x86_64 AppImage available</div>
+  <div class="badge">v0.6.0 — Linux x86_64 AppImage available</div>
   <h1>CAN bus analysis,<br/>built for Linux</h1>
   <p class="hero-sub">
     Live frame monitor, DBC signal decoding, Lua scripting, protocol decoders
@@ -282,7 +282,7 @@
       <div class="dot dot-red"></div>
       <div class="dot dot-yel"></div>
       <div class="dot dot-grn"></div>
-      <span class="mock-title">SocketSpy v0.5.0 — vcan0</span>
+      <span class="mock-title">SocketSpy v0.6.0 — vcan0</span>
     </div>
     <div class="mock-body">
       <div class="mock-toolbar">
@@ -418,6 +418,36 @@
       <p>High-throughput frame capture pipeline with hardware timestamps and a lock-free SPSC ring buffer — no frames dropped at high bus loads.</p>
     </div>
 
+    <div class="feat-card">
+      <div class="feat-icon">🎯</div>
+      <h3>Frame Fuzzer</h3>
+      <p>Inject random, incremental or bit-flip CAN frames at a configurable interval from the Fuzzer tab. Per-run frame counter tracks how many frames were sent.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🔧</div>
+      <h3>UDS Tester</h3>
+      <p>ISO 14229 + ISO 15765-2 transport layer built in. Read DTC (0x19), Clear DTC (0x14), Read ECU Info via 0x22 — VIN, serial number and active session. Live session indicator.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">💾</div>
+      <h3>BLF / MDF4 Export</h3>
+      <p>File → "Export BLF..." produces a Vector CANalyzer-compatible BLF v2 file. "Export MDF4..." produces an asammdf / MATLAB-compatible MDF4 v4.10 file.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🔍</div>
+      <h3>Capture Diff</h3>
+      <p>Compare two CAN captures (.log or .csv) in the Diff tab. Results grouped by ID: A only, B only, Changed, Same. Byte-level delta and ID filter included.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🚌</div>
+      <h3>Multi-bus Monitor</h3>
+      <p>Tools → "+ Add Second Bus..." opens a second SocketCAN interface alongside the first. A "Bus" column in the Monitor lets you tell frame sources apart at a glance.</p>
+    </div>
+
   </div>
 </section>
 
@@ -428,7 +458,7 @@
       <h2>Download SocketSpy</h2>
       <p>Self-contained AppImage — Qt6 fully bundled. Runs on any x86_64 Linux with SocketCAN support. No installation, no root required.</p>
       <div class="dl-meta">
-        <div class="dl-pill">Version <span>0.5.0</span></div>
+        <div class="dl-pill">Version <span>0.6.0</span></div>
         <div class="dl-pill">Size <span>~29 MB</span></div>
         <div class="dl-pill">Arch <span>x86_64</span></div>
         <div class="dl-pill">License <span>GPL-3.0</span></div>

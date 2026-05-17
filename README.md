@@ -28,6 +28,11 @@ Requires Linux x86_64, kernel ≥ 5.4 with SocketCAN support.
 - **CAN simulator** — generate CAN traffic without hardware; built-in vehicle profiles or create custom ones from the UI
 - **MCP server** — JSON-RPC 2.0 over stdio or TCP (127.0.0.1 only) for Claude integration
 - **io_uring capture** — high-throughput frame capture pipeline with hardware timestamps
+- **Frame fuzzer** — send random, incremental, or bit-flip CAN frames at a configurable interval; frame counter per run
+- **UDS tester** — ISO 14229 + ISO 15765-2 transport; Read DTC (0x19), Clear DTC (0x14), Read ECU Info via 0x22 (VIN, serial, session); live session indicator
+- **BLF / MDF4 export** — File → "Export BLF..." (Vector CANalyzer-compatible BLF v2) and "Export MDF4..." (asammdf / MATLAB MDF4 v4.10)
+- **Capture diff** — compare two CAN captures (.log or .csv) side-by-side; diff by ID (A only / B only / Changed / Same), byte-level delta, filterable results
+- **Multi-bus monitor** — Tools → "+ Add Second Bus..." opens a second SocketCAN interface in parallel; "Bus" column in the Monitor distinguishes frame sources
 
 ## Build
 
@@ -103,6 +108,14 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 The MCP server exposes 11 tools: `can_monitor`, `can_send`, `can_decode`, `can_replay`,
 `can_script`, `canopen_sdo_read`, `canopen_sdo_write`, `canopen_scan`, `can_diff`, `get_stats`, `can_stop`.
 All traffic stays local — TCP transport binds only to `127.0.0.1`.
+
+## What's new in v0.6.0
+
+- **Frame fuzzer** — randomised / incremental / bit-flip frame injection with configurable interval and frame counter
+- **UDS tester** — full ISO 14229 + ISO 15765-2 session: Read DTC, Clear DTC, Read ECU Info (VIN / serial / session mode)
+- **BLF / MDF4 export** — export captures to Vector CANalyzer-compatible BLF v2 or asammdf/MATLAB MDF4 v4.10
+- **Capture diff** — diff two .log/.csv captures by CAN ID; byte-level delta, A-only / B-only / Changed / Same filter
+- **Multi-bus monitor** — run two SocketCAN interfaces in parallel; per-frame "Bus" column in the Monitor
 
 ## License
 

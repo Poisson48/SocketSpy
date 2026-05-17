@@ -6,6 +6,7 @@
 #include <QTranslator>
 #include "main_window.h"
 #include "splash_screen.h"
+#include "welcome_screen.h"
 
 int main(int argc, char* argv[]) {
     bool headless = false;
@@ -66,7 +67,11 @@ int main(int argc, char* argv[]) {
         if (splash)
             QTimer::singleShot(1500, splash, [splash, &window]() {
                 splash->finish(&window);
+                if (socketspy::gui::WelcomeScreen::shouldShow())
+                    window.showWelcome();
             });
+        else if (socketspy::gui::WelcomeScreen::shouldShow())
+            QTimer::singleShot(0, &window, [&window]() { window.showWelcome(); });
     }
 
     if (exitAfterSec > 0)

@@ -76,6 +76,8 @@ void MainWindow::setupUi() {
     setMinimumSize(800, 500);
 
     m_welcomeScreen = new WelcomeScreen(m_projectRegistry, this);
+    connectWelcomeSignals();
+
     m_monitor   = new MonitorPanel(this);
     m_transmit  = new TransmitPanel(this);
     m_graph     = new SignalGraphPanel(this);
@@ -102,7 +104,6 @@ void MainWindow::setupUi() {
             this,           &MainWindow::loadDbcFromPath);
 
     m_sidebar = new SidebarNav(this);
-    m_sidebar->addPanel("\xe2\x8c\x82",  tr("Home"),       m_welcomeScreen);
     m_sidebar->addPanel("\xe2\x8a\x9e",  tr("Monitor"),    m_monitor);
     m_sidebar->addPanel("\xe2\x86\x91",  tr("Transmit"),   m_transmit);
     m_sidebar->addPanel("\xe2\x88\xbf",  tr("Graph"),      m_graph);
@@ -190,19 +191,6 @@ void MainWindow::setupUi() {
                 m_stats->onDbcLoaded(db);
             });
 
-    // WelcomeScreen signal wiring
-    connect(m_welcomeScreen, &WelcomeScreen::newProjectRequested,
-            this,            &MainWindow::onNewProject);
-    connect(m_welcomeScreen, &WelcomeScreen::openProjectRequested,
-            this,            &MainWindow::onWelcomeOpenProject);
-    connect(m_welcomeScreen, &WelcomeScreen::openDbcRequested,
-            this,            &MainWindow::onOpenDbc);
-    connect(m_welcomeScreen, &WelcomeScreen::quickConnectRequested,
-            this,            &MainWindow::onWelcomeQuickConnect);
-    connect(m_welcomeScreen, &WelcomeScreen::showSimulatorRequested,
-            this, [this]() { m_sidebar->showPanel(m_simulator); });
-    connect(m_welcomeScreen, &WelcomeScreen::showMonitorRequested,
-            this, [this]() { m_sidebar->showPanel(m_monitor); });
 
     m_filterPanel = new FilterPanel(this);
     m_filterDock  = new QDockWidget(tr("Filter"), this);
@@ -523,6 +511,26 @@ void MainWindow::onExit()                        { close(); }
 void MainWindow::onSignalAliased(const QString& canonical, const QString& alias) {
     m_signalAliases[canonical] = alias;
     m_monitor->setAliases(m_signalAliases);
+}
+
+void MainWindow::connectWelcomeSignals() {
+    connect(m_welcomeScreen, &WelcomeScreen::newProjectRequested,
+            this,            &MainWindow::onNewProject);
+    connect(m_welcomeScreen, &WelcomeScreen::openProjectRequested,
+            this,            &MainWindow::onWelcomeOpenProject);
+    connect(m_welcomeScreen, &WelcomeScreen::openDbcRequested,
+            this,            &MainWindow::onOpenDbc);
+    connect(m_welcomeScreen, &WelcomeScreen::quickConnectRequested,
+            this,            &MainWindow::onWelcomeQuickConnect);
+    connect(m_welcomeScreen, &WelcomeScreen::showSimulatorRequested,
+            this, [this]() { m_sidebar->showPanel(m_simulator); });
+    connect(m_welcomeScreen, &WelcomeScreen::showMonitorRequested,
+            this, [this]() { m_sidebar->showPanel(m_monitor); });
+}
+
+void MainWindow::showWelcome() {
+    m_welcomeScreen->refreshRecentProjects();
+    m_welcomeScreen->show();
 }
 
 } // namespace socketspy::gui

@@ -1,25 +1,29 @@
 #pragma once
-#include <QWidget>
+#include <QDialog>
+#include <QLabel>
 #include <QListWidget>
 #include "project_registry.h"
 
 namespace socketspy::gui {
 
-class WelcomeScreen : public QWidget {
+class WelcomeScreen : public QDialog {
     Q_OBJECT
 
 public:
     explicit WelcomeScreen(ProjectRegistry& registry, QWidget* parent = nullptr);
 
+    // Returns false if the user checked "ne plus afficher"
+    static bool shouldShow();
+
     void refreshRecentProjects();
 
 signals:
     void newProjectRequested();
-    void openProjectRequested(const QString& path);   // empty = show browser
+    void openProjectRequested(const QString& path);
     void openDbcRequested();
-    void quickConnectRequested();        // "Connecter vcan0"
-    void showSimulatorRequested();       // navigate to Simulator tab
-    void showMonitorRequested();         // navigate to Monitor tab
+    void quickConnectRequested();
+    void showSimulatorRequested();
+    void showMonitorRequested();
 
 private slots:
     void onItemDoubleClicked(QListWidgetItem* item);
@@ -27,10 +31,11 @@ private slots:
 
 private:
     void buildUi();
-    QWidget* buildHeader();
-    QWidget* buildRecentSection();
-    QWidget* buildQuickActionsSection();
-    QWidget* buildQuickStartSection();
+    QWidget* buildLeftPanel();
+    QWidget* buildRightPanel();
+
+    static QLabel* makeLink(const QString& icon, const QString& label,
+                            const QString& url, QWidget* parent);
 
     ProjectRegistry& m_registry;
     QListWidget*     m_recentList{nullptr};

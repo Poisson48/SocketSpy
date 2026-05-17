@@ -101,11 +101,15 @@ private slots:
     void onAddBus();
     void onRemoveBus();
 
+public:
+    void showWelcome();
+
 private:
     void setupUi();
     void setupMenuBar();
     void setupToolBar();
     void setupCapture(const QString& iface);
+    void connectWelcomeSignals();
     void setConnStatus(bool active);
     ProjectData collectProject() const;
     void applyProject(const ProjectData& p);

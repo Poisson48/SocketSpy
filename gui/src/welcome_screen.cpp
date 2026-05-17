@@ -1,314 +1,374 @@
 #include "welcome_screen.h"
 
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QGridLayout>
-#include <QLabel>
-#include <QPushButton>
-#include <QFrame>
-#include <QScrollArea>
-#include <QListWidgetItem>
+#include <QCheckBox>
+#include <QDesktopServices>
 #include <QFileInfo>
 #include <QFont>
-#include <QSizePolicy>
-#include <QSpacerItem>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QPushButton>
+#include <QSettings>
+#include <QUrl>
+#include <QVBoxLayout>
 
 namespace socketspy::gui {
 
-// ── helper: section title ───────────────────────────────────────────────────
-static QLabel* makeSectionTitle(const QString& text, QWidget* parent) {
-    auto* lbl = new QLabel(text, parent);
-    QFont f = lbl->font();
-    f.setPointSize(f.pointSize() + 1);
-    f.setBold(true);
-    lbl->setFont(f);
-    lbl->setStyleSheet("color: #7c8fa6; letter-spacing: 1px; text-transform: uppercase;");
-    return lbl;
-}
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-// ── helper: thin horizontal rule ────────────────────────────────────────────
-static QFrame* makeSeparator(QWidget* parent) {
+static QFrame* makeSep(QWidget* parent) {
     auto* sep = new QFrame(parent);
     sep->setFrameShape(QFrame::HLine);
-    sep->setFrameShadow(QFrame::Plain);
     sep->setStyleSheet("color: #2a3a52;");
     sep->setFixedHeight(1);
     return sep;
 }
 
+static QLabel* makeSectionTitle(const QString& text, QWidget* parent) {
+    auto* lbl = new QLabel(text.toUpper(), parent);
+    QFont f = lbl->font();
+    f.setPointSize(f.pointSize() - 1);
+    f.setBold(true);
+    lbl->setFont(f);
+    lbl->setStyleSheet("color: #4b5563; letter-spacing: 1px;");
+    return lbl;
+}
+
 // ── WelcomeScreen ────────────────────────────────────────────────────────────
+
 WelcomeScreen::WelcomeScreen(ProjectRegistry& registry, QWidget* parent)
-    : QWidget(parent), m_registry(registry)
+    : QDialog(parent, Qt::Dialog), m_registry(registry)
 {
+    setWindowTitle(tr("Bienvenue dans SocketSpy"));
+    setFixedSize(820, 520);
+    setModal(false);
     buildUi();
+
+    // Center on parent (or screen if no parent)
+    if (parent) {
+        const QRect pr = parent->geometry();
+        move(pr.center() - rect().center());
+    }
+}
+
+bool WelcomeScreen::shouldShow() {
+    QSettings s;
+    return s.value("welcome/show", true).toBool();
 }
 
 void WelcomeScreen::buildUi() {
-    // Outer scroll area so the welcome page works even at small heights
-    auto* scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setStyleSheet(R"(
+        QDialog { background: #111827; }
+        QLabel  { color: #e5e7eb; }
+    )");
 
-    auto* content = new QWidget(scroll);
-    scroll->setWidget(content);
+    auto* root = new QHBoxLayout(this);
+    root->setContentsMargins(0, 0, 0, 0);
+    root->setSpacing(0);
+    root->addWidget(buildLeftPanel());
 
-    auto* root = new QVBoxLayout(content);
-    root->setContentsMargins(48, 40, 48, 40);
-    root->setSpacing(32);
+    // vertical divider
+    auto* divider = new QFrame(this);
+    divider->setFrameShape(QFrame::VLine);
+    divider->setStyleSheet("color: #1f2d42;");
+    divider->setFixedWidth(1);
+    root->addWidget(divider);
 
-    root->addWidget(buildHeader());
-    root->addWidget(makeSeparator(content));
-    root->addWidget(buildRecentSection());
-    root->addWidget(makeSeparator(content));
-
-    // Bottom row: quick actions + quick start side by side
-    auto* bottomRow = new QHBoxLayout;
-    bottomRow->setSpacing(32);
-    bottomRow->addWidget(buildQuickActionsSection(), 1);
-    bottomRow->addWidget(buildQuickStartSection(),   1);
-    root->addLayout(bottomRow);
-
-    root->addStretch();
-
-    // Wrap scroll area in own layout
-    auto* outerLayout = new QVBoxLayout(this);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
-    outerLayout->addWidget(scroll);
+    root->addWidget(buildRightPanel());
 }
 
-// ── Header ───────────────────────────────────────────────────────────────────
-QWidget* WelcomeScreen::buildHeader() {
+// ── Left panel : branding + links + update + start ───────────────────────────
+
+QWidget* WelcomeScreen::buildLeftPanel() {
     auto* w   = new QWidget(this);
+    w->setFixedWidth(320);
+    w->setStyleSheet("QWidget { background: #0d1117; }");
+
     auto* lay = new QVBoxLayout(w);
-    lay->setContentsMargins(0, 0, 0, 0);
-    lay->setSpacing(6);
+    lay->setContentsMargins(28, 28, 28, 20);
+    lay->setSpacing(0);
 
-    auto* titleLbl = new QLabel(QString::fromUtf8("SocketSpy"), w);
+    // ── Branding ────────────────────────────────────────────────────────────
+    auto* logoLbl = new QLabel("SocketSpy", w);
     {
-        QFont f = titleLbl->font();
-        f.setPointSize(f.pointSize() + 14);
+        QFont f = logoLbl->font();
+        f.setPointSize(f.pointSize() + 16);
         f.setBold(true);
-        titleLbl->setFont(f);
-        titleLbl->setStyleSheet("color: #6366f1; letter-spacing: -0.5px;");
+        logoLbl->setFont(f);
+        logoLbl->setStyleSheet("color: #6366f1; background: transparent;");
+    }
+    lay->addWidget(logoLbl);
+
+    auto* tagLbl = new QLabel(tr("Analyse de bus CAN · Linux"), w);
+    tagLbl->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
+    lay->addWidget(tagLbl);
+
+    lay->addSpacing(6);
+
+    auto* verLbl = new QLabel(QString("v%1").arg(APP_VERSION), w);
+    verLbl->setStyleSheet("color: #374151; font-size: 11px; background: transparent;");
+    lay->addWidget(verLbl);
+
+    lay->addSpacing(24);
+    lay->addWidget(makeSep(w));
+    lay->addSpacing(16);
+
+    // ── Links ────────────────────────────────────────────────────────────────
+    lay->addWidget(makeSectionTitle(tr("Ressources"), w));
+    lay->addSpacing(10);
+
+    const struct { const char* icon; const char* label; const char* url; } links[] = {
+        { "📖", QT_TR_NOOP("Documentation / Wiki"),
+                "https://github.com/Poisson48/SocketSpy/wiki" },
+        { "💻", QT_TR_NOOP("Code source (GitHub)"),
+                "https://github.com/Poisson48/SocketSpy" },
+        { "🐛", QT_TR_NOOP("Signaler un bug"),
+                "https://github.com/Poisson48/SocketSpy/issues/new" },
+        { "📋", QT_TR_NOOP("Changelog"),
+                "https://github.com/Poisson48/SocketSpy/releases" },
+    };
+
+    for (const auto& lk : links) {
+        auto* lbl = makeLink(lk.icon, tr(lk.label), lk.url, w);
+        lay->addWidget(lbl);
+        lay->addSpacing(4);
     }
 
-    auto* subtitleLbl = new QLabel(tr("Linux CAN Analysis"), w);
-    {
-        QFont f = subtitleLbl->font();
-        f.setPointSize(f.pointSize() + 3);
-        subtitleLbl->setFont(f);
-        subtitleLbl->setStyleSheet("color: #7c8fa6;");
-    }
+    lay->addSpacing(16);
+    lay->addWidget(makeSep(w));
+    lay->addSpacing(16);
 
-    lay->addWidget(titleLbl);
-    lay->addWidget(subtitleLbl);
+    // ── Update check ─────────────────────────────────────────────────────────
+    lay->addWidget(makeSectionTitle(tr("Mises à jour"), w));
+    lay->addSpacing(10);
+
+    auto* currentVerLbl = new QLabel(
+        tr("Version installée : <b>%1</b>").arg(APP_VERSION), w);
+    currentVerLbl->setStyleSheet(
+        "color: #6b7280; font-size: 11px; background: transparent;");
+    currentVerLbl->setTextFormat(Qt::RichText);
+    lay->addWidget(currentVerLbl);
+
+    lay->addSpacing(6);
+
+    auto* updateBtn = new QPushButton(tr("Vérifier les mises à jour"), w);
+    updateBtn->setEnabled(false);
+    updateBtn->setToolTip(tr("Bientôt disponible"));
+    updateBtn->setStyleSheet(R"(
+        QPushButton {
+            background: transparent;
+            color: #374151;
+            border: 1px solid #1f2d42;
+            border-radius: 5px;
+            padding: 5px 12px;
+            font-size: 11px;
+            text-align: left;
+        }
+    )");
+    lay->addWidget(updateBtn);
+
+    lay->addStretch();
+    lay->addWidget(makeSep(w));
+    lay->addSpacing(12);
+
+    // ── Bottom: ne plus afficher + fermer ────────────────────────────────────
+    auto* check = new QCheckBox(tr("Ne plus afficher au démarrage"), w);
+    check->setStyleSheet(
+        "QCheckBox { color: #4b5563; font-size: 11px; background: transparent; }"
+        "QCheckBox::indicator { width: 14px; height: 14px; }");
+    QSettings s;
+    check->setChecked(!s.value("welcome/show", true).toBool());
+    connect(check, &QCheckBox::toggled, [](bool checked) {
+        QSettings ss;
+        ss.setValue("welcome/show", !checked);
+    });
+    lay->addWidget(check);
+
+    lay->addSpacing(8);
+
+    auto* closeBtn = new QPushButton(tr("Commencer  →"), w);
+    closeBtn->setStyleSheet(R"(
+        QPushButton {
+            background: #6366f1;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 18px;
+            font-weight: bold;
+        }
+        QPushButton:hover { background: #4f46e5; }
+        QPushButton:pressed { background: #4338ca; }
+    )");
+    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+    lay->addWidget(closeBtn);
+
     return w;
 }
 
-// ── Recent projects ──────────────────────────────────────────────────────────
-QWidget* WelcomeScreen::buildRecentSection() {
-    auto* w   = new QWidget(this);
-    auto* lay = new QVBoxLayout(w);
-    lay->setContentsMargins(0, 0, 0, 0);
-    lay->setSpacing(10);
+// ── Right panel : recent projects + quick actions ────────────────────────────
 
-    lay->addWidget(makeSectionTitle(tr("Recent Projects"), w));
+QWidget* WelcomeScreen::buildRightPanel() {
+    auto* w   = new QWidget(this);
+    w->setStyleSheet("QWidget { background: #111827; }");
+
+    auto* lay = new QVBoxLayout(w);
+    lay->setContentsMargins(28, 28, 28, 20);
+    lay->setSpacing(0);
+
+    // Recent projects
+    lay->addWidget(makeSectionTitle(tr("Projets récents"), w));
+    lay->addSpacing(10);
 
     m_recentList = new QListWidget(w);
     m_recentList->setObjectName("welcomeRecentList");
     m_recentList->setFrameShape(QFrame::NoFrame);
     m_recentList->setAlternatingRowColors(false);
     m_recentList->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_recentList->setMinimumHeight(160);
-    m_recentList->setMaximumHeight(300);
-    m_recentList->setStyleSheet(
-        "QListWidget { background: #1a2235; border: 1px solid #2a3a52; border-radius: 8px; padding: 4px; }"
-        "QListWidget::item { padding: 0px; border-radius: 6px; }"
-        "QListWidget::item:selected { background: rgba(99,102,241,0.18); }"
-        "QListWidget::item:hover:!selected { background: #232f45; }"
-    );
+    m_recentList->setStyleSheet(R"(
+        QListWidget {
+            background: #1a2235;
+            border: 1px solid #1f2d42;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        QListWidget::item { padding: 0px; border-radius: 6px; }
+        QListWidget::item:selected { background: rgba(99,102,241,0.2); }
+        QListWidget::item:hover:!selected { background: #1f2d42; }
+    )");
     refreshRecentProjects();
-    lay->addWidget(m_recentList);
+    lay->addWidget(m_recentList, 1);
 
-    // button row below the list
+    lay->addSpacing(10);
+
+    // Open buttons
     auto* btnRow = new QHBoxLayout;
     btnRow->setSpacing(8);
-
-    auto* btnOpen   = new QPushButton(tr("Open selected"), w);
-    btnOpen->setObjectName("welcomeOpenBtn");
-    auto* btnBrowse = new QPushButton(tr("Browse…"), w);
-    btnBrowse->setProperty("secondary", true);
-
+    auto* btnOpen   = new QPushButton(tr("Ouvrir la sélection"), w);
+    auto* btnBrowse = new QPushButton(tr("Parcourir…"), w);
+    for (auto* b : {btnOpen, btnBrowse}) {
+        b->setStyleSheet(R"(
+            QPushButton {
+                background: #1a2235; color: #9ca3af;
+                border: 1px solid #1f2d42; border-radius: 6px;
+                padding: 6px 14px; font-size: 12px;
+            }
+            QPushButton:hover { border-color: #6366f1; color: #e5e7eb; }
+        )");
+    }
+    connect(btnOpen,   &QPushButton::clicked, this, &WelcomeScreen::onOpenSelectedProject);
+    connect(btnBrowse, &QPushButton::clicked, this, [this]() {
+        emit openProjectRequested(QString());
+        accept();
+    });
     btnRow->addWidget(btnOpen);
     btnRow->addWidget(btnBrowse);
     btnRow->addStretch();
     lay->addLayout(btnRow);
 
-    connect(m_recentList, &QListWidget::itemDoubleClicked,
-            this,         &WelcomeScreen::onItemDoubleClicked);
-    connect(btnOpen,   &QPushButton::clicked, this, &WelcomeScreen::onOpenSelectedProject);
-    connect(btnBrowse, &QPushButton::clicked, this, [this]() {
-        emit openProjectRequested(QString()); // empty → show browser dialog
-    });
+    lay->addSpacing(16);
+    lay->addWidget(makeSep(w));
+    lay->addSpacing(16);
 
-    return w;
-}
+    // Quick start
+    lay->addWidget(makeSectionTitle(tr("Démarrage rapide"), w));
+    lay->addSpacing(10);
 
-// ── Quick actions ────────────────────────────────────────────────────────────
-QWidget* WelcomeScreen::buildQuickActionsSection() {
-    auto* w   = new QWidget(this);
-    auto* lay = new QVBoxLayout(w);
-    lay->setContentsMargins(0, 0, 0, 0);
-    lay->setSpacing(10);
+    auto* quickRow = new QHBoxLayout;
+    quickRow->setSpacing(8);
 
-    lay->addWidget(makeSectionTitle(tr("Quick Actions"), w));
-
-    auto makeBtn = [&](const QString& label, const QString& desc) -> QPushButton* {
-        auto* btn = new QPushButton(w);
-        btn->setProperty("secondary", true);
-        btn->setCursor(Qt::PointingHandCursor);
-
-        auto* inner   = new QWidget(btn);
-        auto* innerLy = new QVBoxLayout(inner);
-        innerLy->setContentsMargins(0, 0, 0, 0);
-        innerLy->setSpacing(2);
-
-        auto* lbl  = new QLabel(label, inner);
-        QFont f = lbl->font();
-        f.setBold(true);
-        lbl->setFont(f);
-        lbl->setStyleSheet("color: #f1f5f9; background: transparent;");
-
-        auto* sub  = new QLabel(desc, inner);
-        sub->setStyleSheet("color: #7c8fa6; font-size: 11px; background: transparent;");
-
-        innerLy->addWidget(lbl);
-        innerLy->addWidget(sub);
-
-        // We use a plain layout-based approach to get the two-line look
-        // without fighting QPushButton's internal layout.
-        auto* btnLy = new QVBoxLayout(btn);
-        btnLy->setContentsMargins(14, 10, 14, 10);
-        btnLy->addWidget(inner);
-
-        btn->setStyleSheet(
-            "QPushButton { background: #1a2235; border: 1px solid #2a3a52; border-radius: 8px; text-align: left; }"
-            "QPushButton:hover { border-color: #6366f1; background: #232f45; }"
-            "QPushButton:pressed { background: #1a2235; }"
-        );
-        btn->setFixedHeight(62);
-        return btn;
+    const struct { const char* icon; const char* label; } tiles[] = {
+        { "📁", QT_TR_NOOP("Nouveau projet")   },
+        { "🔌", QT_TR_NOOP("Connecter vcan0")  },
+        { "📄", QT_TR_NOOP("Ouvrir DBC")       },
+        { "⚙",  QT_TR_NOOP("Simulateur")       },
     };
 
-    auto* btnNew  = makeBtn(tr("New Project"),
-                            tr("Start fresh with a blank workspace"));
-    auto* btnDbc  = makeBtn(tr("Open DBC File\xe2\x80\xa6"),
-                            tr("Load a .dbc database for signal decoding"));
-    auto* btnProj = makeBtn(tr("Open Project\xe2\x80\xa6"),
-                            tr("Browse and load a .spyproj file"));
-
-    lay->addWidget(btnNew);
-    lay->addWidget(btnDbc);
-    lay->addWidget(btnProj);
-    lay->addStretch();
-
-    connect(btnNew,  &QPushButton::clicked, this, &WelcomeScreen::newProjectRequested);
-    connect(btnDbc,  &QPushButton::clicked, this, &WelcomeScreen::openDbcRequested);
-    connect(btnProj, &QPushButton::clicked, this, [this]() {
-        emit openProjectRequested(QString());
-    });
-
-    return w;
-}
-
-// ── Quick start ──────────────────────────────────────────────────────────────
-QWidget* WelcomeScreen::buildQuickStartSection() {
-    auto* w   = new QWidget(this);
-    auto* lay = new QVBoxLayout(w);
-    lay->setContentsMargins(0, 0, 0, 0);
-    lay->setSpacing(10);
-
-    lay->addWidget(makeSectionTitle(tr("Quick Start"), w));
-
-    auto* grid = new QGridLayout;
-    grid->setSpacing(10);
-
-    struct TileInfo { QString icon; QString label; };
-    const TileInfo tiles[] = {
-        { QString::fromUtf8("\xf0\x9f\x94\x8c"), tr("Connect\nvcan0")     },
-        { QString::fromUtf8("\xf0\x9f\x93\x84"), tr("Load\nDBC")          },
-        { QString::fromUtf8("\xe2\x9a\x99"),      tr("Launch\nSimulator")  },
-        { QString::fromUtf8("\xf0\x9f\x96\xa5"),  tr("Open\nMonitor")      },
-    };
-
-    auto makeTile = [&](const TileInfo& ti) -> QPushButton* {
+    auto makeTile = [&](const char* icon, const char* label) -> QPushButton* {
         auto* btn = new QPushButton(w);
-        btn->setCursor(Qt::PointingHandCursor);
-        btn->setFixedSize(128, 100);
-        btn->setStyleSheet(
-            "QPushButton { background: #1a2235; border: 1px solid #2a3a52; border-radius: 10px; }"
-            "QPushButton:hover { border-color: #6366f1; background: #232f45; }"
-            "QPushButton:pressed { background: #111827; }"
-        );
+        btn->setFixedSize(100, 72);
+        btn->setStyleSheet(R"(
+            QPushButton {
+                background: #1a2235; border: 1px solid #1f2d42;
+                border-radius: 8px;
+            }
+            QPushButton:hover { border-color: #6366f1; background: #1f2d42; }
+            QPushButton:pressed { background: #111827; }
+        )");
+        auto* vl = new QVBoxLayout(btn);
+        vl->setContentsMargins(4, 8, 4, 8);
+        vl->setSpacing(4);
+        vl->setAlignment(Qt::AlignCenter);
 
-        auto* vlay = new QVBoxLayout(btn);
-        vlay->setContentsMargins(8, 12, 8, 12);
-        vlay->setSpacing(6);
-        vlay->setAlignment(Qt::AlignCenter);
-
-        auto* iconLbl = new QLabel(ti.icon, btn);
-        {
-            QFont f = iconLbl->font();
-            f.setPointSize(f.pointSize() + 8);
-            iconLbl->setFont(f);
-        }
+        auto* iconLbl = new QLabel(QString::fromUtf8(icon), btn);
+        QFont f = iconLbl->font();
+        f.setPointSize(f.pointSize() + 6);
+        iconLbl->setFont(f);
         iconLbl->setAlignment(Qt::AlignCenter);
         iconLbl->setStyleSheet("background: transparent;");
 
-        auto* textLbl = new QLabel(ti.label, btn);
+        auto* textLbl = new QLabel(tr(label), btn);
         textLbl->setAlignment(Qt::AlignCenter);
-        textLbl->setStyleSheet("color: #f1f5f9; font-size: 11px; font-weight: 600; background: transparent;");
         textLbl->setWordWrap(true);
-
-        vlay->addWidget(iconLbl);
-        vlay->addWidget(textLbl);
+        textLbl->setStyleSheet(
+            "color: #9ca3af; font-size: 10px; font-weight: 600; background: transparent;");
+        vl->addWidget(iconLbl);
+        vl->addWidget(textLbl);
         return btn;
     };
 
-    auto* tileConnect   = makeTile(tiles[0]);
-    auto* tileDbc       = makeTile(tiles[1]);
-    auto* tileSimulator = makeTile(tiles[2]);
-    auto* tileMonitor   = makeTile(tiles[3]);
+    auto* tileNew  = makeTile(tiles[0].icon, tiles[0].label);
+    auto* tileCon  = makeTile(tiles[1].icon, tiles[1].label);
+    auto* tileDbc  = makeTile(tiles[2].icon, tiles[2].label);
+    auto* tileSim  = makeTile(tiles[3].icon, tiles[3].label);
 
-    grid->addWidget(tileConnect,   0, 0);
-    grid->addWidget(tileDbc,       0, 1);
-    grid->addWidget(tileSimulator, 1, 0);
-    grid->addWidget(tileMonitor,   1, 1);
+    connect(tileNew,  &QPushButton::clicked, this, [this]() { emit newProjectRequested();    accept(); });
+    connect(tileCon,  &QPushButton::clicked, this, [this]() { emit quickConnectRequested();  accept(); });
+    connect(tileDbc,  &QPushButton::clicked, this, [this]() { emit openDbcRequested();       accept(); });
+    connect(tileSim,  &QPushButton::clicked, this, [this]() { emit showSimulatorRequested(); accept(); });
 
-    lay->addLayout(grid);
-    lay->addStretch();
+    quickRow->addWidget(tileNew);
+    quickRow->addWidget(tileCon);
+    quickRow->addWidget(tileDbc);
+    quickRow->addWidget(tileSim);
+    quickRow->addStretch();
+    lay->addLayout(quickRow);
 
-    connect(tileConnect,   &QPushButton::clicked, this, &WelcomeScreen::quickConnectRequested);
-    connect(tileDbc,       &QPushButton::clicked, this, &WelcomeScreen::openDbcRequested);
-    connect(tileSimulator, &QPushButton::clicked, this, &WelcomeScreen::showSimulatorRequested);
-    connect(tileMonitor,   &QPushButton::clicked, this, &WelcomeScreen::showMonitorRequested);
+    connect(m_recentList, &QListWidget::itemDoubleClicked,
+            this,         &WelcomeScreen::onItemDoubleClicked);
 
     return w;
 }
 
-// ── Slots ────────────────────────────────────────────────────────────────────
+// ── Link label ────────────────────────────────────────────────────────────────
+
+QLabel* WelcomeScreen::makeLink(const QString& icon, const QString& label,
+                                 const QString& url, QWidget* parent)
+{
+    auto* lbl = new QLabel(
+        QString("%1 <a href=\"%2\" style=\"color:#6366f1; text-decoration:none;\">%3</a>")
+            .arg(icon, url, label),
+        parent);
+    lbl->setTextFormat(Qt::RichText);
+    lbl->setOpenExternalLinks(true);
+    lbl->setStyleSheet("background: transparent; font-size: 12px;");
+    lbl->setCursor(Qt::PointingHandCursor);
+    return lbl;
+}
+
+// ── Recent projects ───────────────────────────────────────────────────────────
+
 void WelcomeScreen::refreshRecentProjects() {
     if (!m_recentList) return;
-
     m_recentList->clear();
-    const auto entries = m_registry.entries();
 
+    const auto entries = m_registry.entries();
     if (entries.isEmpty()) {
         auto* item = new QListWidgetItem(m_recentList);
         item->setFlags(Qt::NoItemFlags);
-        auto* lbl = new QLabel(tr("No recent projects"), m_recentList);
-        lbl->setStyleSheet("color: #7c8fa6; padding: 12px 16px;");
+        auto* lbl = new QLabel(tr("Aucun projet récent"), m_recentList);
+        lbl->setStyleSheet("color: #4b5563; padding: 12px 16px; background: transparent;");
         lbl->setAlignment(Qt::AlignCenter);
         m_recentList->setItemWidget(item, lbl);
         item->setSizeHint(QSize(0, 46));
@@ -319,58 +379,58 @@ void WelcomeScreen::refreshRecentProjects() {
         auto* item = new QListWidgetItem(m_recentList);
         item->setData(Qt::UserRole, e.path);
 
-        auto* w   = new QWidget;
-        auto* lay = new QHBoxLayout(w);
-        lay->setContentsMargins(12, 8, 12, 8);
-        lay->setSpacing(12);
+        auto* row = new QWidget;
+        auto* rl  = new QHBoxLayout(row);
+        rl->setContentsMargins(12, 8, 12, 8);
+        rl->setSpacing(12);
 
-        // left: name + path
-        auto* textCol = new QWidget(w);
-        auto* textLay = new QVBoxLayout(textCol);
-        textLay->setContentsMargins(0, 0, 0, 0);
-        textLay->setSpacing(2);
+        auto* col = new QWidget(row);
+        auto* cl  = new QVBoxLayout(col);
+        cl->setContentsMargins(0, 0, 0, 0);
+        cl->setSpacing(2);
 
-        auto* nameLbl = new QLabel(e.name, textCol);
-        {
-            QFont f = nameLbl->font();
-            f.setBold(true);
-            nameLbl->setFont(f);
-            nameLbl->setStyleSheet("color: #f1f5f9; background: transparent;");
-        }
-        auto* pathLbl = new QLabel(e.path, textCol);
-        pathLbl->setStyleSheet("color: #7c8fa6; font-size: 11px; background: transparent;");
+        auto* nameLbl = new QLabel(e.name, col);
+        QFont f = nameLbl->font(); f.setBold(true); nameLbl->setFont(f);
+        nameLbl->setStyleSheet("color: #f1f5f9; background: transparent;");
+
+        auto* pathLbl = new QLabel(e.path, col);
+        pathLbl->setStyleSheet("color: #6b7280; font-size: 10px; background: transparent;");
         pathLbl->setTextFormat(Qt::PlainText);
 
-        textLay->addWidget(nameLbl);
-        textLay->addWidget(pathLbl);
-        lay->addWidget(textCol, 1);
+        cl->addWidget(nameLbl);
+        cl->addWidget(pathLbl);
+        rl->addWidget(col, 1);
 
-        // right: date
         if (e.lastOpened.isValid()) {
-            auto* dateLbl = new QLabel(e.lastOpened.toString("yyyy-MM-dd"), w);
-            dateLbl->setStyleSheet("color: #7c8fa6; font-size: 11px; background: transparent;");
+            auto* dateLbl = new QLabel(e.lastOpened.toString("yyyy-MM-dd"), row);
+            dateLbl->setStyleSheet(
+                "color: #4b5563; font-size: 10px; background: transparent;");
             dateLbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            lay->addWidget(dateLbl);
+            rl->addWidget(dateLbl);
         }
 
-        item->setSizeHint(w->sizeHint() + QSize(0, 6));
-        m_recentList->setItemWidget(item, w);
+        item->setSizeHint(row->sizeHint() + QSize(0, 6));
+        m_recentList->setItemWidget(item, row);
     }
 }
 
 void WelcomeScreen::onItemDoubleClicked(QListWidgetItem* item) {
     if (!item) return;
     const QString path = item->data(Qt::UserRole).toString();
-    if (!path.isEmpty())
+    if (!path.isEmpty()) {
         emit openProjectRequested(path);
+        accept();
+    }
 }
 
 void WelcomeScreen::onOpenSelectedProject() {
     auto* item = m_recentList->currentItem();
     if (!item) return;
     const QString path = item->data(Qt::UserRole).toString();
-    if (!path.isEmpty())
+    if (!path.isEmpty()) {
         emit openProjectRequested(path);
+        accept();
+    }
 }
 
 } // namespace socketspy::gui

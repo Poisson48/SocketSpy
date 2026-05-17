@@ -6,6 +6,10 @@
 #include <QDateTime>
 #include <cmath>
 #include <algorithm>
+#include <QApplication>
+#include <QClipboard>
+#include <QKeyEvent>
+#include <QMenu>
 
 namespace socketspy::gui {
 
@@ -67,7 +71,7 @@ SignalKind FrameStats::classify() const {
 QString FrameStats::kindLabel() const {
     switch (classify()) {
         case SignalKind::Constant: return "CONST";
-        case SignalKind::Binary:   return "TOR";
+        case SignalKind::Binary:   return "DIG";
         case SignalKind::Analog:   return "ANA";
         case SignalKind::Counter:  return "CNT";
         default:                   return "???";
@@ -76,9 +80,9 @@ QString FrameStats::kindLabel() const {
 
 QString FrameStats::rateLabel() const {
     double h = hz();
-    if (h < 2.0)  return "Lent";
-    if (h < 20.0) return "Moyen";
-    return "Rapide";
+    if (h < 2.0)  return "Slow";
+    if (h < 20.0) return "Medium";
+    return "Fast";
 }
 
 // ─── SignalDetectivePanel ─────────────────────────────────────────────────────
@@ -89,8 +93,8 @@ SignalDetectivePanel::SignalDetectivePanel(QWidget* parent) : QWidget(parent) {
 
 void SignalDetectivePanel::setupUi() {
     auto* tabs = new QTabWidget(this);
-    tabs->addTab(buildClassifyTab(), tr("Analyse auto"));
-    tabs->addTab(buildWiggleTab(),   tr("Test variation"));
+    tabs->addTab(buildClassifyTab(), tr("Auto Analysis"));
+    tabs->addTab(buildWiggleTab(),   tr("Wiggle Test"));
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -115,7 +119,7 @@ QWidget* SignalDetectivePanel::buildClassifyTab() {
 
     m_classTable = new QTableWidget(0, 6, w);
     m_classTable->setHorizontalHeaderLabels(
-        {tr("ID"), tr("Hz"), tr("Rythme"), tr("Type"), tr("DLC"), tr("Trames")});
+        {tr("ID"), tr("Hz"), tr("Rate"), tr("Type"), tr("DLC"), tr("Frames")});
     m_classTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_classTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_classTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -124,8 +128,8 @@ QWidget* SignalDetectivePanel::buildClassifyTab() {
     m_classTable->setAlternatingRowColors(true);
     m_classTable->setSortingEnabled(true);
 
-    m_refreshBtn  = new QPushButton(tr("Rafraichir"), w);
-    m_classStatus = new QLabel(tr("En attente de trames..."), w);
+    m_refreshBtn  = new QPushButton(tr("Refresh"), w);
+    m_classStatus = new QLabel(tr("Waiting for frames..."), w);
 
     auto* topRow = new QHBoxLayout;
     topRow->addWidget(m_classStatus, 1);
@@ -138,6 +142,7 @@ QWidget* SignalDetectivePanel::buildClassifyTab() {
     layout->addWidget(m_classTable, 1);
 
     connect(m_refreshBtn, &QPushButton::clicked, this, &SignalDetectivePanel::onRefresh);
+    setupCopyable(m_classTable);
     return w;
 }
 
@@ -145,17 +150,17 @@ QWidget* SignalDetectivePanel::buildWiggleTab() {
     auto* w = new QWidget(this);
 
     m_wiggleInstr = new QLabel(
-        tr("<b>Test de variation (wiggle test)</b><br>"
-           "1. Cliquez Demarrer pour capturer la baseline (3s)<br>"
-           "2. Effectuez l'action physique (pedaler, bouton...)<br>"
-           "3. SocketSpy trouve les signaux qui ont bouge"), w);
+        tr("<b>Wiggle Test</b><br>"
+           "1. Click Start to capture a 3 s baseline<br>"
+           "2. Perform the physical action (pedal, button, lever…)<br>"
+           "3. SocketSpy finds the signals that changed"), w);
     m_wiggleInstr->setWordWrap(true);
     m_wiggleInstr->setAlignment(Qt::AlignCenter);
 
-    m_wiggleStartBtn = new QPushButton(tr("Demarrer le test"), w);
+    m_wiggleStartBtn = new QPushButton(tr("Start Test"), w);
     m_wiggleStartBtn->setMinimumHeight(36);
 
-    m_actionDoneBtn = new QPushButton(tr("J'ai effectue l'action"), w);
+    m_actionDoneBtn = new QPushButton(tr("Action Done"), w);
     m_actionDoneBtn->setMinimumHeight(44);
     m_actionDoneBtn->setEnabled(false);
     m_actionDoneBtn->setVisible(false);
@@ -168,12 +173,12 @@ QWidget* SignalDetectivePanel::buildWiggleTab() {
     m_wiggleProgress->setTextVisible(false);
     m_wiggleProgress->setVisible(false);
 
-    m_wiggleStatus = new QLabel(tr("En attente..."), w);
+    m_wiggleStatus = new QLabel(tr("Waiting..."), w);
     m_wiggleStatus->setAlignment(Qt::AlignCenter);
 
     m_wiggleTable = new QTableWidget(0, 5, w);
     m_wiggleTable->setHorizontalHeaderLabels(
-        {tr("ID"), tr("Octet"), tr("Avant"), tr("Apres"), tr("Score")});
+        {tr("ID"), tr("Byte"), tr("Before"), tr("After"), tr("Score")});
     m_wiggleTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_wiggleTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_wiggleTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -195,6 +200,7 @@ QWidget* SignalDetectivePanel::buildWiggleTab() {
             this, &SignalDetectivePanel::onStartWiggle);
     connect(m_actionDoneBtn, &QPushButton::clicked,
             this, &SignalDetectivePanel::onActionDone);
+    setupCopyable(m_wiggleTable);
     return w;
 }
 
@@ -291,12 +297,12 @@ void SignalDetectivePanel::refreshClassifyTable() {
         auto* rateItem = mkItem(rate);
         auto* kindItem = mkItem(kind);
 
-        QColor rateBg = (rate == "Lent")   ? kColorLent
-                      : (rate == "Rapide") ? kColorRapide
+        QColor rateBg = (rate == "Slow") ? kColorLent
+                      : (rate == "Fast") ? kColorRapide
                       : kColorMoyen;
         if (rate != "-") rateItem->setBackground(rateBg);
 
-        QColor kindBg = (kind == "TOR")   ? kColorTOR
+        QColor kindBg = (kind == "DIG")   ? kColorTOR
                       : (kind == "ANA")   ? kColorANA
                       : (kind == "CONST") ? kColorCONST
                       : (kind == "CNT")   ? kColorCNT
@@ -313,7 +319,7 @@ void SignalDetectivePanel::refreshClassifyTable() {
     }
 
     m_classTable->setSortingEnabled(true);
-    m_classStatus->setText(tr("%1 ID(s) observe(s)").arg(m_stats.size()));
+    m_classStatus->setText(tr("%1 ID(s) observed").arg(m_stats.size()));
 }
 
 // ─── Tab 2 : Wiggle test ──────────────────────────────────────────────────────
@@ -330,7 +336,7 @@ void SignalDetectivePanel::onStartWiggle() {
     m_wiggleTable->setRowCount(0);
     m_wiggleProgress->setVisible(true);
     m_wiggleProgress->setValue(0);
-    m_wiggleStatus->setText(tr("Capture baseline... (3 s)"));
+    m_wiggleStatus->setText(tr("Capturing baseline... (3 s)"));
     m_countdownMs = 0;
     m_baselineTimer->start();
 }
@@ -345,7 +351,7 @@ void SignalDetectivePanel::onBaselineTick() {
 
         m_wiggleProgress->setVisible(false);
         m_wiggleStatus->setText(
-            tr("Effectuez maintenant l'action physique sur le vehicule..."));
+            tr("Now perform the physical action on the vehicle..."));
         m_actionDoneBtn->setVisible(true);
         m_actionDoneBtn->setEnabled(true);
     }
@@ -359,7 +365,7 @@ void SignalDetectivePanel::onActionDone() {
     m_wiggleProgress->setRange(0, kWiggleDurationMs);
     m_wiggleProgress->setValue(0);
     m_wiggleProgress->setVisible(true);
-    m_wiggleStatus->setText(tr("Capture apres action... (3 s)"));
+    m_wiggleStatus->setText(tr("Capturing after action... (3 s)"));
     m_countdownMs = 0;
     m_afterTimer->start();
 }
@@ -464,11 +470,11 @@ void SignalDetectivePanel::populateWiggleResults(
     m_wiggleTable->setRowCount(candidates.size());
 
     if (candidates.isEmpty()) {
-        m_wiggleStatus->setText(tr("Aucun signal ne semble avoir change."));
+        m_wiggleStatus->setText(tr("No signal appears to have changed."));
         return;
     }
     m_wiggleStatus->setText(
-        tr("%1 signal(s) candidat(s) trouve(s).").arg(candidates.size()));
+        tr("%1 candidate signal(s) found.").arg(candidates.size()));
 
     auto mkItem = [](const QString& t, Qt::Alignment a = Qt::AlignCenter) {
         auto* it = new QTableWidgetItem(t);
@@ -498,6 +504,77 @@ void SignalDetectivePanel::populateWiggleResults(
             if (auto* it = m_wiggleTable->item(row, col))
                 it->setBackground(bg);
     }
+}
+
+
+// ─── Copie presse-papiers ─────────────────────────────────────────────────────
+
+void SignalDetectivePanel::setupCopyable(QTableWidget* table) {
+    table->setContextMenuPolicy(Qt::CustomContextMenu);
+    table->installEventFilter(this);
+    connect(table, &QTableWidget::customContextMenuRequested,
+            this, [this, table](const QPoint& pos) {
+        QMenu menu(table);
+        QAction* copyCell = menu.addAction(tr("Copier la cellule"));
+        QAction* copyRow  = menu.addAction(tr("Copier la ligne"));
+        QAction* copyAll  = menu.addAction(tr("Tout copier"));
+        QAction* chosen   = menu.exec(table->viewport()->mapToGlobal(pos));
+        if (!chosen) return;
+        if (chosen == copyCell) {
+            QModelIndex idx = table->indexAt(pos);
+            if (idx.isValid())
+                QApplication::clipboard()->setText(idx.data().toString());
+        } else if (chosen == copyRow) {
+            copySelectedCells(table);
+        } else if (chosen == copyAll) {
+            QStringList lines;
+            QStringList hdr;
+            for (int col = 0; col < table->columnCount(); ++col)
+                hdr << table->horizontalHeaderItem(col)->text();
+            lines << hdr.join("\t");
+            for (int row = 0; row < table->rowCount(); ++row) {
+                QStringList cols;
+                for (int col = 0; col < table->columnCount(); ++col) {
+                    auto* it = table->item(row, col);
+                    cols << (it ? it->text() : QString());
+                }
+                lines << cols.join("\t");
+            }
+            QApplication::clipboard()->setText(lines.join("\n"));
+        }
+    });
+}
+
+bool SignalDetectivePanel::eventFilter(QObject* obj, QEvent* event) {
+    if (event->type() == QEvent::KeyPress) {
+        auto* ke = static_cast<QKeyEvent*>(event);
+        if (ke->matches(QKeySequence::Copy)) {
+            auto* table = qobject_cast<QTableWidget*>(obj);
+            if (table) {
+                copySelectedCells(table);
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(obj, event);
+}
+
+void SignalDetectivePanel::copySelectedCells(QTableWidget* table) {
+    const auto selected = table->selectedItems();
+    if (selected.isEmpty()) return;
+
+    QMap<int, QMap<int, QString>> grid;
+    for (auto* it : selected)
+        grid[it->row()][it->column()] = it->text();
+
+    QStringList lines;
+    for (auto rowIt = grid.begin(); rowIt != grid.end(); ++rowIt) {
+        QStringList cols;
+        for (auto colIt = rowIt.value().begin(); colIt != rowIt.value().end(); ++colIt)
+            cols << colIt.value();
+        lines << cols.join("\t");
+    }
+    QApplication::clipboard()->setText(lines.join("\n"));
 }
 
 } // namespace socketspy::gui

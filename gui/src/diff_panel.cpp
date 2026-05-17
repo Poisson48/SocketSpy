@@ -62,9 +62,10 @@ void DiffPanel::setupUi() {
     m_statusLabel = new QLabel(this);
     m_statusLabel->setStyleSheet("color: #6b7280;");
 
-    auto* topRow = new QHBoxLayout;
-    topRow->addLayout(form, 1);
-    topRow->addWidget(m_compare);
+    auto* compareRow = new QHBoxLayout;
+    compareRow->addStretch();
+    compareRow->addWidget(m_compare);
+    compareRow->addStretch();
 
     m_table = new QTableWidget(0, 5, this);
     m_table->setHorizontalHeaderLabels({"CAN ID", "Status", "Data A", "Data B", "Delta"});
@@ -78,7 +79,8 @@ void DiffPanel::setupUi() {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(8, 8, 8, 8);
     layout->setSpacing(6);
-    layout->addLayout(topRow);
+    layout->addLayout(form);
+    layout->addLayout(compareRow);
     layout->addLayout(filterRow);
     layout->addWidget(m_statusLabel);
     layout->addWidget(m_table, 1);

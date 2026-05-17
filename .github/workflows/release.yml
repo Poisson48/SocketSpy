@@ -24,16 +24,13 @@ jobs:
       - name: Install aqtinstall and Qt 6.6 static
         run: bash scripts/dev/install_qt_static.sh
 
-      - name: Install vcpkg dependencies
+      - name: Bootstrap vcpkg
         run: |
           VCPKG_ROOT="${HOME}/.local/share/vcpkg"
-          if [ ! -d "${VCPKG_ROOT}" ]; then
-            git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
-            bash "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
-          fi
-          "${VCPKG_ROOT}/vcpkg" install \
-            --triplet x64-linux \
-            cpp-httplib nlohmann-json spdlog
+          git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
+          bash "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
+          # Dependencies are installed automatically by the CMake toolchain
+          # via vcpkg.json manifest mode during cmake configure.
 
       - name: CMake configure (release preset)
         run: |

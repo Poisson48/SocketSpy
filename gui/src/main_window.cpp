@@ -318,6 +318,7 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, this,              &MainWindow::onAnyFrameReceived,
             Qt::DirectConnection);
+    connect(m_capture, &CanCapture::frameReceived, m_simulator, &SimulatorPanel::onFrameReceived);
     connect(m_capture, &CanCapture::errorOccurred, this,      &MainWindow::onCaptureError);
     connect(m_capture, &CanCapture::triggerFired,  this,      &MainWindow::onTriggerFired);
     connect(m_triggerPanel, &TriggerPanel::triggerConfigChanged, m_capture, &CanCapture::setTrigger);

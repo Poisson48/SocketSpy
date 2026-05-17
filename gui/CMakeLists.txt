@@ -57,6 +57,7 @@ set(GUI_HEADERS
     include/doip_panel.h
     include/opendbc_panel.h
     include/sidebar_nav.h
+    include/uds_ecu_sim.h
 )
 
 add_executable(socketspy
@@ -112,6 +113,7 @@ add_executable(socketspy
     src/doip_panel.cpp
     src/opendbc_panel.cpp
     src/sidebar_nav.cpp
+    src/uds_ecu_sim.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

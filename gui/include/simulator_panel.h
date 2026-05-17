@@ -6,12 +6,17 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QTreeWidget>
+#include <QListWidget>
 #include <QDoubleSpinBox>
 #include <QSpinBox>
+#include <QCheckBox>
+#include <QTableWidget>
+#include <QLineEdit>
 #include <vector>
 #include "can_simulator.h"
 #include "sim_profile.h"
 #include "cancore.h"
+#include "uds_ecu_sim.h"
 
 namespace socketspy::gui {
 
@@ -57,6 +62,9 @@ public:
 signals:
     void frameGenerated(socketspy::core::CanFrame frame);
 
+public slots:
+    void onFrameReceived(const socketspy::core::CanFrame& frame);
+
 private slots:
     void onStartStop();
     void onProfileChanged(int index);
@@ -64,6 +72,9 @@ private slots:
     void onEditProfile();
     void onDeleteProfile();
     void onAnimationTick();
+    void onAddEcu();
+    void onEditEcu();
+    void onRemoveEcu();
 
 private:
     struct SignalWidget {
@@ -79,6 +90,8 @@ private:
     void updateDeleteButton();
     void updateRunningState(bool running);
     void openWaveformConfig(int ni, int mi, int si);
+    QWidget* setupEcuTab();
+    void refreshEcuList();
 
     QComboBox*    m_profileCombo{nullptr};
     QPushButton*  m_startBtn{nullptr};
@@ -89,6 +102,13 @@ private:
     QLabel*       m_descLabel{nullptr};
     QProgressBar* m_progressBar{nullptr};
     QTreeWidget*  m_tree{nullptr};
+
+    // ECU tab
+    QListWidget* m_ecuList{nullptr};
+    QPushButton* m_addEcuBtn{nullptr};
+    QPushButton* m_removeEcuBtn{nullptr};
+    QPushButton* m_editEcuBtn{nullptr};
+    QList<UdsEcuSim*> m_ecuSims;
 
     CanSimulator*             m_simulator{nullptr};
     SimProfile                m_currentProfile;

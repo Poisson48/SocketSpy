@@ -300,6 +300,10 @@ void MainWindow::setupMenuBar() {
     addLang("Français", "fr");
 
     helpMenu->addSeparator();
+    auto* updateAct = helpMenu->addAction(tr("Check for updates…"));
+    connect(updateAct, &QAction::triggered, this, &MainWindow::onCheckForUpdates);
+
+    helpMenu->addSeparator();
     auto* aboutAct = helpMenu->addAction(tr("About SocketSpy"));
     connect(aboutAct, &QAction::triggered, this, [this]() {
         QMessageBox::about(this,

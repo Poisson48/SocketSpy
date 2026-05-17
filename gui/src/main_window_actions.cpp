@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "update_dialog.h"
 #include "sidebar_nav.h"
 #include "welcome_screen.h"
 #include "monitor_panel.h"
@@ -651,6 +652,18 @@ void MainWindow::onImportCsv() {
     m_replay->loadFrames(frames, ifaces, QFileInfo(path).fileName());
     m_sidebar->showPanel(m_replay);
     statusBar()->showMessage(tr("CSV imported: %1 frames").arg(frames.size()), 5000);
+}
+
+void MainWindow::onCheckForUpdates() {
+    if (!m_updater.isAppImage()) {
+        QMessageBox::information(this, tr("Updates"),
+            tr("Update checking is only available for AppImage installations."));
+        return;
+    }
+    auto* dlg = new UpdateDialog(&m_updater, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->show();
+    dlg->startCheck();
 }
 
 } // namespace socketspy::gui

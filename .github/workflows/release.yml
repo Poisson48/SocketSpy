@@ -19,7 +19,7 @@ jobs:
           sudo apt-get install -y \
             cmake ninja-build git pkg-config liburing-dev \
             lua5.4 liblua5.4-dev libgl1-mesa-dev libfuse2 \
-            python3-pip patchelf
+            python3-pip patchelf libssl-dev
 
       - name: Install aqtinstall and Qt 6.6 static
         run: bash scripts/dev/install_qt_static.sh
@@ -66,10 +66,29 @@ jobs:
             --executable /tmp/appdir/usr/bin/socketspy
           mv SocketSpy-*.AppImage "SocketSpy-${VERSION}-x86_64.AppImage"
 
+      - name: Sign release manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          APPIMAGE="SocketSpy-${VERSION}-x86_64.AppImage"
+          SHA256=$(sha256sum "$APPIMAGE" | awk '{print $1}')
+          printf '{\n  "version": "%s",\n  "filename": "%s",\n  "sha256": "%s"\n}\n' \
+              "$VERSION" "$APPIMAGE" "$SHA256" > release-manifest.json
+          echo "$UPDATE_SIGNING_KEY" > /tmp/_sign_key.pem
+          chmod 600 /tmp/_sign_key.pem
+          openssl pkeyutl -sign -inkey /tmp/_sign_key.pem -rawin \
+              -in release-manifest.json -out release-manifest.json.sig
+          rm -f /tmp/_sign_key.pem
+          echo "Manifest signed for v${VERSION} (sha256=${SHA256})"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: SocketSpy-*-x86_64.AppImage
+          files: |
+            SocketSpy-*-x86_64.AppImage
+            release-manifest.json
+            release-manifest.json.sig
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

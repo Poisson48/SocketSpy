@@ -257,7 +257,7 @@
 
 <!-- ── HERO ──────────────────────────────────────────────────────── -->
 <div class="hero">
-  <div class="badge">v0.6.0 — Linux x86_64 AppImage available</div>
+  <div class="badge">v0.7.0 — Linux x86_64 AppImage available</div>
   <h1>CAN bus analysis,<br/>built for Linux</h1>
   <p class="hero-sub">
     Live frame monitor, DBC signal decoding, Lua scripting, protocol decoders
@@ -282,7 +282,7 @@
       <div class="dot dot-red"></div>
       <div class="dot dot-yel"></div>
       <div class="dot dot-grn"></div>
-      <span class="mock-title">SocketSpy v0.6.0 — vcan0</span>
+      <span class="mock-title">SocketSpy v0.7.0 — vcan0</span>
     </div>
     <div class="mock-body">
       <div class="mock-toolbar">
@@ -448,6 +448,36 @@
       <p>Tools → "+ Add Second Bus..." opens a second SocketCAN interface alongside the first. A "Bus" column in the Monitor lets you tell frame sources apart at a glance.</p>
     </div>
 
+    <div class="feat-card">
+      <div class="feat-icon">🪟</div>
+      <h3>Detachable Panels</h3>
+      <p>Icon sidebar replaces the old 22-tab scroll bar. Drag any panel — or right-click → Detach — to float it as an independent window. The Redock button snaps it back instantly.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🔬</div>
+      <h3>Signal Detective</h3>
+      <p>Auto-classify every live CAN ID by update rate (slow / medium / fast) and signal type (digital / analog / constant / counter) using pure heuristics. Wiggle test: capture baseline, perform a physical action, then rank the top 30 changed signals by score.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🖥️</div>
+      <h3>UDS ECU Simulator</h3>
+      <p>Full ISO-TP server + UDS responder (services 0x10 / 0x11 / 0x14 / 0x19 / 0x22 / 0x27 / 0x28 / 0x2E / 0x31 / 0x3E), SecurityAccess seed/key, configurable DIDs and DTCs. Test your UDS client without real hardware.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">📋</div>
+      <h3>Copy to Clipboard</h3>
+      <p>Ctrl+C or right-click on any table to copy a single cell, the selected rows, or the full table as TSV — paste straight into Excel or a terminal.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🌐</div>
+      <h3>French / English UI</h3>
+      <p>Full Qt i18n via .ts files. Switch between French and English from the settings menu — your choice persists across sessions.</p>
+    </div>
+
   </div>
 </section>
 
@@ -458,7 +488,7 @@
       <h2>Download SocketSpy</h2>
       <p>Self-contained AppImage — Qt6 fully bundled. Runs on any x86_64 Linux with SocketCAN support. No installation, no root required.</p>
       <div class="dl-meta">
-        <div class="dl-pill">Version <span>0.6.0</span></div>
+        <div class="dl-pill">Version <span>0.7.0</span></div>
         <div class="dl-pill">Size <span>~29 MB</span></div>
         <div class="dl-pill">Arch <span>x86_64</span></div>
         <div class="dl-pill">License <span>GPL-3.0</span></div>

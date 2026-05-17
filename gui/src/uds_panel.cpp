@@ -6,6 +6,7 @@
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QTableWidgetItem>
+#include <QSplitter>
 
 namespace socketspy::gui {
 
@@ -38,11 +39,15 @@ static const char* nrcDescription(uint8_t nrc) {
 
 UdsPanel::UdsPanel(QWidget* parent) : QWidget(parent) {
     m_transport = new UdsTransport(this);
+    m_security  = new UdsSecurityWidget(this);
+    m_security->setTransport(m_transport);
     setupUi();
     connect(m_transport, &UdsTransport::responseReceived,
             this, &UdsPanel::onResponseReceived);
     connect(m_transport, &UdsTransport::errorOccurred,
             this, &UdsPanel::onUdsError);
+    connect(m_security, &UdsSecurityWidget::requestReady,
+            this, &UdsPanel::onSecurityRequest);
 }
 
 void UdsPanel::setupUi() {
@@ -99,14 +104,29 @@ void UdsPanel::setupUi() {
     m_table->verticalHeader()->setDefaultSectionSize(24);
     m_table->setAlternatingRowColors(true);
 
+    auto* topWidget = new QWidget(this);
+    auto* topLayout = new QVBoxLayout(topWidget);
+    topLayout->setContentsMargins(0, 0, 0, 0);
+    topLayout->setSpacing(6);
+    topLayout->addWidget(configGroup);
+    topLayout->addWidget(m_sessionLabel);
+    topLayout->addLayout(btnRow);
+    topLayout->addWidget(m_security);
+    topLayout->addWidget(m_statusLabel);
+    topLayout->addWidget(m_table, 1);
+
+    m_scanner = new UdsScannerWidget(m_transport, this);
+
+    auto* splitter = new QSplitter(Qt::Vertical, this);
+    splitter->addWidget(topWidget);
+    splitter->addWidget(m_scanner);
+    splitter->setStretchFactor(0, 2);
+    splitter->setStretchFactor(1, 3);
+
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(8, 8, 8, 8);
-    layout->setSpacing(6);
-    layout->addWidget(configGroup);
-    layout->addWidget(m_sessionLabel);
-    layout->addLayout(btnRow);
-    layout->addWidget(m_statusLabel);
-    layout->addWidget(m_table, 1);
+    layout->setSpacing(0);
+    layout->addWidget(splitter);
 
     connect(m_applyBtn,   &QPushButton::clicked, this, &UdsPanel::onApplyConfig);
     connect(m_readDtcBtn, &QPushButton::clicked, this, &UdsPanel::onReadDtc);
@@ -168,6 +188,13 @@ void UdsPanel::onResponseReceived(std::vector<uint8_t> data) {
     m_ecuInfoBtn->setEnabled(true);
 
     if (data.empty()) { setStatus("Empty response", false); return; }
+
+    // Route SecurityAccess responses to the dedicated widget
+    if (m_pendingLabel.startsWith("SecurityAccess:")) {
+        m_security->handleResponse(data);
+        setStatus("SecurityAccess response received");
+        return;
+    }
 
     // Check for NRC (negative response: 0x7F + service + NRC)
     if (data.size() >= 3 && data[0] == 0x7F) {
@@ -278,7 +305,16 @@ void UdsPanel::onUdsError(QString message) {
     m_readDtcBtn->setEnabled(true);
     m_clearDtcBtn->setEnabled(true);
     m_ecuInfoBtn->setEnabled(true);
-    setStatus(message, false);
+    if (m_pendingLabel.startsWith("SecurityAccess:"))
+        m_security->handleError(message);
+    else
+        setStatus(message, false);
+}
+
+void UdsPanel::onSecurityRequest(std::vector<uint8_t> data, QString label) {
+    m_pendingLabel = label;
+    setStatus("Sending " + label + "...");
+    m_transport->sendRequest(data);
 }
 
 void UdsPanel::setStatus(const QString& msg, bool ok) {

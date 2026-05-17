@@ -43,6 +43,13 @@ class McpPanel;
 class FuzzerPanel;
 class DiffPanel;
 class UdsPanel;
+class TemporalPanel;
+class HeatmapPanel;
+class BisectPanel;
+class RangeStatePanel;
+class XcpPanel;
+class DoipPanel;
+class OpenDbcPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -82,6 +89,13 @@ private slots:
     void onExportMonitorCsv();
     void onExportBlf();
     void onExportMdf4();
+    void onExportAsc();
+    void onImportAsc();
+    void onExportTrc();
+    void onImportTrc();
+    void onExportPcap();
+    void onImportPcap();
+    void onImportCsv();
     void onAddBus();
     void onRemoveBus();
 
@@ -118,6 +132,13 @@ private:
     FuzzerPanel*         m_fuzzerPanel{nullptr};
     DiffPanel*           m_diffPanel{nullptr};
     UdsPanel*            m_udsPanel{nullptr};
+    TemporalPanel*       m_temporalPanel{nullptr};
+    HeatmapPanel*        m_heatmapPanel{nullptr};
+    BisectPanel*         m_bisectPanel{nullptr};
+    RangeStatePanel*     m_rangeStatePanel{nullptr};
+    XcpPanel*            m_xcpPanel{nullptr};
+    DoipPanel*           m_doipPanel{nullptr};
+    OpenDbcPanel*        m_openDbcPanel{nullptr};
 
     CanCapture*          m_capture{nullptr};
     CanCapture*          m_capture2{nullptr};  // optional second bus

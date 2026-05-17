@@ -10,6 +10,8 @@
 #include <vector>
 #include <cstdint>
 #include "uds_transport.h"
+#include "uds_scanner.h"
+#include "uds_security.h"
 
 namespace socketspy::gui {
 
@@ -27,6 +29,7 @@ private slots:
     void onUdsError(QString message);
     void onApplyConfig();
     void refreshIfaces();
+    void onSecurityRequest(std::vector<uint8_t> data, QString label);
 
 private:
     void setupUi();
@@ -47,9 +50,11 @@ private:
     QLabel*       m_statusLabel{nullptr};
     QTableWidget* m_table{nullptr};
 
-    UdsTransport* m_transport{nullptr};
-    QString       m_pendingLabel;
-    int           m_sessionId{1};
+    UdsTransport*      m_transport{nullptr};
+    UdsScannerWidget*  m_scanner{nullptr};
+    UdsSecurityWidget* m_security{nullptr};
+    QString            m_pendingLabel;
+    int                m_sessionId{1};
 };
 
 } // namespace socketspy::gui

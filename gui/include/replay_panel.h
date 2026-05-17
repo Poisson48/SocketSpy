@@ -55,6 +55,9 @@ public:
 
 public slots:
     void onFrameReplayed(socketspy::core::CanFrame frame, QString iface);
+    void loadFrames(const QVector<QPair<double, socketspy::core::CanFrame>>& frames,
+                    const QVector<QString>& ifaces = {},
+                    const QString& label = {});
 
 signals:
     void replayFrame(socketspy::core::CanFrame frame);

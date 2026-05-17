@@ -14,6 +14,7 @@
 #include <vector>
 #include "cancore.h"
 #include "filter_model.h"
+#include "monitor_delegate.h"
 
 // Temporarily suppress the Qt `signals` keyword macro so that
 // socketspy::dbc::Message::signals (a data member) parses correctly.
@@ -120,6 +121,10 @@ private:
     QCheckBox*           m_showBusChk{nullptr};
     QLineEdit*           m_search{nullptr};
     MonitorFilterDialog* m_filterDlg{nullptr};
+    QPushButton*         m_captureBaselineBtn{nullptr};
+    QPushButton*         m_clearBaselineBtn{nullptr};
+    QCheckBox*           m_filterNoiseChk{nullptr};
+    QHash<uint32_t, QByteArray> m_baseline;
 
     std::unique_ptr<socketspy::dbc::DbcDatabase> m_dbc;
     bool m_dbcLoaded{false};
@@ -148,6 +153,10 @@ private:
 
     // Log mode: last seen data per ID (for changed-only deduplication)
     std::unordered_map<uint32_t, std::pair<std::vector<uint8_t>, int>> m_logLastSeen;
+
+    QHash<uint32_t, ByteHistory> m_byteHistory;
+    QHash<QString, SparkData>    m_sparkData;
+    MonitorDelegate*             m_delegate{nullptr};
 };
 
 } // namespace socketspy::gui

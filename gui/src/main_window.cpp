@@ -18,6 +18,13 @@
 #include "fuzzer_panel.h"
 #include "diff_panel.h"
 #include "uds_panel.h"
+#include "temporal_panel.h"
+#include "heatmap_panel.h"
+#include "bisect_panel.h"
+#include "range_state_panel.h"
+#include "xcp_panel.h"
+#include "doip_panel.h"
+#include "opendbc_panel.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
 
@@ -79,9 +86,16 @@ void MainWindow::setupUi() {
     m_protocolPanel = new ProtocolPanel(this);
     m_dbcBuilder    = new DbcBuilderPanel(this);
     m_mcpPanel      = new McpPanel(this);
-    m_fuzzerPanel   = new FuzzerPanel(this);
-    m_diffPanel     = new DiffPanel(this);
-    m_udsPanel      = new UdsPanel(this);
+    m_fuzzerPanel     = new FuzzerPanel(this);
+    m_diffPanel       = new DiffPanel(this);
+    m_udsPanel        = new UdsPanel(this);
+    m_temporalPanel   = new TemporalPanel(this);
+    m_heatmapPanel    = new HeatmapPanel(this);
+    m_bisectPanel     = new BisectPanel(this);
+    m_rangeStatePanel = new RangeStatePanel(this);
+    m_xcpPanel        = new XcpPanel(this);
+    m_doipPanel       = new DoipPanel(this);
+    m_openDbcPanel    = new OpenDbcPanel(this);
 
     m_tabs->addTab(m_welcomeScreen, QString::fromUtf8("\xe2\x8c\x82  ") + tr("Home"));
     m_tabs->addTab(m_monitor,       QString::fromUtf8("⊞  ") + tr("Monitor"));
@@ -96,8 +110,15 @@ void MainWindow::setupUi() {
     m_tabs->addTab(m_dbcBuilder,   QString::fromUtf8("✏  ") + tr("DBC Builder"));
     m_tabs->addTab(m_mcpPanel,     QString::fromUtf8("⚙  ") + tr("MCP"));
     m_tabs->addTab(m_fuzzerPanel,  QString::fromUtf8("⚡  ") + tr("Fuzzer"));
-    m_tabs->addTab(m_diffPanel,    QString::fromUtf8("≠  ") + tr("Diff"));
-    m_tabs->addTab(m_udsPanel,     QString::fromUtf8("🔧  ") + tr("UDS"));
+    m_tabs->addTab(m_diffPanel,       QString::fromUtf8("≠  ")  + tr("Diff"));
+    m_tabs->addTab(m_udsPanel,        QString::fromUtf8("🔧  ")  + tr("UDS"));
+    m_tabs->addTab(m_temporalPanel,   QString::fromUtf8("⏱  ")  + tr("Temporal"));
+    m_tabs->addTab(m_heatmapPanel,    QString::fromUtf8("⬜  ")  + tr("Heatmap"));
+    m_tabs->addTab(m_bisectPanel,     QString::fromUtf8("⬡  ")  + tr("Bisect"));
+    m_tabs->addTab(m_rangeStatePanel, QString::fromUtf8("⊙  ")  + tr("Range Scan"));
+    m_tabs->addTab(m_xcpPanel,        QString::fromUtf8("X  ")   + tr("XCP"));
+    m_tabs->addTab(m_doipPanel,       QString::fromUtf8("⬦  ")  + tr("DoIP"));
+    m_tabs->addTab(m_openDbcPanel,    QString::fromUtf8("⬇  ")  + tr("OpenDBC"));
 
     m_recLabel = new QLabel(this);
     m_recLabel->setObjectName("recLabel");
@@ -133,8 +154,11 @@ void MainWindow::setupUi() {
         connect(src, sig, m_graph,         &SignalGraphPanel::onFrameReceived);
         connect(src, sig, m_stats,         &StatsPanel::onFrameReceived);
         connect(src, sig, m_protocolPanel, &ProtocolPanel::onFrameReceived);
-        connect(src, sig, m_dbcBuilder,    &DbcBuilderPanel::onFrameReceived);
-        connect(src, sig, m_scriptPanel,   &ScriptingPanel::onFrameReceived);
+        connect(src, sig, m_dbcBuilder,      &DbcBuilderPanel::onFrameReceived);
+        connect(src, sig, m_scriptPanel,     &ScriptingPanel::onFrameReceived);
+        connect(src, sig, m_temporalPanel,   &TemporalPanel::onFrameReceived);
+        connect(src, sig, m_heatmapPanel,    &HeatmapPanel::onFrameReceived);
+        connect(src, sig, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
@@ -208,6 +232,14 @@ void MainWindow::setupMenuBar() {
     addF(tr("Export Monitor &CSV…"), &MainWindow::onExportMonitorCsv, QKeySequence("Ctrl+Shift+E"));
     addF(tr("Export BLF…"),          &MainWindow::onExportBlf);
     addF(tr("Export MDF4…"),         &MainWindow::onExportMdf4);
+    addF(tr("Export ASC…"),          &MainWindow::onExportAsc);
+    addF(tr("Export TRC…"),          &MainWindow::onExportTrc);
+    addF(tr("Export PCAP…"),         &MainWindow::onExportPcap);
+    fileMenu->addSeparator();
+    addF(tr("Import ASC…"),          &MainWindow::onImportAsc);
+    addF(tr("Import TRC…"),          &MainWindow::onImportTrc);
+    addF(tr("Import PCAP…"),         &MainWindow::onImportPcap);
+    addF(tr("Import CSV…"),          &MainWindow::onImportCsv, QKeySequence("Ctrl+Shift+I"));
     fileMenu->addSeparator();
     addF(tr("E&xit"),              &MainWindow::onExit,           QKeySequence::Quit);
 
@@ -269,9 +301,12 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_graph,         &SignalGraphPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_stats,         &StatsPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_protocolPanel, &ProtocolPanel::onFrameReceived);
-    connect(m_capture, &CanCapture::frameReceived, m_dbcBuilder,    &DbcBuilderPanel::onFrameReceived);
-    connect(m_capture, &CanCapture::frameReceived, m_scriptPanel,   &ScriptingPanel::onFrameReceived);
-    connect(m_capture, &CanCapture::frameReceived, this,            &MainWindow::onAnyFrameReceived,
+    connect(m_capture, &CanCapture::frameReceived, m_dbcBuilder,      &DbcBuilderPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_scriptPanel,     &ScriptingPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_temporalPanel,   &TemporalPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_heatmapPanel,    &HeatmapPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, this,              &MainWindow::onAnyFrameReceived,
             Qt::DirectConnection);
     connect(m_capture, &CanCapture::errorOccurred, this,      &MainWindow::onCaptureError);
     connect(m_capture, &CanCapture::triggerFired,  this,      &MainWindow::onTriggerFired);

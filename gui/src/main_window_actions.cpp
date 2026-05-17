@@ -15,6 +15,10 @@
 #include "protocol_panel.h"
 #include "blf_writer.h"
 #include "mdf4_writer.h"
+#include "asc_io.h"
+#include "trc_io.h"
+#include "pcap_io.h"
+#include "replay_panel.h"
 #include "iface_detector.h"
 #include "can_capture.h"
 
@@ -505,6 +509,156 @@ void MainWindow::onRemoveBus() {
     delete m_capture2;
     m_capture2 = nullptr;
     statusBar()->showMessage(tr("Second bus removed"), 3000);
+}
+
+void MainWindow::onExportAsc() {
+    auto frames = collectMonitorFrames(m_monitor);
+    if (frames.empty()) {
+        QMessageBox::information(this, tr("Export ASC"), tr("No visible data to export."));
+        return;
+    }
+    QString path = QFileDialog::getSaveFileName(
+        this, tr("Export ASC"), {}, tr("ASC Files (*.asc);;All Files (*)"));
+    if (path.isEmpty()) return;
+    if (!path.endsWith(".asc")) path += ".asc";
+    QList<socketspy::core::CanFrame> list(frames.begin(), frames.end());
+    if (AscWriter::write(list, path))
+        statusBar()->showMessage(
+            tr("ASC exported: %1 frames → %2").arg(list.size()).arg(path), 5000);
+    else
+        QMessageBox::critical(this, tr("Export ASC"), tr("Failed to write ASC file."));
+}
+
+void MainWindow::onImportAsc() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Import ASC"), {}, tr("ASC Files (*.asc);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const auto frames = AscReader::read(path);
+    if (frames.isEmpty()) {
+        QMessageBox::information(this, tr("Import ASC"), tr("No frames found in file."));
+        return;
+    }
+    QVector<QPair<double, socketspy::core::CanFrame>> replayFrames;
+    QVector<QString> ifaces;
+    replayFrames.reserve(frames.size());
+    ifaces.reserve(frames.size());
+    for (const auto& fr : frames) {
+        replayFrames.append({static_cast<double>(fr.timestamp_us) / 1'000'000.0, fr});
+        ifaces.append("1");
+    }
+    m_replay->loadFrames(replayFrames, ifaces, QFileInfo(path).fileName());
+    m_tabs->setCurrentWidget(m_replay);
+    statusBar()->showMessage(
+        tr("ASC imported: %1 frames from %2").arg(frames.size()).arg(path), 5000);
+}
+
+void MainWindow::onExportTrc() {
+    auto stdFrames = collectMonitorFrames(m_monitor);
+    if (stdFrames.empty()) {
+        QMessageBox::information(this, tr("Export TRC"), tr("No visible data to export."));
+        return;
+    }
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export TRC"), {}, tr("PEAK Trace Files (*.trc);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const QString outPath = path.endsWith(".trc") ? path : path + ".trc";
+    QList<socketspy::core::CanFrame> frames;
+    frames.reserve(static_cast<int>(stdFrames.size()));
+    for (const auto& f : stdFrames) frames.append(f);
+    if (TrcWriter::write(frames, outPath))
+        statusBar()->showMessage(
+            tr("TRC exported: %1 frames → %2").arg(frames.size()).arg(outPath), 5000);
+    else
+        QMessageBox::critical(this, tr("Export TRC"), tr("Failed to write TRC file."));
+}
+
+void MainWindow::onImportTrc() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Import TRC"), {}, tr("PEAK Trace Files (*.trc);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const QList<socketspy::core::CanFrame> frames = TrcReader::read(path);
+    if (frames.isEmpty()) {
+        QMessageBox::information(this, tr("Import TRC"), tr("No frames found in file."));
+        return;
+    }
+    for (const auto& f : frames)
+        m_monitor->onFrameReceived(f);
+    statusBar()->showMessage(
+        tr("TRC imported: %1 frames from %2").arg(frames.size()).arg(path), 5000);
+}
+
+void MainWindow::onExportPcap() {
+    auto frames = collectMonitorFrames(m_monitor);
+    if (frames.empty()) {
+        QMessageBox::information(this, tr("Export PCAP"), tr("No visible data to export."));
+        return;
+    }
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export PCAP"), {}, tr("PCAP Files (*.pcap);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const QString outPath = path.endsWith(".pcap") ? path : path + ".pcap";
+    if (PcapWriter::write(outPath, frames))
+        statusBar()->showMessage(
+            tr("PCAP exported: %1 frames → %2").arg(frames.size()).arg(outPath), 5000);
+    else
+        QMessageBox::critical(this, tr("Export PCAP"), tr("Failed to write PCAP file."));
+}
+
+void MainWindow::onImportPcap() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Import PCAP"), {}, tr("PCAP Files (*.pcap);;All Files (*)"));
+    if (path.isEmpty()) return;
+    const QList<socketspy::core::CanFrame> frames = PcapReader::read(path);
+    if (frames.isEmpty()) {
+        QMessageBox::warning(this, tr("Import PCAP"),
+            tr("No CAN frames found (check link type is LINKTYPE_CAN_SOCKETCAN)."));
+        return;
+    }
+    for (const auto& frame : frames)
+        m_monitor->onFrameReceived(frame);
+    statusBar()->showMessage(
+        tr("PCAP imported: %1 frames from %2").arg(frames.size()).arg(path), 5000);
+}
+
+void MainWindow::onImportCsv() {
+    QString path = QFileDialog::getOpenFileName(
+        this, tr("Import CSV"), {}, tr("CSV files (*.csv)"));
+    if (path.isEmpty()) return;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Import CSV"), f.errorString());
+        return;
+    }
+    QVector<QPair<double, socketspy::core::CanFrame>> frames;
+    QTextStream in(&f);
+    if (!in.atEnd()) in.readLine(); // skip header
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty()) continue;
+        QStringList cols = line.split(',');
+        if (cols.size() < 3) continue;
+        socketspy::core::CanFrame fr{};
+        fr.timestamp_us = cols[0].toULongLong();
+        bool ok = false;
+        fr.id = cols[1].trimmed().toUInt(&ok, 16);
+        if (!ok) continue;
+        fr.dlc = static_cast<uint8_t>(cols[2].trimmed().toUInt());
+        if (cols.size() >= 4) {
+            const QStringList bytes = cols[3].trimmed().split(' ', Qt::SkipEmptyParts);
+            int nb = qMin(bytes.size(), 64);
+            for (int i = 0; i < nb; ++i)
+                fr.data[i] = static_cast<uint8_t>(bytes[i].toUInt(nullptr, 16));
+        }
+        frames.append({static_cast<double>(fr.timestamp_us) / 1'000'000.0, fr});
+    }
+    if (frames.isEmpty()) {
+        QMessageBox::information(this, tr("Import CSV"), tr("No valid frames found in file."));
+        return;
+    }
+    QVector<QString> ifaces(frames.size());
+    m_replay->loadFrames(frames, ifaces, QFileInfo(path).fileName());
+    m_tabs->setCurrentWidget(m_replay);
+    statusBar()->showMessage(tr("CSV imported: %1 frames").arg(frames.size()), 5000);
 }
 
 } // namespace socketspy::gui

@@ -39,8 +39,23 @@ set(GUI_HEADERS
     include/diff_panel.h
     include/uds_panel.h
     include/uds_transport.h
+    include/uds_scanner.h
+    include/uds_security.h
     include/blf_writer.h
     include/mdf4_writer.h
+    include/asc_io.h
+    include/trc_io.h
+    include/pcap_io.h
+    include/temporal_panel.h
+    include/heatmap_panel.h
+    include/heatmap_widget.h
+    include/bisect_panel.h
+    include/range_state_panel.h
+    include/range_state_scan.h
+    include/monitor_delegate.h
+    include/xcp_panel.h
+    include/doip_panel.h
+    include/opendbc_panel.h
 )
 
 add_executable(socketspy
@@ -78,8 +93,23 @@ add_executable(socketspy
     src/diff_panel.cpp
     src/uds_panel.cpp
     src/uds_transport.cpp
+    src/uds_scanner.cpp
+    src/uds_security.cpp
     src/blf_writer.cpp
     src/mdf4_writer.cpp
+    src/asc_io.cpp
+    src/trc_io.cpp
+    src/pcap_io.cpp
+    src/temporal_panel.cpp
+    src/heatmap_panel.cpp
+    src/heatmap_widget.cpp
+    src/bisect_panel.cpp
+    src/range_state_panel.cpp
+    src/range_state_scan.cpp
+    src/monitor_delegate.cpp
+    src/xcp_panel.cpp
+    src/doip_panel.cpp
+    src/opendbc_panel.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )
@@ -108,6 +138,7 @@ target_link_libraries(socketspy
             Qt6::Charts
             Qt6::SerialBus
             Qt6::SerialPort
+            Qt6::Network
             nlohmann_json::nlohmann_json
 )
 

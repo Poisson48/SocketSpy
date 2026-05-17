@@ -415,4 +415,27 @@ void ReplayPanel::onFrameReplayed(socketspy::core::CanFrame frame, QString iface
     emit replayFrame(frame);
 }
 
+void ReplayPanel::loadFrames(
+    const QVector<QPair<double, socketspy::core::CanFrame>>& frames,
+    const QVector<QString>& ifaces,
+    const QString& label)
+{
+    onStop();
+    m_frames = frames;
+    m_ifaces = ifaces;
+    if (m_ifaces.size() < m_frames.size())
+        m_ifaces.resize(m_frames.size());
+    m_log->clear();
+    if (!label.isEmpty())
+        m_fileLabel->setText(label);
+    if (m_frames.isEmpty()) return;
+    m_duration = m_frames.last().first - m_frames.first().first;
+    m_seekIndex = 0;
+    m_slider->setValue(0);
+    m_timeLabel->setText("00:00.000 / " + formatTime(m_duration));
+    m_playBtn->setEnabled(true);
+    m_pauseBtn->setEnabled(false);
+    m_stopBtn->setEnabled(false);
+}
+
 } // namespace socketspy::gui

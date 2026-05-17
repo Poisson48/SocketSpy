@@ -223,6 +223,47 @@ void MonitorPanel::setupUi() {
     connect(m_filterDlg, &MonitorFilterDialog::filterChanged,
             this,        &MonitorPanel::onMonitorFilterChanged);
 
+    m_captureBaselineBtn = new QPushButton("Capture Baseline", this);
+    m_captureBaselineBtn->setToolTip("Snapshot current frames as baseline for noise filtering");
+    m_clearBaselineBtn   = new QPushButton("Clear Baseline", this);
+    m_clearBaselineBtn->setToolTip("Clear the noise baseline");
+    m_filterNoiseChk     = new QCheckBox("Filter Noise", this);
+    m_filterNoiseChk->setToolTip("Hide frames whose payload matches the captured baseline");
+
+    connect(m_captureBaselineBtn, &QPushButton::clicked, this, [this]() {
+        m_baseline.clear();
+        for (int row = 0; row < m_table->rowCount(); ++row) {
+            if (m_table->isRowHidden(row)) continue;
+            auto* idItem   = m_table->item(row, 1);
+            auto* dataItem = m_table->item(row, 3);
+            if (!idItem || !dataItem) continue;
+            QString idText = idItem->text();
+            if (idText.startsWith("* ")) idText = idText.mid(2);
+            bool ok = false;
+            uint32_t id = idText.trimmed().toUInt(&ok, 16);
+            if (!ok) continue;
+            if (m_trackMode->isChecked()) {
+                auto it = m_tracked.find(id);
+                if (it != m_tracked.end()) {
+                    const auto& d = it->second.lastData;
+                    m_baseline[id] = QByteArray(
+                        reinterpret_cast<const char*>(d.data()),
+                        static_cast<qsizetype>(d.size()));
+                }
+            } else {
+                const QStringList bytes = dataItem->text().split(' ', Qt::SkipEmptyParts);
+                QByteArray payload;
+                payload.reserve(bytes.size());
+                for (const QString& b : bytes)
+                    payload.append(static_cast<char>(b.toUInt(nullptr, 16)));
+                m_baseline[id] = payload;
+            }
+        }
+    });
+    connect(m_clearBaselineBtn, &QPushButton::clicked, this, [this]() {
+        m_baseline.clear();
+    });
+
     m_search = new QLineEdit(this);
     m_search->setPlaceholderText("Filter by ID (hex)…");
     m_search->setMaximumWidth(160);
@@ -238,6 +279,10 @@ void MonitorPanel::setupUi() {
     toolbar->addWidget(m_exportCsvBtn);
     toolbar->addWidget(m_autoScrollChk);
     toolbar->addWidget(m_showBusChk);
+    toolbar->addSpacing(12);
+    toolbar->addWidget(m_captureBaselineBtn);
+    toolbar->addWidget(m_clearBaselineBtn);
+    toolbar->addWidget(m_filterNoiseChk);
     toolbar->addSpacing(12);
     toolbar->addWidget(new QLabel("ID:", this));
     toolbar->addWidget(m_search);
@@ -279,6 +324,11 @@ void MonitorPanel::onFrameReceivedOnBus(CanFrame frame, QString busName) {
     if (m_pause->isChecked()) return;
     if (!m_filter.accepts(frame)) return;
     if (!passesMonitorFilter(frame)) return;
+
+    if (m_filterNoiseChk->isChecked() && m_baseline.contains(frame.id)) {
+        QByteArray payload(reinterpret_cast<const char*>(frame.data), frame.dlc);
+        if (m_baseline[frame.id] == payload) return;
+    }
 
     if (m_trackMode->isChecked())
         updateTrackingRow(frame, busName);

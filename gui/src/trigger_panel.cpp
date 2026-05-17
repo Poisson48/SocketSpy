@@ -17,14 +17,14 @@ void TriggerPanel::setupUi() {
     auto* byteSeqValidator = new QRegularExpressionValidator(
         QRegularExpression("([0-9A-Fa-f]{1,2}\\s*){0,8}"), this);
 
-    m_enable      = new QCheckBox("Enable trigger", this);
+    m_enable      = new QCheckBox(tr("Enable trigger"), this);
     m_id          = new QLineEdit("0x000", this);
     m_idMask      = new QLineEdit("0xFFFFFFFF", this);
     m_dataPattern = new QLineEdit(this);
     m_dataMask    = new QLineEdit(this);
     m_action      = new QComboBox(this);
-    m_armBtn      = new QPushButton("Arm", this);
-    m_disarmBtn   = new QPushButton("Disarm", this);
+    m_armBtn      = new QPushButton(tr("Arm"), this);
+    m_disarmBtn   = new QPushButton(tr("Disarm"), this);
 
     m_id->setValidator(hexValidator);
     m_idMask->setValidator(hexValidator);
@@ -33,23 +33,23 @@ void TriggerPanel::setupUi() {
     m_dataPattern->setPlaceholderText("e.g. 01 FF 00  (leave empty to ignore)");
     m_dataMask->setPlaceholderText("e.g. FF FF 00  (per-byte mask)");
 
-    m_action->addItem("Start Record", QVariant::fromValue(int(0)));
-    m_action->addItem("Stop Record",  QVariant::fromValue(int(1)));
-    m_action->addItem("Bookmark",     QVariant::fromValue(int(2)));
+    m_action->addItem(tr("Start Record"), QVariant::fromValue(int(0)));
+    m_action->addItem(tr("Stop Record"),  QVariant::fromValue(int(1)));
+    m_action->addItem(tr("Bookmark"),     QVariant::fromValue(int(2)));
 
     m_disarmBtn->setEnabled(false);
 
     auto* grid = new QGridLayout;
-    grid->addWidget(new QLabel("CAN ID:", this),      0, 0);
-    grid->addWidget(m_id,                              0, 1);
-    grid->addWidget(new QLabel("ID Mask:", this),      0, 2);
-    grid->addWidget(m_idMask,                          0, 3);
-    grid->addWidget(new QLabel("Data Pattern:", this), 1, 0);
-    grid->addWidget(m_dataPattern,                     1, 1, 1, 3);
-    grid->addWidget(new QLabel("Data Mask:", this),    2, 0);
-    grid->addWidget(m_dataMask,                        2, 1, 1, 3);
-    grid->addWidget(new QLabel("Action:", this),       3, 0);
-    grid->addWidget(m_action,                          3, 1);
+    grid->addWidget(new QLabel(tr("CAN ID:"), this),      0, 0);
+    grid->addWidget(m_id,                                 0, 1);
+    grid->addWidget(new QLabel(tr("ID Mask:"), this),     0, 2);
+    grid->addWidget(m_idMask,                             0, 3);
+    grid->addWidget(new QLabel(tr("Data Pattern:"), this), 1, 0);
+    grid->addWidget(m_dataPattern,                        1, 1, 1, 3);
+    grid->addWidget(new QLabel(tr("Data Mask:"), this),   2, 0);
+    grid->addWidget(m_dataMask,                           2, 1, 1, 3);
+    grid->addWidget(new QLabel(tr("Action:"), this),      3, 0);
+    grid->addWidget(m_action,                             3, 1);
 
     auto* btnRow = new QHBoxLayout;
     btnRow->addStretch();

@@ -44,6 +44,7 @@
 #include <QShortcut>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QSettings>
 
 using namespace socketspy::dbc;
 
@@ -289,6 +290,28 @@ void MainWindow::setupMenuBar() {
     connect(removeBusAct, &QAction::triggered, this, &MainWindow::onRemoveBus);
 
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
+
+    // Language submenu
+    auto* langMenu = helpMenu->addMenu(tr("Language"));
+    QSettings settings;
+    const QString curLang = settings.value("language", "en").toString();
+
+    auto addLang = [&](const QString& label, const QString& code) {
+        auto* act = langMenu->addAction(label);
+        act->setCheckable(true);
+        act->setChecked(curLang == code);
+        connect(act, &QAction::triggered, this, [this, code]() {
+            QSettings s;
+            s.setValue("language", code);
+            QMessageBox::information(this,
+                tr("Language changed"),
+                tr("Please restart SocketSpy to apply the new language."));
+        });
+    };
+    addLang("English",  "en");
+    addLang("Français", "fr");
+
+    helpMenu->addSeparator();
     auto* aboutAct = helpMenu->addAction(tr("About SocketSpy"));
     connect(aboutAct, &QAction::triggered, this, [this]() {
         QMessageBox::about(this,
@@ -439,7 +462,7 @@ void MainWindow::onBitrateChanged(int index) {
     m_stats->setBitrate(m_bitrate);
     if (!canIfaceIsVirtual(m_iface) && !m_iface.startsWith("slcan:")) {
         if (canIfaceApply(m_iface, m_bitrate)) setupCapture(m_iface);
-        else statusBar()->showMessage("Erreur : impossible de configurer " + m_iface, 5000);
+        else statusBar()->showMessage(tr("Error: cannot configure %1").arg(m_iface), 5000);
     }
     m_bitrateCombo->setEnabled(!canIfaceIsVirtual(m_iface));
 }
@@ -455,10 +478,10 @@ void MainWindow::onIfaceChanged(const QString& iface) {
     m_bitrateCombo->setEnabled(!canIfaceIsVirtual(iface));
 
     if (iface.startsWith("slcan:")) {
-        statusBar()->showMessage("Configuration slcan sur " + iface.mid(6) + "…", 0);
+        statusBar()->showMessage(tr("Configuring slcan on %1…").arg(iface.mid(6)), 0);
         auto [ok, slIface] = canSlcanSetup(iface.mid(6), m_bitrate);
         if (ok) { m_iface = slIface; setupCapture(m_iface); }
-        else    { statusBar()->showMessage("Erreur : impossible de configurer " + iface.mid(6), 8000); }
+        else    { statusBar()->showMessage(tr("Error: cannot configure %1").arg(iface.mid(6)), 8000); }
         return;
     }
     if (!canIfaceIsVirtual(iface))

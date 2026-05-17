@@ -131,13 +131,13 @@ void ReplayPanel::setupUi() {
     // Top bar
     auto* topBar = new QHBoxLayout;
     topBar->setSpacing(6);
-    m_openBtn   = new QPushButton("Open Log", this);
-    m_fileLabel = new QLabel("No file loaded", this);
+    m_openBtn   = new QPushButton(tr("Open Log"), this);
+    m_fileLabel = new QLabel(tr("No file loaded"), this);
     // Use theme muted color (#7c8fa6) instead of hardcoded #8892a4
     m_fileLabel->setStyleSheet("color:#7c8fa6;");
-    m_playBtn   = new QPushButton("Play", this);
-    m_pauseBtn  = new QPushButton("Pause", this);
-    m_stopBtn   = new QPushButton("Stop", this);
+    m_playBtn   = new QPushButton(tr("Play"), this);
+    m_pauseBtn  = new QPushButton(tr("Pause"), this);
+    m_stopBtn   = new QPushButton(tr("Stop"), this);
 
     m_speedCombo = new QComboBox(this);
     m_speedCombo->addItem("0.25x", 0.25);
@@ -153,7 +153,7 @@ void ReplayPanel::setupUi() {
     topBar->addWidget(m_playBtn);
     topBar->addWidget(m_pauseBtn);
     topBar->addWidget(m_stopBtn);
-    topBar->addWidget(new QLabel("Speed:", this));
+    topBar->addWidget(new QLabel(tr("Speed:"), this));
     topBar->addWidget(m_speedCombo);
 
     // Progress row
@@ -270,8 +270,8 @@ void ReplayPanel::loadLogFile(const QString& path) {
 
 void ReplayPanel::onOpenLog() {
     QString path = QFileDialog::getOpenFileName(
-        this, "Open CAN Log", {},
-        "CAN Log Files (*.log *.asc);;All Files (*)");
+        this, tr("Open CAN Log"), {},
+        tr("CAN Log Files (*.log *.asc);;All Files (*)"));
     if (path.isEmpty()) return;
 
     onStop();

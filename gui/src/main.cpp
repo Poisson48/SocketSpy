@@ -1,13 +1,13 @@
 #include <QApplication>
 #include <QFile>
 #include <QLocale>
+#include <QSettings>
 #include <QTimer>
 #include <QTranslator>
 #include "main_window.h"
+#include "splash_screen.h"
 
 int main(int argc, char* argv[]) {
-    // Parse --headless and --exit-after <seconds> before creating QApplication
-    // so that platform plugins can be suppressed when running headless.
     bool headless = false;
     int  exitAfterSec = -1;
 
@@ -19,26 +19,31 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // In headless mode use the offscreen platform so no display is required.
-    if (headless) {
+    if (headless)
         qputenv("QT_QPA_PLATFORM", "offscreen");
-    }
 
     QApplication app(argc, argv);
     app.setApplicationName("SocketSpy");
-    app.setApplicationVersion("0.1.0");
+    app.setApplicationVersion(APP_VERSION);
+    app.setOrganizationName("SocketSpy");
 
-    // Load the translation that best matches the system locale.
-    // The .qm files are embedded as Qt resources under :/i18n/ by CMake.
-    // Supported locales: en (default), fr.
+    // Determine UI language: saved preference first, then system locale
+    QSettings settings;
+    const QString savedLang = settings.value("language", QString()).toString();
+
     QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString& lang : uiLanguages) {
-        // Qt resource path: :/i18n/socketspy_<lang>.qm  (e.g. socketspy_fr.qm)
-        const QString baseName = "socketspy_" + QLocale(lang).name().left(2);
-        if (translator.load(":/i18n/" + baseName)) {
+    if (!savedLang.isEmpty()) {
+        // Use the explicitly saved language
+        if (translator.load(":/i18n/socketspy_" + savedLang))
             app.installTranslator(&translator);
-            break;
+    } else {
+        // Fall back to system locale
+        for (const QString& lang : QLocale::system().uiLanguages()) {
+            const QString baseName = "socketspy_" + QLocale(lang).name().left(2);
+            if (translator.load(":/i18n/" + baseName)) {
+                app.installTranslator(&translator);
+                break;
+            }
         }
     }
 
@@ -46,11 +51,24 @@ int main(int argc, char* argv[]) {
     if (qss.open(QFile::ReadOnly))
         app.setStyleSheet(QString::fromUtf8(qss.readAll()));
 
-    socketspy::gui::MainWindow window;
-    if (!headless)
-        window.show();
+    // Show splash screen (skipped in headless / CI mode)
+    socketspy::gui::SplashScreen* splash = nullptr;
+    if (!headless) {
+        splash = new socketspy::gui::SplashScreen();
+        splash->show();
+        app.processEvents();
+    }
 
-    // Schedule a clean exit when --exit-after N is requested (e.g. CI smoke test).
+    socketspy::gui::MainWindow window;
+
+    if (!headless) {
+        window.show();
+        if (splash)
+            QTimer::singleShot(1500, splash, [splash, &window]() {
+                splash->finish(&window);
+            });
+    }
+
     if (exitAfterSec > 0)
         QTimer::singleShot(exitAfterSec * 1000, &app, &QApplication::quit);
 

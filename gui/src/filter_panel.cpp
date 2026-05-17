@@ -17,8 +17,8 @@ void FilterPanel::setupUi() {
         QRegularExpression("(0x)?[0-9A-Fa-f]{1,8}"), this);
     auto* dlcValidator = new QIntValidator(0, 15, this);
 
-    m_enable = new QCheckBox("Enable", this);
-    m_clear  = new QPushButton("Clear", this);
+    m_enable = new QCheckBox(tr("Enable"), this);
+    m_clear  = new QPushButton(tr("Clear"), this);
 
     m_idMin  = new QLineEdit("0x000", this);
     m_idMax  = new QLineEdit("0x1FFFFFFF", this);
@@ -43,26 +43,26 @@ void FilterPanel::setupUi() {
     m_showErr->setChecked(false);
 
     auto* topRow = new QHBoxLayout;
-    topRow->addWidget(new QLabel("Filter", this));
+    topRow->addWidget(new QLabel(tr("Filter"), this));
     topRow->addStretch();
     topRow->addWidget(m_enable);
     topRow->addWidget(m_clear);
 
     auto* grid = new QGridLayout;
-    grid->addWidget(new QLabel("ID Range:", this), 0, 0);
+    grid->addWidget(new QLabel(tr("ID Range:"), this), 0, 0);
     grid->addWidget(m_idMin, 0, 1);
-    grid->addWidget(new QLabel("to", this), 0, 2);
+    grid->addWidget(new QLabel(tr("to"), this), 0, 2);
     grid->addWidget(m_idMax, 0, 3);
-    grid->addWidget(new QLabel("Mask:", this), 0, 4);
+    grid->addWidget(new QLabel(tr("Mask:"), this), 0, 4);
     grid->addWidget(m_idMask, 0, 5);
 
-    grid->addWidget(new QLabel("DLC:", this), 1, 0);
+    grid->addWidget(new QLabel(tr("DLC:"), this), 1, 0);
     grid->addWidget(m_dlcMin, 1, 1);
-    grid->addWidget(new QLabel("to", this), 1, 2);
+    grid->addWidget(new QLabel(tr("to"), this), 1, 2);
     grid->addWidget(m_dlcMax, 1, 3);
 
     auto* typesRow = new QHBoxLayout;
-    typesRow->addWidget(new QLabel("Types:", this));
+    typesRow->addWidget(new QLabel(tr("Types:"), this));
     typesRow->addWidget(m_showStd);
     typesRow->addWidget(m_showExt);
     typesRow->addWidget(m_showFd);

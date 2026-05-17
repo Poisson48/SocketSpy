@@ -59,6 +59,7 @@ set(GUI_HEADERS
     include/opendbc_panel.h
     include/sidebar_nav.h
     include/uds_ecu_sim.h
+    include/splash_screen.h
 )
 
 add_executable(socketspy
@@ -116,6 +117,7 @@ add_executable(socketspy
     src/opendbc_panel.cpp
     src/sidebar_nav.cpp
     src/uds_ecu_sim.cpp
+    src/splash_screen.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )

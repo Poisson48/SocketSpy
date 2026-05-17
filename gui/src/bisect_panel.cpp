@@ -27,7 +27,7 @@ void BisectPanel::setupUi() {
 
     auto* refreshBtn = new QPushButton(QString::fromUtf8("↺"), this);
     refreshBtn->setFixedWidth(28);
-    refreshBtn->setToolTip("Refresh interface list");
+    refreshBtn->setToolTip(tr("Refresh interface list"));
     connect(refreshBtn, &QPushButton::clicked, this, [this]() {
         const QString cur = m_iface->currentText();
         m_iface->blockSignals(true);
@@ -39,13 +39,13 @@ void BisectPanel::setupUi() {
     });
 
     auto* ifaceRow = new QHBoxLayout;
-    ifaceRow->addWidget(new QLabel("Interface:", this));
+    ifaceRow->addWidget(new QLabel(tr("Interface:"), this));
     ifaceRow->addWidget(m_iface, 1);
     ifaceRow->addWidget(refreshBtn);
 
     // Row 1: Load + frame count
-    m_loadBtn        = new QPushButton("Load Capture...", this);
-    m_frameCountLabel = new QLabel("0 frames loaded", this);
+    m_loadBtn        = new QPushButton(tr("Load Capture…"), this);
+    m_frameCountLabel = new QLabel(tr("0 frames loaded"), this);
     m_frameCountLabel->setStyleSheet("color: #6b7280;");
 
     auto* loadRow = new QHBoxLayout;
@@ -54,7 +54,7 @@ void BisectPanel::setupUi() {
     loadRow->addStretch();
 
     // Row 2: Window info label
-    m_windowLabel = new QLabel("Window: frames [0, 0] — size 0", this);
+    m_windowLabel = new QLabel(tr("Window: frames [0, 0] — size 0"), this);
 
     // Row 3: Progress bar
     m_progress = new QProgressBar(this);
@@ -63,8 +63,8 @@ void BisectPanel::setupUi() {
     m_progress->setTextVisible(false);
 
     // Row 4: Replay buttons
-    m_replayFirstBtn  = new QPushButton("Replay First Half", this);
-    m_replaySecondBtn = new QPushButton("Replay Second Half", this);
+    m_replayFirstBtn  = new QPushButton(tr("Replay First Half"), this);
+    m_replaySecondBtn = new QPushButton(tr("Replay Second Half"), this);
     m_replayFirstBtn->setEnabled(false);
     m_replaySecondBtn->setEnabled(false);
 
@@ -74,8 +74,8 @@ void BisectPanel::setupUi() {
     replayRow->addStretch();
 
     // Row 5: Event decision buttons
-    m_eventFirstBtn  = new QPushButton(QString::fromUtf8("✓ Event in First Half"), this);
-    m_eventSecondBtn = new QPushButton(QString::fromUtf8("✓ Event in Second Half"), this);
+    m_eventFirstBtn  = new QPushButton(tr("✓ Event in First Half"), this);
+    m_eventSecondBtn = new QPushButton(tr("✓ Event in Second Half"), this);
     m_eventFirstBtn->setEnabled(false);
     m_eventSecondBtn->setEnabled(false);
 
@@ -85,7 +85,7 @@ void BisectPanel::setupUi() {
     eventRow->addStretch();
 
     // Row 6: Reset (full width)
-    m_resetBtn = new QPushButton("Reset", this);
+    m_resetBtn = new QPushButton(tr("Reset"), this);
     m_resetBtn->setEnabled(false);
 
     // Row 7: Result label
@@ -95,7 +95,7 @@ void BisectPanel::setupUi() {
 
     // Row 8: Result table
     m_table = new QTableWidget(0, 3, this);
-    m_table->setHorizontalHeaderLabels({"ID", "Timestamp", "Data"});
+    m_table->setHorizontalHeaderLabels({tr("ID"), tr("Timestamp"), tr("Data")});
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -164,16 +164,16 @@ bool BisectPanel::parseLogFile(const QString& path) {
 
 void BisectPanel::onLoadCapture() {
     const QString path = QFileDialog::getOpenFileName(
-        this, "Open Capture", {},
-        "CAN Log Files (*.log);;All Files (*)");
+        this, tr("Open Capture"), {},
+        tr("CAN Log Files (*.log);;All Files (*)"));
     if (path.isEmpty()) return;
     if (!parseLogFile(path)) {
-        QMessageBox::critical(this, "Bisect", "Cannot read or empty file: " + path);
+        QMessageBox::critical(this, tr("Bisect"), tr("Cannot read or empty file: %1").arg(path));
         return;
     }
     m_lo = 0;
     m_hi = m_frames.size();
-    m_frameCountLabel->setText(QString::number(m_frames.size()) + " frames loaded");
+    m_frameCountLabel->setText(tr("%1 frames loaded").arg(m_frames.size()));
     m_replayFirstBtn->setEnabled(true);
     m_replaySecondBtn->setEnabled(true);
     m_eventFirstBtn->setEnabled(true);
@@ -185,7 +185,7 @@ void BisectPanel::onLoadCapture() {
 void BisectPanel::updateDisplay() {
     const int size = m_hi - m_lo;
     m_windowLabel->setText(
-        QString("Window: frames [%1, %2] — size %3")
+        tr("Window: frames [%1, %2] — size %3")
             .arg(m_lo).arg(m_hi).arg(size));
 
     // Progress bar: lo..hi within total range
@@ -197,7 +197,7 @@ void BisectPanel::updateDisplay() {
     // Show result table when window is small enough
     if (size <= 5 && !m_frames.isEmpty()) {
         m_resultLabel->setText(
-            QString("Result: %1 candidate frame(s)").arg(size));
+            tr("Result: %1 candidate frame(s)").arg(size));
         m_resultLabel->show();
         m_table->setRowCount(0);
         for (int i = m_lo; i < m_hi; ++i) {
@@ -232,13 +232,13 @@ void BisectPanel::updateDisplay() {
 void BisectPanel::replayRange(int from, int to) {
     const QString ifaceName = m_iface->currentText();
     if (ifaceName.isEmpty()) {
-        QMessageBox::warning(this, "Bisect", "No CAN interface selected.");
+        QMessageBox::warning(this, tr("Bisect"), tr("No CAN interface selected."));
         return;
     }
     IfaceHandle h = can_open(ifaceName.toStdString());
     if (!h.valid()) {
-        QMessageBox::critical(this, "Bisect",
-            QString("can_open failed: %1").arg(strerror(errno)));
+        QMessageBox::critical(this, tr("Bisect"),
+            tr("can_open failed: %1").arg(strerror(errno)));
         return;
     }
     for (int i = from; i < to; ++i)

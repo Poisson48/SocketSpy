@@ -131,7 +131,7 @@ protected:
 
     void contextMenuEvent(QContextMenuEvent* e) override {
         QMenu menu(this);
-        auto* act = menu.addAction(tr("D\xc3\xa9tacher en fen\xc3\xaatre"));
+        auto* act = menu.addAction(tr("Detach to window"));
         act->setEnabled(!m_detached);
         if (menu.exec(e->globalPos()) == act)
             emit detachTriggered(m_panel, m_label);

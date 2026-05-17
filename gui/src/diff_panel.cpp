@@ -28,14 +28,14 @@ DiffPanel::DiffPanel(QWidget* parent) : QWidget(parent) {
 
 void DiffPanel::setupUi() {
     m_pathA  = new QLineEdit(this);
-    m_pathA->setPlaceholderText("Path to capture A (.log or .csv)…");
+    m_pathA->setPlaceholderText(tr("Path to capture A (.log or .csv)…"));
     m_pathA->setReadOnly(true);
-    m_openA  = new QPushButton("Open…", this);
+    m_openA  = new QPushButton(tr("Open…"), this);
 
     m_pathB  = new QLineEdit(this);
-    m_pathB->setPlaceholderText("Path to capture B (.log or .csv)…");
+    m_pathB->setPlaceholderText(tr("Path to capture B (.log or .csv)…"));
     m_pathB->setReadOnly(true);
-    m_openB  = new QPushButton("Open…", this);
+    m_openB  = new QPushButton(tr("Open…"), this);
 
     auto makeFileRow = [](QLineEdit* edit, QPushButton* btn) -> QHBoxLayout* {
         auto* row = new QHBoxLayout;
@@ -45,14 +45,14 @@ void DiffPanel::setupUi() {
     };
 
     auto* form = new QFormLayout;
-    form->addRow("Capture A:", makeFileRow(m_pathA, m_openA));
-    form->addRow("Capture B:", makeFileRow(m_pathB, m_openB));
+    form->addRow(tr("Capture A:"), makeFileRow(m_pathA, m_openA));
+    form->addRow(tr("Capture B:"), makeFileRow(m_pathB, m_openB));
 
-    m_compare = new QPushButton("Compare", this);
+    m_compare = new QPushButton(tr("Compare"), this);
     m_compare->setEnabled(false);
 
-    m_diffOnly   = new QCheckBox("Show only differences", this);
-    m_commonOnly = new QCheckBox("Show only common IDs", this);
+    m_diffOnly   = new QCheckBox(tr("Show only differences"), this);
+    m_commonOnly = new QCheckBox(tr("Show only common IDs"), this);
 
     auto* filterRow = new QHBoxLayout;
     filterRow->addWidget(m_diffOnly);
@@ -68,7 +68,7 @@ void DiffPanel::setupUi() {
     compareRow->addStretch();
 
     m_table = new QTableWidget(0, 5, this);
-    m_table->setHorizontalHeaderLabels({"CAN ID", "Status", "Data A", "Data B", "Delta"});
+    m_table->setHorizontalHeaderLabels({tr("CAN ID"), tr("Status"), tr("Data A"), tr("Data B"), tr("Delta")});
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -94,8 +94,8 @@ void DiffPanel::setupUi() {
 
 void DiffPanel::onOpenA() {
     const QString path = QFileDialog::getOpenFileName(
-        this, "Open Capture A", {},
-        "CAN Captures (*.log *.csv);;All Files (*)");
+        this, tr("Open Capture A"), {},
+        tr("CAN Captures (*.log *.csv);;All Files (*)"));
     if (path.isEmpty()) return;
     m_pathA->setText(path);
     m_captureA.clear();
@@ -104,8 +104,8 @@ void DiffPanel::onOpenA() {
 
 void DiffPanel::onOpenB() {
     const QString path = QFileDialog::getOpenFileName(
-        this, "Open Capture B", {},
-        "CAN Captures (*.log *.csv);;All Files (*)");
+        this, tr("Open Capture B"), {},
+        tr("CAN Captures (*.log *.csv);;All Files (*)"));
     if (path.isEmpty()) return;
     m_pathB->setText(path);
     m_captureB.clear();
@@ -193,10 +193,10 @@ void DiffPanel::onCompare() {
 
     QString err;
     if (!parseFile(m_pathA->text(), m_captureA, err)) {
-        QMessageBox::critical(this, "Diff", err); return;
+        QMessageBox::critical(this, tr("Diff"), err); return;
     }
     if (!parseFile(m_pathB->text(), m_captureB, err)) {
-        QMessageBox::critical(this, "Diff", err); return;
+        QMessageBox::critical(this, tr("Diff"), err); return;
     }
     populateTable();
 }
@@ -284,7 +284,7 @@ void DiffPanel::populateTable() {
     }
 
     m_statusLabel->setText(
-        QString("IDs: A-only=%1  B-only=%2  Changed=%3  Same=%4  |  Total rows: %5")
+        tr("IDs: A-only=%1  B-only=%2  Changed=%3  Same=%4  |  Total: %5")
         .arg(aOnly).arg(bOnly).arg(changed).arg(same).arg(m_table->rowCount()));
 }
 

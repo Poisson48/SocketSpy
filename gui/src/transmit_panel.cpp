@@ -22,10 +22,10 @@ void TransmitPanel::setupUi() {
     m_iface->addItems(IfaceDetector::scanCanIfaces());
     m_iface->setMinimumWidth(120);
 
-    auto* refreshBtn = new QPushButton("↺", this);
+    auto* refreshBtn = new QPushButton(QString::fromUtf8("↺"), this);
     refreshBtn->setObjectName("refreshBtn");
     refreshBtn->setFixedWidth(28);
-    refreshBtn->setToolTip("Refresh interface list");
+    refreshBtn->setToolTip(tr("Refresh interface list"));
     connect(refreshBtn, &QPushButton::clicked, this, &TransmitPanel::refreshIfaces);
 
     auto* ifaceRow = new QHBoxLayout;
@@ -37,9 +37,9 @@ void TransmitPanel::setupUi() {
     m_dlc->setRange(0, 8);
     m_data     = new QLineEdit(this);
     m_data->setPlaceholderText("DE AD BE EF ...");
-    m_extended = new QCheckBox("Extended ID (29-bit)", this);
-    m_fd       = new QCheckBox("FD frame", this);
-    m_send     = new QPushButton("Send once", this);
+    m_extended = new QCheckBox(tr("Extended ID (29-bit)"), this);
+    m_fd       = new QCheckBox(tr("FD frame"), this);
+    m_send     = new QPushButton(tr("Send once"), this);
     m_status   = new QLabel(this);
 
     connect(m_fd, &QCheckBox::toggled, this, [this](bool checked) {
@@ -49,10 +49,10 @@ void TransmitPanel::setupUi() {
     auto* form = new QFormLayout;
     form->setContentsMargins(0, 0, 0, 0);
     form->setSpacing(6);
-    form->addRow("Interface:", ifaceRow);
-    form->addRow("ID (hex):", m_id);
-    form->addRow("DLC:", m_dlc);
-    form->addRow("Data (hex bytes):", m_data);
+    form->addRow(tr("Interface:"), ifaceRow);
+    form->addRow(tr("ID (hex):"), m_id);
+    form->addRow(tr("DLC:"), m_dlc);
+    form->addRow(tr("Data (hex bytes):"), m_data);
     form->addRow("", m_extended);
     form->addRow("", m_fd);
 
@@ -63,16 +63,16 @@ void TransmitPanel::setupUi() {
     btnRow->addStretch();
 
     // ----- Periodic send group (Gap E) -----
-    auto* periodicGroup = new QGroupBox("Periodic send", this);
-    m_periodicChk  = new QCheckBox("Enable periodic transmit", periodicGroup);
-    m_periodicChk->setToolTip("Send the frame above repeatedly at the chosen interval");
+    auto* periodicGroup = new QGroupBox(tr("Periodic send"), this);
+    m_periodicChk  = new QCheckBox(tr("Enable periodic transmit"), periodicGroup);
+    m_periodicChk->setToolTip(tr("Send the frame above repeatedly at the chosen interval"));
 
     m_intervalMs = new QSpinBox(periodicGroup);
     m_intervalMs->setRange(1, 60000);
     m_intervalMs->setValue(100);
     m_intervalMs->setSuffix(" ms");
     m_intervalMs->setSingleStep(10);
-    m_intervalMs->setToolTip("Transmission interval (1 ms – 60 s)");
+    m_intervalMs->setToolTip(tr("Transmission interval (1 ms – 60 s)"));
 
     m_periodicStatus = new QLabel("–", periodicGroup);
     m_periodicStatus->setStyleSheet("color: #7c8fa6;");
@@ -80,8 +80,8 @@ void TransmitPanel::setupUi() {
     auto* periodicForm = new QFormLayout(periodicGroup);
     periodicForm->setSpacing(6);
     periodicForm->addRow(m_periodicChk);
-    periodicForm->addRow("Interval:", m_intervalMs);
-    periodicForm->addRow("Sent:", m_periodicStatus);
+    periodicForm->addRow(tr("Interval:"), m_intervalMs);
+    periodicForm->addRow(tr("Sent:"), m_periodicStatus);
 
     m_periodicTimer = new QTimer(this);
     connect(m_periodicTimer, &QTimer::timeout, this, &TransmitPanel::onPeriodicTick);
@@ -216,7 +216,7 @@ void TransmitPanel::onTogglePeriodic(bool checked) {
         m_data->setEnabled(true);
         m_extended->setEnabled(true);
         m_fd->setEnabled(true);
-        m_status->setText(tr("Periodic stopped — %1 frames sent").arg(m_periodicCount));
+        m_status->setText(tr("Periodic stopped — %1 frame(s) sent").arg(m_periodicCount));
     }
 }
 

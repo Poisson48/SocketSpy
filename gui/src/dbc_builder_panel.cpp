@@ -386,7 +386,7 @@ QWidget* DbcBuilderPanel::setupRightForm(QSplitter* parent) {
     m_cancelEditBtn->hide();
     form->addRow(m_cancelEditBtn);
 
-    m_previewLabel = new QLabel(tr("Aperçu : –"), box);
+    m_previewLabel = new QLabel(tr("Preview: –"), box);
     m_previewLabel->setStyleSheet(QString("color: %1; font-weight: 600; padding: 4px 0;").arg(Palette::kLiveGreen));
     m_previewLabel->setWordWrap(true);
     m_previewLabel->setMinimumWidth(160);
@@ -776,19 +776,19 @@ void DbcBuilderPanel::updatePreview() {
     if (!m_previewLabel) return;
 
     if (m_selectedId == 0xFFFFFFFF) {
-        m_previewLabel->setText(tr("Aperçu : (aucun message sélectionné)"));
+        m_previewLabel->setText(tr("Preview: (no message selected)"));
         return;
     }
     auto it = m_lastFrames.find(m_selectedId);
     if (it == m_lastFrames.end()) {
-        m_previewLabel->setText(tr("Aperçu : (aucune trame reçue)"));
+        m_previewLabel->setText(tr("Preview: (no frame received)"));
         return;
     }
 
     int start = m_startBit->value();
     int len   = m_bitLen->value();
     if (len <= 0 || start + len > 64) {
-        m_previewLabel->setText(tr("Aperçu : (plage invalide)"));
+        m_previewLabel->setText(tr("Preview: (invalid range)"));
         return;
     }
 
@@ -809,12 +809,12 @@ void DbcBuilderPanel::updatePreview() {
     auto val = socketspy::dbc::extract_signal(sig, data);
 
     if (!val) {
-        m_previewLabel->setText(tr("Aperçu : (extraction échouée)"));
+        m_previewLabel->setText(tr("Preview: (extraction failed)"));
         return;
     }
 
     QString unit = m_unit->text().trimmed();
-    QString txt  = QString("Aperçu :  %1").arg(*val, 0, 'g', 7);
+    QString txt  = QString("Preview:  %1").arg(*val, 0, 'g', 7);
     if (!unit.isEmpty()) txt += " " + unit;
     m_previewLabel->setText(txt);
 }

@@ -67,12 +67,14 @@ jobs:
           QT_PREFIX="${HOME}/Qt/6.6.3/gcc_64"
           QMAKE="${QT_PREFIX}/bin/qmake" \
           LD_LIBRARY_PATH="${QT_PREFIX}/lib:${LD_LIBRARY_PATH:-}" \
-          EXTRA_QT_PLUGINS="charts;serialbus;serialport" \
+          EXTRA_QT_MODULES="charts;serialbus;serialport" \
           /tmp/linuxdeploy \
             --appdir /tmp/appdir \
+            --executable /tmp/appdir/usr/bin/socketspy \
+            --desktop-file scripts/dist/socketspy.desktop \
+            --icon-file scripts/dist/socketspy.png \
             --plugin qt \
-            --output appimage \
-            --executable /tmp/appdir/usr/bin/socketspy
+            --output appimage
           mv SocketSpy-*.AppImage "SocketSpy-${VERSION}-x86_64.AppImage"
 
       - name: Sign release manifest

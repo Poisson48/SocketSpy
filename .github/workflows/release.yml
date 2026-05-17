@@ -38,6 +38,7 @@ jobs:
         run: |
           QT_PREFIX="${HOME}/Qt/6.6.3/gcc_64"
           cmake --preset release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_PREFIX_PATH="${QT_PREFIX}" \
             -DCMAKE_TOOLCHAIN_FILE="${HOME}/.local/share/vcpkg/scripts/buildsystems/vcpkg.cmake"
 

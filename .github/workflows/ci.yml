@@ -11,7 +11,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
+        # ubuntu-22.04 dropped: ships Qt 6.2 which lacks qt_standard_project_setup()
+        # (requires Qt 6.3+) and is missing Charts/SerialBus/SerialPort packages.
+        os: [ubuntu-24.04]
 
     runs-on: ${{ matrix.os }}
 
@@ -19,26 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies (ubuntu-22.04)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update -q
-          # qt6-charts-dev, qt6-serialbus-dev, qt6-serialport-dev are not in the
-          # Ubuntu 22.04 main/universe repos — install the subset that is available.
-          sudo apt-get install -y \
-            cmake ninja-build git pkg-config liburing-dev \
-            qt6-base-dev qt6-declarative-dev \
-            lua5.4 liblua5.4-dev libgl1-mesa-dev \
-            valgrind strace can-utils \
-            nlohmann-json3-dev libspdlog-dev libgtest-dev
-
-      - name: Install dependencies (ubuntu-24.04)
-        if: matrix.os == 'ubuntu-24.04'
+      - name: Install dependencies
         run: |
           sudo apt-get update -q
           sudo apt-get install -y \
             cmake ninja-build git pkg-config liburing-dev \
-            qt6-base-dev qt6-charts-dev qt6-declarative-dev qt6-serialbus-dev qt6-serialport-dev \
+            qt6-base-dev qt6-charts-dev qt6-declarative-dev \
+            qt6-serialbus-dev qt6-serialport-dev qt6-tools-dev \
+            libssl-dev \
             lua5.4 liblua5.4-dev libgl1-mesa-dev \
             valgrind strace can-utils \
             nlohmann-json3-dev libspdlog-dev libgtest-dev

@@ -21,9 +21,12 @@ jobs:
             lua5.4 liblua5.4-dev libgl1-mesa-dev libfuse2 \
             python3-pip patchelf libssl-dev \
             libxkbcommon-x11-0 libxkbcommon-dev \
+            libxcb-cursor0 libxcb-cursor-dev \
             libxcb-xkb1 libxcb-icccm4 libxcb-image0 \
             libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
-            libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0
+            libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-util1 libxcb-ewmh2 \
+            libdrm2 libgbm1 libegl1
           pip3 install --upgrade cmake
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 

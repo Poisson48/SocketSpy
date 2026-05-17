@@ -4,8 +4,11 @@
 #include <QContextMenuEvent>
 #include <QFont>
 #include <QFrame>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QStackedWidget>
@@ -26,8 +29,36 @@ public:
         setAttribute(Qt::WA_DeleteOnClose);
         setWindowTitle(title + " \xe2\x80\x94 SocketSpy");
         resize(900, 600);
+
+        // Header bar with title + redock button
+        auto* header = new QWidget(this);
+        header->setFixedHeight(28);
+        header->setStyleSheet("background:#1e1e35; border-bottom:1px solid #2a2a45;");
+        auto* hlay = new QHBoxLayout(header);
+        hlay->setContentsMargins(8, 0, 4, 0);
+        hlay->setSpacing(4);
+
+        auto* titleLabel = new QLabel(title, header);
+        titleLabel->setStyleSheet("color:#9ca3af; font-size:11px; font-weight:600;");
+        hlay->addWidget(titleLabel, 1);
+
+        auto* redockBtn = new QPushButton(QString::fromUtf8("\xe2\xac\xa1  Redock"), header);
+        redockBtn->setFixedHeight(20);
+        redockBtn->setStyleSheet(R"(
+            QPushButton {
+                background: rgba(99,102,241,0.2); color: #a5b4fc;
+                border: 1px solid rgba(99,102,241,0.4); border-radius: 4px;
+                font-size: 10px; padding: 0 8px;
+            }
+            QPushButton:hover { background: rgba(99,102,241,0.35); }
+        )");
+        connect(redockBtn, &QPushButton::clicked, this, [this]() { close(); });
+        hlay->addWidget(redockBtn);
+
         auto* lay = new QVBoxLayout(this);
         lay->setContentsMargins(0, 0, 0, 0);
+        lay->setSpacing(0);
+        lay->addWidget(header);
         panel->setParent(this);
         lay->addWidget(panel);
         panel->show();

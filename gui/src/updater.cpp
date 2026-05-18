@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
+#include <QSslConfiguration>
+#include <QSslSocket>
 #include <QVersionNumber>
 
 namespace socketspy::gui {
@@ -30,6 +32,15 @@ static constexpr const char* kSigUrl =
 Updater::Updater(QObject* parent) : QObject(parent) {
     m_nam = new QNetworkAccessManager(this);
     m_nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    // Explicitly load system CA certificates so HTTPS works in AppImage environments
+    // where Qt's TLS backend might not find them automatically.
+    QSslConfiguration cfg = QSslConfiguration::defaultConfiguration();
+    auto certs = QSslConfiguration::systemCaCertificates();
+    if (!certs.isEmpty()) {
+        cfg.setCaCertificates(certs);
+        QSslConfiguration::setDefaultConfiguration(cfg);
+    }
 }
 
 bool Updater::isAppImage() const {
@@ -38,6 +49,13 @@ bool Updater::isAppImage() const {
 
 void Updater::checkForUpdates() {
     if (m_state != State::Idle) return;
+
+    if (!QSslSocket::supportsSsl()) {
+        emit checkError(tr("TLS/SSL is not available — cannot reach the update server. "
+                           "Check your system's OpenSSL installation."));
+        return;
+    }
+
     m_state = State::FetchManifest;
 
     QNetworkRequest req{QUrl(kManifestUrl)};

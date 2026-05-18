@@ -156,13 +156,21 @@ QWidget* WelcomeScreen::buildLeftPanel() {
     auto* updateBtn = new QPushButton(tr("Check for updates"), w);
     updateBtn->setStyleSheet(R"(
         QPushButton {
-            background: transparent;
-            color: #374151;
-            border: 1px solid #1f2d42;
+            background: #1a2235;
+            color: #6366f1;
+            border: 1px solid #6366f1;
             border-radius: 5px;
             padding: 5px 12px;
             font-size: 11px;
             text-align: left;
+        }
+        QPushButton:hover {
+            background: #1f2d42;
+            color: #818cf8;
+            border-color: #818cf8;
+        }
+        QPushButton:pressed {
+            background: #111827;
         }
     )");
     connect(updateBtn, &QPushButton::clicked, this, [this]() {

@@ -37,16 +37,8 @@ int main(int argc, char* argv[]) {
         // Use the explicitly saved language
         if (translator.load(":/i18n/socketspy_" + savedLang))
             app.installTranslator(&translator);
-    } else {
-        // Fall back to system locale
-        for (const QString& lang : QLocale::system().uiLanguages()) {
-            const QString baseName = "socketspy_" + QLocale(lang).name().left(2);
-            if (translator.load(":/i18n/" + baseName)) {
-                app.installTranslator(&translator);
-                break;
-            }
-        }
     }
+    // No saved preference → English is the base language; no translator needed.
 
     QFile qss(":/theme.qss");
     if (qss.open(QFile::ReadOnly))

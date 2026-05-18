@@ -38,6 +38,7 @@ private:
     QPushButton*  m_actionBtn{nullptr};
     QPushButton*  m_closeBtn{nullptr};
     Phase         m_phase{Phase::Checking};
+    bool          m_isAppImage{false};
 };
 
 }  // namespace socketspy::gui

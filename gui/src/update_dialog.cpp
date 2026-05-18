@@ -1,8 +1,10 @@
 #include "update_dialog.h"
 
+#include <QDesktopServices>
 #include <QHBoxLayout>
 #include <QSizePolicy>
 #include <QSpacerItem>
+#include <QUrl>
 #include <QVBoxLayout>
 
 namespace socketspy::gui {
@@ -58,6 +60,7 @@ void UpdateDialog::startCheck() {
 
 void UpdateDialog::onUpdateAvailable(const QString& version) {
     m_status->setText(tr("Version <b>%1</b> is available.").arg(version));
+    m_isAppImage = m_updater->isAppImage();
     setPhase(Phase::Available);
 }
 
@@ -91,8 +94,13 @@ void UpdateDialog::onInstallReady() {
 
 void UpdateDialog::onActionClicked() {
     if (m_phase == Phase::Available) {
-        setPhase(Phase::Downloading);
-        m_updater->startDownload();
+        if (m_isAppImage) {
+            setPhase(Phase::Downloading);
+            m_updater->startDownload();
+        } else {
+            QDesktopServices::openUrl(
+                QUrl("https://github.com/Poisson48/SocketSpy/releases/latest"));
+        }
     }
 }
 
@@ -109,7 +117,8 @@ void UpdateDialog::setPhase(Phase phase) {
 
         case Phase::Available:
             m_progress->setVisible(false);
-            m_actionBtn->setText(tr("Download && Install"));
+            m_actionBtn->setText(m_isAppImage ? tr("Download && Install")
+                                              : tr("Open download page"));
             m_actionBtn->setVisible(true);
             break;
 

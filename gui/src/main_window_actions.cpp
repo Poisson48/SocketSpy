@@ -655,11 +655,6 @@ void MainWindow::onImportCsv() {
 }
 
 void MainWindow::onCheckForUpdates() {
-    if (!m_updater.isAppImage()) {
-        QMessageBox::information(this, tr("Updates"),
-            tr("Update checking is only available for AppImage installations."));
-        return;
-    }
     auto* dlg = new UpdateDialog(&m_updater, this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->show();

@@ -4,6 +4,20 @@
 
 100% local, no telemetry, no network calls. Built on Linux SocketCAN.
 
+## Screenshots
+
+| Monitor | Simulator |
+|---|---|
+| ![Monitor](docs/screenshots/ss_monitor.png) | ![Simulator](docs/screenshots/ss_simulator.png) |
+
+| Signal Graphs | Lua Scripts |
+|---|---|
+| ![Graphs](docs/screenshots/ss_graph.png) | ![Scripts](docs/screenshots/ss_scripts.png) |
+
+| Protocol Decoders | UDS Tester |
+|---|---|
+| ![Protocols](docs/screenshots/ss_protocols.png) | ![UDS](docs/screenshots/ss_uds.png) |
+
 ## Download
 
 **[→ SocketSpy-x86_64.AppImage](https://github.com/Poisson48/SocketSpy/releases/latest)** — self-contained, no installation required.
@@ -114,6 +128,18 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 The MCP server exposes 11 tools: `can_monitor`, `can_send`, `can_decode`, `can_replay`,
 `can_script`, `canopen_sdo_read`, `canopen_sdo_write`, `canopen_scan`, `can_diff`, `get_stats`, `can_stop`.
 All traffic stays local — TCP transport binds only to `127.0.0.1`.
+
+## What's new in v0.8.4
+
+- **Welcome screen fix** — "Check for updates" no longer closes the welcome dialog
+- **Help → Welcome screen…** — reopen the welcome screen at any time from the menu
+
+## What's new in v0.8.0 – v0.8.3
+
+- **Secure update system** — Ed25519-signed release manifest; atomic AppImage install with rollback
+- **TLS support** — bundled libssl/libcrypto + Qt TLS plugin in the AppImage for HTTPS update checks
+- **Update button** — active "Check for updates" button in the welcome screen and Help menu
+- **English by default** — welcome screen and UI default to English on first launch
 
 ## What's new in v0.7.0
 

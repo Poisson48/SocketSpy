@@ -67,6 +67,10 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           DESTDIR=/tmp/appdir cmake --install build/release
           QT_PREFIX="${HOME}/Qt/6.6.3/gcc_64"
+          # Copy the TLS plugin into the AppDir before linuxdeploy runs so it
+          # gets bundled — linuxdeploy-plugin-qt doesn't pull it automatically.
+          mkdir -p /tmp/appdir/usr/plugins/tls
+          cp "${QT_PREFIX}/plugins/tls/"*.so /tmp/appdir/usr/plugins/tls/
           QMAKE="${QT_PREFIX}/bin/qmake" \
           LD_LIBRARY_PATH="${QT_PREFIX}/lib:${LD_LIBRARY_PATH:-}" \
           EXTRA_QT_MODULES="charts;serialbus;serialport" \
@@ -75,6 +79,8 @@ jobs:
             --executable /tmp/appdir/usr/bin/socketspy \
             --desktop-file scripts/dist/socketspy.desktop \
             --icon-file scripts/dist/socketspy.png \
+            --library /usr/lib/x86_64-linux-gnu/libssl.so.3 \
+            --library /usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
             --plugin qt \
             --output appimage
           mv SocketSpy-*.AppImage "SocketSpy-${VERSION}-x86_64.AppImage"

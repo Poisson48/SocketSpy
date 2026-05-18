@@ -303,6 +303,9 @@ void MainWindow::setupMenuBar() {
     auto* updateAct = helpMenu->addAction(tr("Check for updates…"));
     connect(updateAct, &QAction::triggered, this, &MainWindow::onCheckForUpdates);
 
+    auto* welcomeAct = helpMenu->addAction(tr("Welcome screen…"));
+    connect(welcomeAct, &QAction::triggered, this, &MainWindow::showWelcome);
+
     helpMenu->addSeparator();
     auto* aboutAct = helpMenu->addAction(tr("About SocketSpy"));
     connect(aboutAct, &QAction::triggered, this, [this]() {

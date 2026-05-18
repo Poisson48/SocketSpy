@@ -175,7 +175,6 @@ QWidget* WelcomeScreen::buildLeftPanel() {
     )");
     connect(updateBtn, &QPushButton::clicked, this, [this]() {
         emit checkForUpdatesRequested();
-        accept();
     });
     lay->addWidget(updateBtn);
 

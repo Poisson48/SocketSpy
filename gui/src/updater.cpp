@@ -1,5 +1,8 @@
 #include "updater.h"
 
+#include <cerrno>
+#include <cstdio>
+
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
@@ -234,15 +237,21 @@ bool Updater::atomicInstall(const QString& tmpPath) const {
         QFile::ReadGroup | QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther;
     QFile::setPermissions(tmpPath, exec);
 
-    // rename() is atomic and safe on Linux even over a running AppImage.
-    if (QFile::rename(tmpPath, appImagePath)) return true;
+    // POSIX rename() atomically replaces the destination — unlike QFile::rename
+    // which refuses to overwrite an existing file.
+    if (::rename(tmpPath.toLocal8Bit().constData(),
+                 appImagePath.toLocal8Bit().constData()) == 0)
+        return true;
 
-    // Cross-device fallback: stage in same directory then rename.
+    // Cross-device fallback (EXDEV): copy into same directory, then rename.
+    if (errno != EXDEV) return false;
     QString staged = appImagePath + ".new";
+    QFile::remove(staged);
     if (!QFile::copy(tmpPath, staged)) return false;
     QFile::remove(tmpPath);
     QFile::setPermissions(staged, exec);
-    return QFile::rename(staged, appImagePath);
+    return ::rename(staged.toLocal8Bit().constData(),
+                    appImagePath.toLocal8Bit().constData()) == 0;
 }
 
 }  // namespace socketspy::gui

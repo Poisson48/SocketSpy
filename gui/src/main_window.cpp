@@ -535,6 +535,10 @@ void MainWindow::connectWelcomeSignals() {
             this, [this]() { m_sidebar->showPanel(m_monitor); });
     connect(m_welcomeScreen, &WelcomeScreen::checkForUpdatesRequested,
             this,            &MainWindow::onCheckForUpdates);
+    connect(m_welcomeScreen, &WelcomeScreen::fixCanPermissionsRequested,
+            this,            &MainWindow::onGrantCanPermissions);
+    connect(m_welcomeScreen, &WelcomeScreen::fixUdevRulesRequested,
+            this,            &MainWindow::onInstallUdevRules);
 }
 
 void MainWindow::showWelcome() {

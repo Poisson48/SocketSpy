@@ -2,6 +2,7 @@
 #include "update_dialog.h"
 #include "sidebar_nav.h"
 #include "welcome_screen.h"
+#include "permission_checker.h"
 #include "monitor_panel.h"
 #include "simulator_panel.h"
 #include "transmit_panel.h"
@@ -389,13 +390,21 @@ SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"
 
     QFile::remove(tmp.fileName());
 
-    if (ok)
+    if (ok) {
+        // Add user to plugdev so udev rules (GROUP="plugdev") apply immediately
+        const QString user = QProcessEnvironment::systemEnvironment().value("USER");
+        if (!user.isEmpty()
+                && PermissionChecker::groupExists("plugdev")
+                && !PermissionChecker::userInGroup("plugdev")) {
+            run({"usermod", "-aG", "plugdev", user});
+        }
         QMessageBox::information(this, tr("Success"),
             tr("udev rules installed.") + "\n" +
             "Reconnect your CAN USB adapter — it will be detected automatically.");
-    else
+    } else {
         QMessageBox::critical(this, tr("Error"),
             "Cannot install udev rules.\nCheck that pkexec is installed.");
+    }
 }
 
 // ---------------------------------------------------------------------------

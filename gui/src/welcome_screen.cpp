@@ -1,4 +1,5 @@
 #include "welcome_screen.h"
+#include "permission_checker.h"
 
 #include <QCheckBox>
 #include <QDesktopServices>
@@ -9,8 +10,10 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QShowEvent>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -42,7 +45,7 @@ WelcomeScreen::WelcomeScreen(ProjectRegistry& registry, QWidget* parent)
     : QDialog(parent, Qt::Dialog), m_registry(registry)
 {
     setWindowTitle(tr("Welcome to SocketSpy"));
-    setFixedSize(820, 520);
+    setFixedSize(820, 580);
     setModal(false);
     buildUi();
 
@@ -347,7 +350,113 @@ QWidget* WelcomeScreen::buildRightPanel() {
     connect(m_recentList, &QListWidget::itemDoubleClicked,
             this,         &WelcomeScreen::onItemDoubleClicked);
 
+    // ── Permissions ──────────────────────────────────────────────────────────
+    lay->addSpacing(16);
+    lay->addWidget(makeSep(w));
+    lay->addSpacing(16);
+    lay->addWidget(makeSectionTitle(tr("Permissions"), w));
+    lay->addSpacing(8);
+    buildPermissionsSection(lay, w);
+
     return w;
+}
+
+// ── Permission section ────────────────────────────────────────────────────────
+
+static QString kFixBtnStyle() {
+    return R"(
+        QPushButton {
+            background: #1a2235; color: #f59e0b;
+            border: 1px solid #92400e; border-radius: 4px;
+            padding: 2px 8px; font-size: 10px;
+        }
+        QPushButton:hover { background: #1f2d42; border-color: #f59e0b; }
+    )";
+}
+
+void WelcomeScreen::buildPermissionsSection(QVBoxLayout* parent, QWidget* container) {
+    auto makeRow = [&](PermRow& row) {
+        auto* w  = new QWidget(container);
+        auto* hl = new QHBoxLayout(w);
+        hl->setContentsMargins(0, 0, 0, 0);
+        hl->setSpacing(6);
+
+        row.icon = new QLabel("●", w);
+        row.icon->setFixedWidth(14);
+        row.icon->setStyleSheet("background: transparent; font-size: 10px;");
+
+        row.text = new QLabel(w);
+        row.text->setStyleSheet("color: #9ca3af; font-size: 11px; background: transparent;");
+
+        row.fix = new QPushButton(tr("Fix"), w);
+        row.fix->setFixedHeight(22);
+        row.fix->setStyleSheet(kFixBtnStyle());
+        row.fix->setVisible(false);
+
+        hl->addWidget(row.icon);
+        hl->addWidget(row.text, 1);
+        hl->addWidget(row.fix);
+        parent->addWidget(w);
+    };
+
+    makeRow(m_serialRow);
+    makeRow(m_sudoRow);
+    makeRow(m_udevRow);
+
+    connect(m_serialRow.fix, &QPushButton::clicked, this, [this]() {
+        const QString g = PermissionChecker::serialGroup();
+        if (PermissionChecker::addUserToGroup(g)) {
+            QMessageBox::information(this, tr("Group added"),
+                tr("User added to '%1'. Logout and login again for this to take effect.").arg(g));
+        } else {
+            QMessageBox::critical(this, tr("Error"),
+                tr("Failed to add user to group '%1'. Make sure pkexec is installed.").arg(g));
+        }
+        refreshPermissions();
+    });
+
+    connect(m_sudoRow.fix, &QPushButton::clicked, this, [this]() {
+        emit fixCanPermissionsRequested();
+        refreshPermissions();
+    });
+
+    connect(m_udevRow.fix, &QPushButton::clicked, this, [this]() {
+        emit fixUdevRulesRequested();
+        refreshPermissions();
+    });
+
+    refreshPermissions();
+}
+
+void WelcomeScreen::refreshPermissions() {
+    if (!m_serialRow.icon) return;
+
+    const PermStatus s = PermissionChecker::check();
+
+    auto update = [](PermRow& row, bool ok, const QString& label) {
+        row.icon->setStyleSheet(ok
+            ? "background: transparent; font-size: 10px; color: #22c55e;"
+            : "background: transparent; font-size: 10px; color: #f59e0b;");
+        row.text->setText(label);
+        row.text->setStyleSheet(ok
+            ? "color: #6b7280; font-size: 11px; background: transparent;"
+            : "color: #e5e7eb; font-size: 11px; background: transparent;");
+        row.fix->setVisible(!ok);
+    };
+
+    update(m_serialRow, s.serialPortGroup,
+           tr("Serial ports (%1)").arg(PermissionChecker::serialGroup()));
+    update(m_sudoRow, s.canSudoHelper,
+           tr("CAN interface control (sudo)"));
+
+    const bool udevOk = s.udevRules && (!s.plugdevExists || s.plugdevGroup);
+    update(m_udevRow, udevOk,
+           tr("USB CAN adapter support (udev)"));
+}
+
+void WelcomeScreen::showEvent(QShowEvent* e) {
+    QDialog::showEvent(e);
+    refreshPermissions();
 }
 
 // ── Link label ────────────────────────────────────────────────────────────────

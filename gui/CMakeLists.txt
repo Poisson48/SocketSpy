@@ -35,6 +35,7 @@ set(GUI_HEADERS
     include/project_browser.h
     include/dbc_builder_panel.h
     include/welcome_screen.h
+    include/permission_checker.h
     include/mcp_panel.h
     include/fuzzer_panel.h
     include/diff_panel.h
@@ -95,6 +96,7 @@ add_executable(socketspy
     src/project_browser.cpp
     src/dbc_builder_panel.cpp
     src/welcome_screen.cpp
+    src/permission_checker.cpp
     src/mcp_panel.cpp
     src/fuzzer_panel.cpp
     src/diff_panel.cpp

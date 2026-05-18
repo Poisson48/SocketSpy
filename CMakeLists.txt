@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(SocketSpy VERSION 0.8.0 LANGUAGES CXX C)
+project(SocketSpy VERSION 0.8.1 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

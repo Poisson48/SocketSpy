@@ -24,6 +24,7 @@ signals:
     void quickConnectRequested();
     void showSimulatorRequested();
     void showMonitorRequested();
+    void checkForUpdatesRequested();
 
 private slots:
     void onItemDoubleClicked(QListWidgetItem* item);

@@ -530,6 +530,8 @@ void MainWindow::connectWelcomeSignals() {
             this, [this]() { m_sidebar->showPanel(m_simulator); });
     connect(m_welcomeScreen, &WelcomeScreen::showMonitorRequested,
             this, [this]() { m_sidebar->showPanel(m_monitor); });
+    connect(m_welcomeScreen, &WelcomeScreen::checkForUpdatesRequested,
+            this,            &MainWindow::onCheckForUpdates);
 }
 
 void MainWindow::showWelcome() {

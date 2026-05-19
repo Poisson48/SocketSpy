@@ -1,6 +1,8 @@
 #include "main_window.h"
+#include "update_dialog.h"
 #include "sidebar_nav.h"
 #include "welcome_screen.h"
+#include "permission_checker.h"
 #include "monitor_panel.h"
 #include "simulator_panel.h"
 #include "transmit_panel.h"
@@ -388,13 +390,21 @@ SUBSYSTEM=="net", KERNEL=="can*", GROUP="plugdev", MODE="0660"
 
     QFile::remove(tmp.fileName());
 
-    if (ok)
+    if (ok) {
+        // Add user to plugdev so udev rules (GROUP="plugdev") apply immediately
+        const QString user = QProcessEnvironment::systemEnvironment().value("USER");
+        if (!user.isEmpty()
+                && PermissionChecker::groupExists("plugdev")
+                && !PermissionChecker::userInGroup("plugdev")) {
+            run({"usermod", "-aG", "plugdev", user});
+        }
         QMessageBox::information(this, tr("Success"),
             tr("udev rules installed.") + "\n" +
             "Reconnect your CAN USB adapter — it will be detected automatically.");
-    else
+    } else {
         QMessageBox::critical(this, tr("Error"),
             "Cannot install udev rules.\nCheck that pkexec is installed.");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -651,6 +661,13 @@ void MainWindow::onImportCsv() {
     m_replay->loadFrames(frames, ifaces, QFileInfo(path).fileName());
     m_sidebar->showPanel(m_replay);
     statusBar()->showMessage(tr("CSV imported: %1 frames").arg(frames.size()), 5000);
+}
+
+void MainWindow::onCheckForUpdates() {
+    auto* dlg = new UpdateDialog(&m_updater, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->show();
+    dlg->startCheck();
 }
 
 } // namespace socketspy::gui

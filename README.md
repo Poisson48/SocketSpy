@@ -4,6 +4,20 @@
 
 100% local, no telemetry, no network calls. Built on Linux SocketCAN.
 
+## Screenshots
+
+| Monitor | Simulator |
+|---|---|
+| ![Monitor](docs/screenshots/ss_monitor.png) | ![Simulator](docs/screenshots/ss_simulator.png) |
+
+| Signal Graphs | Lua Scripts |
+|---|---|
+| ![Graphs](docs/screenshots/ss_graph.png) | ![Scripts](docs/screenshots/ss_scripts.png) |
+
+| Protocol Decoders | UDS Tester |
+|---|---|
+| ![Protocols](docs/screenshots/ss_protocols.png) | ![UDS](docs/screenshots/ss_uds.png) |
+
 ## Download
 
 **[→ SocketSpy-x86_64.AppImage](https://github.com/Poisson48/SocketSpy/releases/latest)** — self-contained, no installation required.
@@ -30,9 +44,15 @@ Requires Linux x86_64, kernel ≥ 5.4 with SocketCAN support.
 - **io_uring capture** — high-throughput frame capture pipeline with hardware timestamps
 - **Frame fuzzer** — send random, incremental, or bit-flip CAN frames at a configurable interval; frame counter per run
 - **UDS tester** — ISO 14229 + ISO 15765-2 transport; Read DTC (0x19), Clear DTC (0x14), Read ECU Info via 0x22 (VIN, serial, session); live session indicator
+- **UDS ECU simulator** — full ISO-TP server + UDS responder (services 0x10/0x11/0x14/0x19/0x22/0x27/0x28/0x2E/0x31/0x3E); SecurityAccess seed/key; configurable DIDs and DTCs; test UDS clients without real hardware
 - **BLF / MDF4 export** — File → "Export BLF..." (Vector CANalyzer-compatible BLF v2) and "Export MDF4..." (asammdf / MATLAB MDF4 v4.10)
 - **Capture diff** — compare two CAN captures (.log or .csv) side-by-side; diff by ID (A only / B only / Changed / Same), byte-level delta, filterable results
 - **Multi-bus monitor** — Tools → "+ Add Second Bus..." opens a second SocketCAN interface in parallel; "Bus" column in the Monitor distinguishes frame sources
+- **Detachable panel navigation** — icon sidebar replaces the old tab bar; drag any panel or right-click → "Detach" to float it as an independent window; Redock button snaps it back
+- **Signal Detective** — "Detect" sidebar panel with two tabs: auto-classify all observed CAN IDs by update rate (slow / medium / fast) and signal type (digital / analog / constant / counter); wiggle test captures baseline then after a physical action and ranks the top 30 changed signals by score
+- **Copy to clipboard** — Ctrl+C or right-click context menu on any table: copy a single cell, selected rows, or the full table as TSV
+- **Welcome screen** — GIMP-style floating dialog on first launch; shows recent projects, resource links and "don't show again" preference
+- **French / English UI** — full Qt i18n via `.ts` files; language selection persists across sessions
 
 ## Build
 
@@ -108,6 +128,27 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 The MCP server exposes 11 tools: `can_monitor`, `can_send`, `can_decode`, `can_replay`,
 `can_script`, `canopen_sdo_read`, `canopen_sdo_write`, `canopen_scan`, `can_diff`, `get_stats`, `can_stop`.
 All traffic stays local — TCP transport binds only to `127.0.0.1`.
+
+## What's new in v0.8.4
+
+- **Welcome screen fix** — "Check for updates" no longer closes the welcome dialog
+- **Help → Welcome screen…** — reopen the welcome screen at any time from the menu
+
+## What's new in v0.8.0 – v0.8.3
+
+- **Secure update system** — Ed25519-signed release manifest; atomic AppImage install with rollback
+- **TLS support** — bundled libssl/libcrypto + Qt TLS plugin in the AppImage for HTTPS update checks
+- **Update button** — active "Check for updates" button in the welcome screen and Help menu
+- **English by default** — welcome screen and UI default to English on first launch
+
+## What's new in v0.7.0
+
+- **Detachable panel navigation** — icon sidebar replaces the 22-tab scroll bar; drag or right-click any panel to detach it as a floating window; Redock button snaps it back
+- **Signal Detective** — auto-classify all live CAN IDs by update rate and signal type (heuristic, no LLM); wiggle test ranks the top 30 changed signals after a physical action
+- **UDS ECU simulator** — full ISO-TP + UDS server (10 services, SecurityAccess, configurable DIDs/DTCs) to test UDS clients without real hardware
+- **Copy to clipboard** — Ctrl+C and right-click context menu on every table (cell / row / full table TSV)
+- **Welcome screen** — GIMP-style floating dialog at startup with recent projects, resource links and "don't show again"
+- **French / English UI** — full Qt i18n; language choice persists across sessions
 
 ## What's new in v0.6.0
 

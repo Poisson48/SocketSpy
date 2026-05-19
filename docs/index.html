@@ -85,9 +85,9 @@
     .btn-ghost   { background: transparent; color: var(--text); border: 1px solid var(--border); }
     .btn svg { flex-shrink: 0; }
 
-    /* ── SCREEN MOCK ── */
+    /* ── SCREEN SHOWCASE ── */
     .screen-wrap {
-      max-width: 900px; margin: 0 auto 5rem;
+      max-width: 960px; margin: 0 auto 5rem;
       padding: 0 1.5rem;
     }
     .screen-mock {
@@ -96,6 +96,50 @@
       border-radius: 14px;
       overflow: hidden;
       box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      position: relative;
+    }
+    #showcase-img {
+      transition: opacity .22s ease;
+    }
+    #showcase-img.fading { opacity: 0; }
+
+    /* panel tab strip */
+    .panel-tabs {
+      display: flex; flex-wrap: wrap; gap: .4rem;
+      margin-top: .9rem; justify-content: center;
+    }
+    .panel-tab {
+      background: var(--card); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 99px;
+      padding: .28rem .85rem; font-size: .78rem; font-weight: 600;
+      cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+    }
+    .panel-tab:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
+    .panel-tab.active {
+      background: rgba(99,102,241,.18); color: var(--accent2);
+      border-color: var(--accent);
+    }
+
+    /* animated live-stats strip */
+    .live-stats {
+      display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;
+      margin: 0 auto 4rem; max-width: 700px; padding: 0 1.5rem;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      display: block; font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, #f1f5f9 30%, var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; font-variant-numeric: tabular-nums;
+    }
+    .stat-label { font-size: .75rem; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .07em; }
+
+    /* feature card hover glow */
+    .feat-card { transition: border-color .2s, transform .15s, box-shadow .2s; }
+    .feat-card:hover {
+      border-color: var(--accent); transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(99,102,241,.15);
     }
     .mock-titlebar {
       background: var(--input);
@@ -257,7 +301,7 @@
 
 <!-- ── HERO ──────────────────────────────────────────────────────── -->
 <div class="hero">
-  <div class="badge">v0.6.0 — Linux x86_64 AppImage available</div>
+  <div class="badge">v0.8.4 — Linux x86_64 AppImage available</div>
   <h1>CAN bus analysis,<br/>built for Linux</h1>
   <p class="hero-sub">
     Live frame monitor, DBC signal decoding, Lua scripting, protocol decoders
@@ -275,80 +319,126 @@
   </div>
 </div>
 
-<!-- ── UI MOCK ────────────────────────────────────────────────────── -->
+<!-- ── LIVE STATS ─────────────────────────────────────────────────── -->
+<div class="live-stats">
+  <div class="stat-item">
+    <span class="stat-num" id="stat-panels">18</span>
+    <span class="stat-label">Panels</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num" id="stat-protocols">6</span>
+    <span class="stat-label">Protocol decoders</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num" id="stat-mcp">11</span>
+    <span class="stat-label">MCP tools</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num">100%</span>
+    <span class="stat-label">Local — no cloud</span>
+  </div>
+</div>
+
+<!-- ── SCREENSHOT SHOWCASE ────────────────────────────────────────── -->
 <div class="screen-wrap">
   <div class="screen-mock">
     <div class="mock-titlebar">
       <div class="dot dot-red"></div>
       <div class="dot dot-yel"></div>
       <div class="dot dot-grn"></div>
-      <span class="mock-title">SocketSpy v0.6.0 — vcan0</span>
+      <span class="mock-title">SocketSpy v0.8.4 — vcan0</span>
     </div>
-    <div class="mock-body">
-      <div class="mock-toolbar">
-        <span>Interface:</span>
-        <div class="mock-select">vcan0 ▾</div>
-        <div class="mock-btn-sm">▶ Start</div>
-        <div class="mock-btn-stop">■ Stop</div>
-        <span style="margin-left:auto;color:#22c55e;font-size:.78rem;">● 1 247 frames/s</span>
-      </div>
-      <table class="mock-table">
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Interface</th>
-            <th>ID</th>
-            <th>DLC</th>
-            <th>Data</th>
-            <th>Signal</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="ts">1716.482130</td>
-            <td class="iface">vcan0</td>
-            <td class="hex">0x18FF0100</td>
-            <td>8</td>
-            <td class="hex">FE 52 03 00 00 00 00 00</td>
-            <td class="sig">BattVoltage = 85.8 V</td>
-          </tr>
-          <tr>
-            <td class="ts">1716.482204</td>
-            <td class="iface">vcan0</td>
-            <td class="hex ext">0x18FEF121</td>
-            <td>8</td>
-            <td class="hex">00 FA 00 FA 00 FA 00 FA</td>
-            <td class="sig">EngineSpeed = 0 rpm</td>
-          </tr>
-          <tr>
-            <td class="ts">1716.482318</td>
-            <td class="iface">vcan0</td>
-            <td class="hex">0x701</td>
-            <td>1</td>
-            <td class="hex">05</td>
-            <td class="sig">CANopen NMT — Node 1 OPERATIONAL</td>
-          </tr>
-          <tr>
-            <td class="ts">1716.482511</td>
-            <td class="iface">vcan0</td>
-            <td class="hex">0x18FF0200</td>
-            <td>8</td>
-            <td class="hex">A2 12 00 00 3C 00 00 00</td>
-            <td class="sig">CellTemp = 18.5 °C</td>
-          </tr>
-          <tr>
-            <td class="ts">1716.482709</td>
-            <td class="iface">vcan0</td>
-            <td class="hex ext">0x0CF00400</td>
-            <td>8</td>
-            <td class="hex">F0 1C 00 FF FF FF 00 FF</td>
-            <td class="sig">ActualTorque = 57 Nm</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <img id="showcase-img"
+         src="screenshots/ss_monitor.png"
+         alt="SocketSpy monitor panel"
+         style="width:100%;display:block;" />
+  </div>
+  <div class="panel-tabs">
+    <button class="panel-tab active" onclick="switchPanel(this,'screenshots/ss_monitor.png','Monitor')">Monitor</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_simulator.png','Simulator')">Simulator</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_graph.png','Graphs')">Graphs</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_scripts.png','Scripts')">Scripts</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_protocols.png','Protocols')">Protocols</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_uds.png','UDS')">UDS</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_fuzzer.png','Fuzzer')">Fuzzer</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_diff.png','Diff')">Diff</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_transmit.png','Transmit')">Transmit</button>
+    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_detective.png','Detective')">Detective</button>
   </div>
 </div>
+<script>
+const panels = [
+  { src: 'screenshots/ss_monitor.png',   label: 'Monitor'   },
+  { src: 'screenshots/ss_simulator.png', label: 'Simulator' },
+  { src: 'screenshots/ss_graph.png',     label: 'Graphs'    },
+  { src: 'screenshots/ss_scripts.png',   label: 'Scripts'   },
+  { src: 'screenshots/ss_protocols.png', label: 'Protocols' },
+  { src: 'screenshots/ss_uds.png',       label: 'UDS'       },
+  { src: 'screenshots/ss_fuzzer.png',    label: 'Fuzzer'    },
+  { src: 'screenshots/ss_diff.png',      label: 'Diff'      },
+  { src: 'screenshots/ss_transmit.png',  label: 'Transmit'  },
+  { src: 'screenshots/ss_detective.png', label: 'Detective' },
+];
+let current = 0;
+let autoTimer = null;
+
+function switchTo(idx, fromUser) {
+  const img   = document.getElementById('showcase-img');
+  const tabs  = document.querySelectorAll('.panel-tab');
+  const title = document.querySelector('.mock-title');
+  current = ((idx % panels.length) + panels.length) % panels.length;
+  img.classList.add('fading');
+  setTimeout(() => {
+    img.src = panels[current].src;
+    img.alt = 'SocketSpy ' + panels[current].label + ' panel';
+    title.textContent = 'SocketSpy v0.8.4 — ' + panels[current].label;
+    tabs.forEach((b, i) => b.classList.toggle('active', i === current));
+    img.classList.remove('fading');
+  }, 180);
+  if (fromUser) {
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => switchTo(current + 1, false), 5000);
+  }
+}
+
+function switchPanel(btn, src, label) {
+  const idx = panels.findIndex(p => p.src === src);
+  switchTo(idx, true);
+}
+
+// keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') switchTo(current + 1, true);
+  if (e.key === 'ArrowLeft')  switchTo(current - 1, true);
+});
+
+// auto-rotate every 5 s
+autoTimer = setInterval(() => switchTo(current + 1, false), 5000);
+
+// preload images
+panels.forEach(p => { const i = new Image(); i.src = p.src; });
+
+// count-up animation for stats
+function countUp(el, target, duration) {
+  let start = 0; const step = duration / target;
+  const t = setInterval(() => {
+    start++;
+    el.textContent = start;
+    if (start >= target) clearInterval(t);
+  }, step);
+}
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      obs.unobserve(e.target);
+      countUp(document.getElementById('stat-panels'),    18, 900);
+      countUp(document.getElementById('stat-protocols'),  6, 600);
+      countUp(document.getElementById('stat-mcp'),        11, 700);
+    }
+  });
+});
+obs.observe(document.querySelector('.live-stats'));
+</script>
 
 <!-- ── FEATURES ──────────────────────────────────────────────────── -->
 <section id="features">
@@ -448,6 +538,36 @@
       <p>Tools → "+ Add Second Bus..." opens a second SocketCAN interface alongside the first. A "Bus" column in the Monitor lets you tell frame sources apart at a glance.</p>
     </div>
 
+    <div class="feat-card">
+      <div class="feat-icon">🪟</div>
+      <h3>Detachable Panels</h3>
+      <p>Icon sidebar replaces the old 22-tab scroll bar. Drag any panel — or right-click → Detach — to float it as an independent window. The Redock button snaps it back instantly.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🔬</div>
+      <h3>Signal Detective</h3>
+      <p>Auto-classify every live CAN ID by update rate (slow / medium / fast) and signal type (digital / analog / constant / counter) using pure heuristics. Wiggle test: capture baseline, perform a physical action, then rank the top 30 changed signals by score.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🖥️</div>
+      <h3>UDS ECU Simulator</h3>
+      <p>Full ISO-TP server + UDS responder (services 0x10 / 0x11 / 0x14 / 0x19 / 0x22 / 0x27 / 0x28 / 0x2E / 0x31 / 0x3E), SecurityAccess seed/key, configurable DIDs and DTCs. Test your UDS client without real hardware.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">📋</div>
+      <h3>Copy to Clipboard</h3>
+      <p>Ctrl+C or right-click on any table to copy a single cell, the selected rows, or the full table as TSV — paste straight into Excel or a terminal.</p>
+    </div>
+
+    <div class="feat-card">
+      <div class="feat-icon">🌐</div>
+      <h3>French / English UI</h3>
+      <p>Full Qt i18n via .ts files. Switch between French and English from the settings menu — your choice persists across sessions.</p>
+    </div>
+
   </div>
 </section>
 
@@ -458,7 +578,7 @@
       <h2>Download SocketSpy</h2>
       <p>Self-contained AppImage — Qt6 fully bundled. Runs on any x86_64 Linux with SocketCAN support. No installation, no root required.</p>
       <div class="dl-meta">
-        <div class="dl-pill">Version <span>0.6.0</span></div>
+        <div class="dl-pill">Version <span>0.8.4</span></div>
         <div class="dl-pill">Size <span>~29 MB</span></div>
         <div class="dl-pill">Arch <span>x86_64</span></div>
         <div class="dl-pill">License <span>GPL-3.0</span></div>

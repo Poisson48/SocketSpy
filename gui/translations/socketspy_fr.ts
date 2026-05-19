@@ -155,30 +155,26 @@ Mode suivi : masquer les IDs dont les données ne changent jamais</translation><
 </context>
 <context>
     <name>socketspy::gui::WelcomeScreen</name>
-    <message><source>Linux CAN Analysis</source><translation>Analyse de bus CAN Linux</translation></message>
-    <message><source>Recent Projects</source><translation>Projets récents</translation></message>
-    <message><source>Open selected</source><translation>Ouvrir la sélection</translation></message>
+    <message><source>Welcome to SocketSpy</source><translation>Bienvenue dans SocketSpy</translation></message>
+    <message><source>CAN bus analyzer · Linux</source><translation>Analyse de bus CAN · Linux</translation></message>
+    <message><source>Resources</source><translation>Ressources</translation></message>
+    <message><source>Documentation / Wiki</source><translation>Documentation / Wiki</translation></message>
+    <message><source>Source code (GitHub)</source><translation>Code source (GitHub)</translation></message>
+    <message><source>Report a bug</source><translation>Signaler un bug</translation></message>
+    <message><source>Changelog</source><translation>Changelog</translation></message>
+    <message><source>Updates</source><translation>Mises à jour</translation></message>
+    <message><source>Installed version: &lt;b&gt;%1&lt;/b&gt;</source><translation>Version installée : &lt;b&gt;%1&lt;/b&gt;</translation></message>
+    <message><source>Check for updates</source><translation>Vérifier les mises à jour</translation></message>
+    <message><source>Don&apos;t show at startup</source><translation>Ne plus afficher au démarrage</translation></message>
+    <message><source>Get started  →</source><translation>Commencer  →</translation></message>
+    <message><source>Recent projects</source><translation>Projets récents</translation></message>
+    <message><source>Open selection</source><translation>Ouvrir la sélection</translation></message>
     <message><source>Browse…</source><translation>Parcourir…</translation></message>
-    <message><source>Quick Actions</source><translation>Actions rapides</translation></message>
-    <message><source>New Project</source><translation>Nouveau projet</translation></message>
-    <message><source>Start fresh with a blank workspace</source><translation>Démarrer avec un espace de travail vierge</translation></message>
-    <message><source>Open DBC File…</source><translation>Ouvrir un fichier DBC…</translation></message>
-    <message><source>Load a .dbc database for signal decoding</source><translation>Charger une base DBC pour le décodage des signaux</translation></message>
-    <message><source>Open Project…</source><translation>Ouvrir un projet…</translation></message>
-    <message><source>Browse and load a .spyproj file</source><translation>Parcourir et charger un fichier .spyproj</translation></message>
-    <message><source>Quick Start</source><translation>Démarrage rapide</translation></message>
-    <message><source>Connect
-vcan0</source><translation>Connecter
-vcan0</translation></message>
-    <message><source>Load
-DBC</source><translation>Charger
-un DBC</translation></message>
-    <message><source>Launch
-Simulator</source><translation>Lancer le
-simulateur</translation></message>
-    <message><source>Open
-Monitor</source><translation>Ouvrir le
-Monitor</translation></message>
+    <message><source>Quick start</source><translation>Démarrage rapide</translation></message>
+    <message><source>New project</source><translation>Nouveau projet</translation></message>
+    <message><source>Connect vcan0</source><translation>Connecter vcan0</translation></message>
+    <message><source>Open DBC</source><translation>Ouvrir DBC</translation></message>
+    <message><source>Simulator</source><translation>Simulateur</translation></message>
     <message><source>No recent projects</source><translation>Aucun projet récent</translation></message>
 </context>
 <context>

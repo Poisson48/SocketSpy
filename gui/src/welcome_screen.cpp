@@ -1,4 +1,5 @@
 #include "welcome_screen.h"
+#include "permission_checker.h"
 
 #include <QCheckBox>
 #include <QDesktopServices>
@@ -9,8 +10,10 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QShowEvent>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -41,8 +44,8 @@ static QLabel* makeSectionTitle(const QString& text, QWidget* parent) {
 WelcomeScreen::WelcomeScreen(ProjectRegistry& registry, QWidget* parent)
     : QDialog(parent, Qt::Dialog), m_registry(registry)
 {
-    setWindowTitle(tr("Bienvenue dans SocketSpy"));
-    setFixedSize(820, 520);
+    setWindowTitle(tr("Welcome to SocketSpy"));
+    setFixedSize(820, 580);
     setModal(false);
     buildUi();
 
@@ -101,7 +104,7 @@ QWidget* WelcomeScreen::buildLeftPanel() {
     }
     lay->addWidget(logoLbl);
 
-    auto* tagLbl = new QLabel(tr("Analyse de bus CAN · Linux"), w);
+    auto* tagLbl = new QLabel(tr("CAN bus analyzer · Linux"), w);
     tagLbl->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     lay->addWidget(tagLbl);
 
@@ -116,15 +119,15 @@ QWidget* WelcomeScreen::buildLeftPanel() {
     lay->addSpacing(16);
 
     // ── Links ────────────────────────────────────────────────────────────────
-    lay->addWidget(makeSectionTitle(tr("Ressources"), w));
+    lay->addWidget(makeSectionTitle(tr("Resources"), w));
     lay->addSpacing(10);
 
     const struct { const char* icon; const char* label; const char* url; } links[] = {
         { "📖", QT_TR_NOOP("Documentation / Wiki"),
                 "https://github.com/Poisson48/SocketSpy/wiki" },
-        { "💻", QT_TR_NOOP("Code source (GitHub)"),
+        { "💻", QT_TR_NOOP("Source code (GitHub)"),
                 "https://github.com/Poisson48/SocketSpy" },
-        { "🐛", QT_TR_NOOP("Signaler un bug"),
+        { "🐛", QT_TR_NOOP("Report a bug"),
                 "https://github.com/Poisson48/SocketSpy/issues/new" },
         { "📋", QT_TR_NOOP("Changelog"),
                 "https://github.com/Poisson48/SocketSpy/releases" },
@@ -141,11 +144,11 @@ QWidget* WelcomeScreen::buildLeftPanel() {
     lay->addSpacing(16);
 
     // ── Update check ─────────────────────────────────────────────────────────
-    lay->addWidget(makeSectionTitle(tr("Mises à jour"), w));
+    lay->addWidget(makeSectionTitle(tr("Updates"), w));
     lay->addSpacing(10);
 
     auto* currentVerLbl = new QLabel(
-        tr("Version installée : <b>%1</b>").arg(APP_VERSION), w);
+        tr("Installed version: <b>%1</b>").arg(APP_VERSION), w);
     currentVerLbl->setStyleSheet(
         "color: #6b7280; font-size: 11px; background: transparent;");
     currentVerLbl->setTextFormat(Qt::RichText);
@@ -153,20 +156,29 @@ QWidget* WelcomeScreen::buildLeftPanel() {
 
     lay->addSpacing(6);
 
-    auto* updateBtn = new QPushButton(tr("Vérifier les mises à jour"), w);
-    updateBtn->setEnabled(false);
-    updateBtn->setToolTip(tr("Bientôt disponible"));
+    auto* updateBtn = new QPushButton(tr("Check for updates"), w);
     updateBtn->setStyleSheet(R"(
         QPushButton {
-            background: transparent;
-            color: #374151;
-            border: 1px solid #1f2d42;
+            background: #1a2235;
+            color: #6366f1;
+            border: 1px solid #6366f1;
             border-radius: 5px;
             padding: 5px 12px;
             font-size: 11px;
             text-align: left;
         }
+        QPushButton:hover {
+            background: #1f2d42;
+            color: #818cf8;
+            border-color: #818cf8;
+        }
+        QPushButton:pressed {
+            background: #111827;
+        }
     )");
+    connect(updateBtn, &QPushButton::clicked, this, [this]() {
+        emit checkForUpdatesRequested();
+    });
     lay->addWidget(updateBtn);
 
     lay->addStretch();
@@ -174,7 +186,7 @@ QWidget* WelcomeScreen::buildLeftPanel() {
     lay->addSpacing(12);
 
     // ── Bottom: ne plus afficher + fermer ────────────────────────────────────
-    auto* check = new QCheckBox(tr("Ne plus afficher au démarrage"), w);
+    auto* check = new QCheckBox(tr("Don't show at startup"), w);
     check->setStyleSheet(
         "QCheckBox { color: #4b5563; font-size: 11px; background: transparent; }"
         "QCheckBox::indicator { width: 14px; height: 14px; }");
@@ -188,7 +200,7 @@ QWidget* WelcomeScreen::buildLeftPanel() {
 
     lay->addSpacing(8);
 
-    auto* closeBtn = new QPushButton(tr("Commencer  →"), w);
+    auto* closeBtn = new QPushButton(tr("Get started  →"), w);
     closeBtn->setStyleSheet(R"(
         QPushButton {
             background: #6366f1;
@@ -218,7 +230,7 @@ QWidget* WelcomeScreen::buildRightPanel() {
     lay->setSpacing(0);
 
     // Recent projects
-    lay->addWidget(makeSectionTitle(tr("Projets récents"), w));
+    lay->addWidget(makeSectionTitle(tr("Recent projects"), w));
     lay->addSpacing(10);
 
     m_recentList = new QListWidget(w);
@@ -245,8 +257,8 @@ QWidget* WelcomeScreen::buildRightPanel() {
     // Open buttons
     auto* btnRow = new QHBoxLayout;
     btnRow->setSpacing(8);
-    auto* btnOpen   = new QPushButton(tr("Ouvrir la sélection"), w);
-    auto* btnBrowse = new QPushButton(tr("Parcourir…"), w);
+    auto* btnOpen   = new QPushButton(tr("Open selection"), w);
+    auto* btnBrowse = new QPushButton(tr("Browse…"), w);
     for (auto* b : {btnOpen, btnBrowse}) {
         b->setStyleSheet(R"(
             QPushButton {
@@ -272,17 +284,17 @@ QWidget* WelcomeScreen::buildRightPanel() {
     lay->addSpacing(16);
 
     // Quick start
-    lay->addWidget(makeSectionTitle(tr("Démarrage rapide"), w));
+    lay->addWidget(makeSectionTitle(tr("Quick start"), w));
     lay->addSpacing(10);
 
     auto* quickRow = new QHBoxLayout;
     quickRow->setSpacing(8);
 
     const struct { const char* icon; const char* label; } tiles[] = {
-        { "📁", QT_TR_NOOP("Nouveau projet")   },
-        { "🔌", QT_TR_NOOP("Connecter vcan0")  },
-        { "📄", QT_TR_NOOP("Ouvrir DBC")       },
-        { "⚙",  QT_TR_NOOP("Simulateur")       },
+        { "📁", QT_TR_NOOP("New project")   },
+        { "🔌", QT_TR_NOOP("Connect vcan0") },
+        { "📄", QT_TR_NOOP("Open DBC")      },
+        { "⚙",  QT_TR_NOOP("Simulator")     },
     };
 
     auto makeTile = [&](const char* icon, const char* label) -> QPushButton* {
@@ -338,7 +350,113 @@ QWidget* WelcomeScreen::buildRightPanel() {
     connect(m_recentList, &QListWidget::itemDoubleClicked,
             this,         &WelcomeScreen::onItemDoubleClicked);
 
+    // ── Permissions ──────────────────────────────────────────────────────────
+    lay->addSpacing(16);
+    lay->addWidget(makeSep(w));
+    lay->addSpacing(16);
+    lay->addWidget(makeSectionTitle(tr("Permissions"), w));
+    lay->addSpacing(8);
+    buildPermissionsSection(lay, w);
+
     return w;
+}
+
+// ── Permission section ────────────────────────────────────────────────────────
+
+static QString kFixBtnStyle() {
+    return R"(
+        QPushButton {
+            background: #1a2235; color: #f59e0b;
+            border: 1px solid #92400e; border-radius: 4px;
+            padding: 2px 8px; font-size: 10px;
+        }
+        QPushButton:hover { background: #1f2d42; border-color: #f59e0b; }
+    )";
+}
+
+void WelcomeScreen::buildPermissionsSection(QVBoxLayout* parent, QWidget* container) {
+    auto makeRow = [&](PermRow& row) {
+        auto* w  = new QWidget(container);
+        auto* hl = new QHBoxLayout(w);
+        hl->setContentsMargins(0, 0, 0, 0);
+        hl->setSpacing(6);
+
+        row.icon = new QLabel("●", w);
+        row.icon->setFixedWidth(14);
+        row.icon->setStyleSheet("background: transparent; font-size: 10px;");
+
+        row.text = new QLabel(w);
+        row.text->setStyleSheet("color: #9ca3af; font-size: 11px; background: transparent;");
+
+        row.fix = new QPushButton(tr("Fix"), w);
+        row.fix->setFixedHeight(22);
+        row.fix->setStyleSheet(kFixBtnStyle());
+        row.fix->setVisible(false);
+
+        hl->addWidget(row.icon);
+        hl->addWidget(row.text, 1);
+        hl->addWidget(row.fix);
+        parent->addWidget(w);
+    };
+
+    makeRow(m_serialRow);
+    makeRow(m_sudoRow);
+    makeRow(m_udevRow);
+
+    connect(m_serialRow.fix, &QPushButton::clicked, this, [this]() {
+        const QString g = PermissionChecker::serialGroup();
+        if (PermissionChecker::addUserToGroup(g)) {
+            QMessageBox::information(this, tr("Group added"),
+                tr("User added to '%1'. Logout and login again for this to take effect.").arg(g));
+        } else {
+            QMessageBox::critical(this, tr("Error"),
+                tr("Failed to add user to group '%1'. Make sure pkexec is installed.").arg(g));
+        }
+        refreshPermissions();
+    });
+
+    connect(m_sudoRow.fix, &QPushButton::clicked, this, [this]() {
+        emit fixCanPermissionsRequested();
+        refreshPermissions();
+    });
+
+    connect(m_udevRow.fix, &QPushButton::clicked, this, [this]() {
+        emit fixUdevRulesRequested();
+        refreshPermissions();
+    });
+
+    refreshPermissions();
+}
+
+void WelcomeScreen::refreshPermissions() {
+    if (!m_serialRow.icon) return;
+
+    const PermStatus s = PermissionChecker::check();
+
+    auto update = [](PermRow& row, bool ok, const QString& label) {
+        row.icon->setStyleSheet(ok
+            ? "background: transparent; font-size: 10px; color: #22c55e;"
+            : "background: transparent; font-size: 10px; color: #f59e0b;");
+        row.text->setText(label);
+        row.text->setStyleSheet(ok
+            ? "color: #6b7280; font-size: 11px; background: transparent;"
+            : "color: #e5e7eb; font-size: 11px; background: transparent;");
+        row.fix->setVisible(!ok);
+    };
+
+    update(m_serialRow, s.serialPortGroup,
+           tr("Serial ports (%1)").arg(PermissionChecker::serialGroup()));
+    update(m_sudoRow, s.canSudoHelper,
+           tr("CAN interface control (sudo)"));
+
+    const bool udevOk = s.udevRules && (!s.plugdevExists || s.plugdevGroup);
+    update(m_udevRow, udevOk,
+           tr("USB CAN adapter support (udev)"));
+}
+
+void WelcomeScreen::showEvent(QShowEvent* e) {
+    QDialog::showEvent(e);
+    refreshPermissions();
 }
 
 // ── Link label ────────────────────────────────────────────────────────────────
@@ -367,7 +485,7 @@ void WelcomeScreen::refreshRecentProjects() {
     if (entries.isEmpty()) {
         auto* item = new QListWidgetItem(m_recentList);
         item->setFlags(Qt::NoItemFlags);
-        auto* lbl = new QLabel(tr("Aucun projet récent"), m_recentList);
+        auto* lbl = new QLabel(tr("No recent projects"), m_recentList);
         lbl->setStyleSheet("color: #4b5563; padding: 12px 16px; background: transparent;");
         lbl->setAlignment(Qt::AlignCenter);
         m_recentList->setItemWidget(item, lbl);

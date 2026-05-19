@@ -45,8 +45,8 @@ if(_api_ok)
                 src/mcp/tools
     )
     target_link_libraries(apilib
+        PUBLIC  nlohmann_json::nlohmann_json
         PRIVATE cancore
-                nlohmann_json::nlohmann_json
                 spdlog::spdlog
                 httplib::httplib
     )

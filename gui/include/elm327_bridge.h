@@ -1,6 +1,8 @@
 #pragma once
 #include <QObject>
 #include <QSerialPort>
+#include <QBluetoothSocket>
+#include <QBluetoothAddress>
 #include <QTimer>
 #include <QString>
 #include <QByteArray>
@@ -16,6 +18,7 @@ public:
     ~Elm327Bridge() override;
 
     bool open(const QString& port, int baud);
+    bool openBluetooth(const QBluetoothAddress& address);
     void close();
     bool sendFrame(const socketspy::core::CanFrame& frame);
     bool isOpen() const;
@@ -28,6 +31,8 @@ signals:
 private slots:
     void onReadyRead();
     void onInitStep();
+    void onBtConnected();
+    void onBtError(QBluetoothSocket::SocketError error);
 
 private:
     enum class State { Closed, Initializing, Monitoring, SendingFrame };
@@ -36,15 +41,16 @@ private:
     void processLine(const QString& line);
     socketspy::core::CanFrame parseElm327Line(const QString& line);
     void startMonitor();
-    void advanceInit();
+    void startInit();
 
-    QSerialPort* m_serial{nullptr};
-    QTimer*      m_initTimer{nullptr};
-    QByteArray   m_readBuf;
-    State        m_state{State::Closed};
-    int          m_initStep{0};
+    QSerialPort*       m_serial{nullptr};
+    QBluetoothSocket*  m_btSocket{nullptr};
+    QIODevice*         m_io{nullptr};
+    QTimer*            m_initTimer{nullptr};
+    QByteArray         m_readBuf;
+    State              m_state{State::Closed};
+    int                m_initStep{0};
 
-    // Pending frame to send while pausing ATMA
     uint32_t     m_pendingId{0};
     QByteArray   m_pendingData;
     int          m_sendStep{0};

@@ -24,6 +24,7 @@
 #include "project.h"
 #include "project_registry.h"
 #include "welcome_screen.h"
+#include "updater.h"
 
 namespace socketspy::gui {
 
@@ -100,6 +101,7 @@ private slots:
     void onImportCsv();
     void onAddBus();
     void onRemoveBus();
+    void onCheckForUpdates();
 
 public:
     void showWelcome();
@@ -163,6 +165,7 @@ private:
     QStringList m_knownIfaces;
     bool        m_userPicked{false};
 
+    Updater          m_updater;
     LogRecorder     m_recorder;
     TriggerConfig   m_lastTriggerCfg;
     QString         m_projectPath;

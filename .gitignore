@@ -92,3 +92,7 @@ Qt/
 # Local dev overrides
 .env
 .envrc
+
+# Update signing keys — NEVER commit the private key
+keys/update_privkey.pem
+keys/

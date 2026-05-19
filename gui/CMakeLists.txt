@@ -1,6 +1,7 @@
 # Agent 4 — Qt 6.6+ GUI
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus SerialPort LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus SerialPort Bluetooth LinguistTools)
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -34,6 +35,7 @@ set(GUI_HEADERS
     include/project_browser.h
     include/dbc_builder_panel.h
     include/welcome_screen.h
+    include/permission_checker.h
     include/mcp_panel.h
     include/fuzzer_panel.h
     include/diff_panel.h
@@ -60,6 +62,8 @@ set(GUI_HEADERS
     include/sidebar_nav.h
     include/uds_ecu_sim.h
     include/splash_screen.h
+    include/updater.h
+    include/update_dialog.h
 )
 
 add_executable(socketspy
@@ -92,6 +96,7 @@ add_executable(socketspy
     src/project_browser.cpp
     src/dbc_builder_panel.cpp
     src/welcome_screen.cpp
+    src/permission_checker.cpp
     src/mcp_panel.cpp
     src/fuzzer_panel.cpp
     src/diff_panel.cpp
@@ -118,6 +123,8 @@ add_executable(socketspy
     src/sidebar_nav.cpp
     src/uds_ecu_sim.cpp
     src/splash_screen.cpp
+    src/updater.cpp
+    src/update_dialog.cpp
     resources/resources.qrc
     ${GUI_HEADERS}
 )
@@ -146,8 +153,10 @@ target_link_libraries(socketspy
             Qt6::Charts
             Qt6::SerialBus
             Qt6::SerialPort
+            Qt6::Bluetooth
             Qt6::Network
             nlohmann_json::nlohmann_json
+            OpenSSL::Crypto
 )
 
 install(TARGETS socketspy RUNTIME DESTINATION bin)

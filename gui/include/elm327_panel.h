@@ -3,6 +3,9 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QListWidget>
+#include <QBluetoothDeviceDiscoveryAgent>
+#include <QBluetoothDeviceInfo>
 #include "cancore.h"
 
 namespace socketspy::gui {
@@ -20,20 +23,31 @@ signals:
 
 private slots:
     void onConnectClicked();
-    void onRefreshClicked();
+    void onScanClicked();
+    void onDeviceFound(const QBluetoothDeviceInfo& info);
+    void onScanFinished();
 
 private:
     void setupUi();
-    void scanPorts();
+    void scanSerialPorts();
 
+    // Bluetooth section
+    QPushButton*  m_scanBtn{nullptr};
+    QListWidget*  m_btList{nullptr};
+    QLabel*       m_scanLabel{nullptr};
+
+    // Serial section
     QComboBox*    m_portCombo{nullptr};
     QComboBox*    m_baudCombo{nullptr};
-    QPushButton*  m_connectBtn{nullptr};
     QPushButton*  m_refreshBtn{nullptr};
+
+    // Shared
+    QPushButton*  m_connectBtn{nullptr};
     QLabel*       m_statusLabel{nullptr};
 
-    Elm327Bridge* m_bridge{nullptr};
-    bool          m_connected{false};
+    Elm327Bridge*                    m_bridge{nullptr};
+    QBluetoothDeviceDiscoveryAgent*  m_btAgent{nullptr};
+    bool                             m_connected{false};
 };
 
 } // namespace socketspy::gui

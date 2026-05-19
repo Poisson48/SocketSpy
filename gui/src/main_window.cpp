@@ -300,6 +300,13 @@ void MainWindow::setupMenuBar() {
     addLang("Français", "fr");
 
     helpMenu->addSeparator();
+    auto* updateAct = helpMenu->addAction(tr("Check for updates…"));
+    connect(updateAct, &QAction::triggered, this, &MainWindow::onCheckForUpdates);
+
+    auto* welcomeAct = helpMenu->addAction(tr("Welcome screen…"));
+    connect(welcomeAct, &QAction::triggered, this, &MainWindow::showWelcome);
+
+    helpMenu->addSeparator();
     auto* aboutAct = helpMenu->addAction(tr("About SocketSpy"));
     connect(aboutAct, &QAction::triggered, this, [this]() {
         QMessageBox::about(this,
@@ -526,6 +533,12 @@ void MainWindow::connectWelcomeSignals() {
             this, [this]() { m_sidebar->showPanel(m_simulator); });
     connect(m_welcomeScreen, &WelcomeScreen::showMonitorRequested,
             this, [this]() { m_sidebar->showPanel(m_monitor); });
+    connect(m_welcomeScreen, &WelcomeScreen::checkForUpdatesRequested,
+            this,            &MainWindow::onCheckForUpdates);
+    connect(m_welcomeScreen, &WelcomeScreen::fixCanPermissionsRequested,
+            this,            &MainWindow::onGrantCanPermissions);
+    connect(m_welcomeScreen, &WelcomeScreen::fixUdevRulesRequested,
+            this,            &MainWindow::onInstallUdevRules);
 }
 
 void MainWindow::showWelcome() {

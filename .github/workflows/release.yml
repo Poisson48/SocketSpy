@@ -7,7 +7,9 @@ on:
 
 jobs:
   appimage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -17,29 +19,36 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y \
-            cmake ninja-build git pkg-config liburing-dev \
+            ninja-build git pkg-config liburing-dev \
             lua5.4 liblua5.4-dev libgl1-mesa-dev libfuse2 \
-            python3-pip patchelf
+            python3-pip patchelf libssl-dev \
+            libxkbcommon-x11-0 libxkbcommon-dev \
+            libxcb-cursor0 libxcb-cursor-dev \
+            libxcb-xkb1 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0 \
+            libxcb-util1 libxcb-ewmh2 \
+            libdrm2 libgbm1 libegl1
+          pip3 install --upgrade cmake
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install aqtinstall and Qt 6.6 static
         run: bash scripts/dev/install_qt_static.sh
 
-      - name: Install vcpkg dependencies
+      - name: Bootstrap vcpkg
         run: |
           VCPKG_ROOT="${HOME}/.local/share/vcpkg"
-          if [ ! -d "${VCPKG_ROOT}" ]; then
-            git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
-            bash "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
-          fi
-          "${VCPKG_ROOT}/vcpkg" install \
-            --triplet x64-linux \
-            cpp-httplib nlohmann-json spdlog
+          git clone https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
+          bash "${VCPKG_ROOT}/bootstrap-vcpkg.sh" -disableMetrics
+          # Dependencies are installed automatically by the CMake toolchain
+          # via vcpkg.json manifest mode during cmake configure.
 
       - name: CMake configure (release preset)
         run: |
-          Qt6_DIR="${HOME}/Qt/6.6.3/gcc_64/lib/cmake/Qt6"
+          QT_PREFIX="${HOME}/Qt/6.6.3/gcc_64"
           cmake --preset release \
-            -DQt6_DIR="${Qt6_DIR}" \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_PREFIX_PATH="${QT_PREFIX}" \
             -DCMAKE_TOOLCHAIN_FILE="${HOME}/.local/share/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       - name: CMake build (release preset)
@@ -57,19 +66,47 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           DESTDIR=/tmp/appdir cmake --install build/release
-          QMAKE="${HOME}/Qt/6.6.3/gcc_64/bin/qmake" \
-          EXTRA_QT_PLUGINS="charts;serialbus;serialport" \
+          QT_PREFIX="${HOME}/Qt/6.6.3/gcc_64"
+          # Copy the TLS plugin into the AppDir before linuxdeploy runs so it
+          # gets bundled — linuxdeploy-plugin-qt doesn't pull it automatically.
+          mkdir -p /tmp/appdir/usr/plugins/tls
+          cp "${QT_PREFIX}/plugins/tls/"*.so /tmp/appdir/usr/plugins/tls/
+          QMAKE="${QT_PREFIX}/bin/qmake" \
+          LD_LIBRARY_PATH="${QT_PREFIX}/lib:${LD_LIBRARY_PATH:-}" \
+          EXTRA_QT_MODULES="charts;serialbus;serialport" \
           /tmp/linuxdeploy \
             --appdir /tmp/appdir \
+            --executable /tmp/appdir/usr/bin/socketspy \
+            --desktop-file scripts/dist/socketspy.desktop \
+            --icon-file scripts/dist/socketspy.png \
+            --library /usr/lib/x86_64-linux-gnu/libssl.so.3 \
+            --library /usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
             --plugin qt \
-            --output appimage \
-            --executable /tmp/appdir/usr/bin/socketspy
+            --output appimage
           mv SocketSpy-*.AppImage "SocketSpy-${VERSION}-x86_64.AppImage"
+
+      - name: Sign release manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          APPIMAGE="SocketSpy-${VERSION}-x86_64.AppImage"
+          SHA256=$(sha256sum "$APPIMAGE" | awk '{print $1}')
+          printf '{\n  "version": "%s",\n  "filename": "%s",\n  "sha256": "%s"\n}\n' \
+              "$VERSION" "$APPIMAGE" "$SHA256" > release-manifest.json
+          echo "$UPDATE_SIGNING_KEY" > /tmp/_sign_key.pem
+          chmod 600 /tmp/_sign_key.pem
+          openssl pkeyutl -sign -inkey /tmp/_sign_key.pem -rawin \
+              -in release-manifest.json -out release-manifest.json.sig
+          rm -f /tmp/_sign_key.pem
+          echo "Manifest signed for v${VERSION} (sha256=${SHA256})"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: SocketSpy-*-x86_64.AppImage
-          generate_release_notes: true
+          files: |
+            SocketSpy-*-x86_64.AppImage
+            release-manifest.json
+            release-manifest.json.sig
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

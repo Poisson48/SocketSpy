@@ -73,7 +73,7 @@ jobs:
           cp "${QT_PREFIX}/plugins/tls/"*.so /tmp/appdir/usr/plugins/tls/
           QMAKE="${QT_PREFIX}/bin/qmake" \
           LD_LIBRARY_PATH="${QT_PREFIX}/lib:${LD_LIBRARY_PATH:-}" \
-          EXTRA_QT_MODULES="charts;serialbus;serialport" \
+          EXTRA_QT_MODULES="charts;serialbus;serialport;bluetooth" \
           /tmp/linuxdeploy \
             --appdir /tmp/appdir \
             --executable /tmp/appdir/usr/bin/socketspy \

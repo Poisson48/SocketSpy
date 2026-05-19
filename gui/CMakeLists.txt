@@ -1,6 +1,6 @@
 # Agent 4 — Qt 6.6+ GUI
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus SerialPort LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialBus SerialPort Bluetooth LinguistTools)
 find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 set(CMAKE_AUTOMOC ON)
@@ -153,6 +153,7 @@ target_link_libraries(socketspy
             Qt6::Charts
             Qt6::SerialBus
             Qt6::SerialPort
+            Qt6::Bluetooth
             Qt6::Network
             nlohmann_json::nlohmann_json
             OpenSSL::Crypto

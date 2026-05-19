@@ -1,5 +1,6 @@
 #include "elm327_bridge.h"
 #include <QSerialPort>
+#include <QBluetoothServiceInfo>
 #include <QTimer>
 #include <QTime>
 #include <QStringList>
@@ -16,12 +17,10 @@ static const QStringList kInitSequence = {
 
 Elm327Bridge::Elm327Bridge(QObject* parent)
     : QObject(parent)
-    , m_serial(new QSerialPort(this))
     , m_initTimer(new QTimer(this))
 {
     m_initTimer->setSingleShot(true);
     connect(m_initTimer, &QTimer::timeout, this, &Elm327Bridge::onInitStep);
-    connect(m_serial, &QSerialPort::readyRead, this, &Elm327Bridge::onReadyRead);
 }
 
 Elm327Bridge::~Elm327Bridge() {
@@ -31,32 +30,80 @@ Elm327Bridge::~Elm327Bridge() {
 bool Elm327Bridge::open(const QString& port, int baud) {
     close();
 
-    m_serial->setPortName(port);
-    m_serial->setBaudRate(baud);
-    m_serial->setDataBits(QSerialPort::Data8);
-    m_serial->setParity(QSerialPort::NoParity);
-    m_serial->setStopBits(QSerialPort::OneStop);
-    m_serial->setFlowControl(QSerialPort::NoFlowControl);
+    auto* serial = new QSerialPort(this);
+    serial->setPortName(port);
+    serial->setBaudRate(baud);
+    serial->setDataBits(QSerialPort::Data8);
+    serial->setParity(QSerialPort::NoParity);
+    serial->setStopBits(QSerialPort::OneStop);
+    serial->setFlowControl(QSerialPort::NoFlowControl);
 
-    if (!m_serial->open(QIODevice::ReadWrite)) {
-        emit connectionError("Cannot open port: " + m_serial->errorString());
+    if (!serial->open(QIODevice::ReadWrite)) {
+        emit connectionError("Cannot open port: " + serial->errorString());
+        serial->deleteLater();
         return false;
     }
 
+    m_serial = serial;
+    m_io = serial;
+    connect(m_io, &QIODevice::readyRead, this, &Elm327Bridge::onReadyRead);
+    startInit();
+    return true;
+}
+
+bool Elm327Bridge::openBluetooth(const QBluetoothAddress& address) {
+    close();
+
+    if (address.isNull()) {
+        emit connectionError("Invalid Bluetooth address");
+        return false;
+    }
+
+    auto* sock = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
+    m_btSocket = sock;
+
+    connect(sock, &QBluetoothSocket::connected, this, &Elm327Bridge::onBtConnected);
+    connect(sock, &QBluetoothSocket::errorOccurred, this, &Elm327Bridge::onBtError);
+
+    emit statusChanged("Connecting...");
+    sock->connectToService(address, 1); // ELM327 uses RFCOMM channel 1
+    return true;
+}
+
+void Elm327Bridge::onBtConnected() {
+    m_io = m_btSocket;
+    connect(m_io, &QIODevice::readyRead, this, &Elm327Bridge::onReadyRead);
+    startInit();
+}
+
+void Elm327Bridge::onBtError(QBluetoothSocket::SocketError /*error*/) {
+    emit connectionError("Bluetooth error: " + m_btSocket->errorString());
+    close();
+}
+
+void Elm327Bridge::startInit() {
     m_state = State::Initializing;
     m_initStep = 0;
     m_readBuf.clear();
     emit statusChanged("Initializing...");
     m_initTimer->start(500);
-    return true;
 }
 
 void Elm327Bridge::close() {
     m_initTimer->stop();
-    if (m_serial->isOpen()) {
-        if (m_state == State::Monitoring)
-            m_serial->write("\r");
-        m_serial->close();
+    if (m_io && m_state == State::Monitoring)
+        m_io->write("\r");
+    m_io = nullptr;
+
+    if (m_serial) {
+        if (m_serial->isOpen()) m_serial->close();
+        m_serial->deleteLater();
+        m_serial = nullptr;
+    }
+    if (m_btSocket) {
+        m_btSocket->abort();
+        m_btSocket->deleteLater();
+        m_btSocket = nullptr;
     }
     m_state = State::Closed;
     m_initStep = 0;
@@ -64,11 +111,11 @@ void Elm327Bridge::close() {
 }
 
 bool Elm327Bridge::isOpen() const {
-    return m_serial->isOpen() && m_state != State::Closed;
+    return m_io && m_io->isOpen() && m_state != State::Closed;
 }
 
 void Elm327Bridge::sendAtCommand(const QString& cmd) {
-    m_serial->write((cmd + "\r").toLatin1());
+    if (m_io) m_io->write((cmd + "\r").toLatin1());
 }
 
 void Elm327Bridge::onInitStep() {
@@ -90,7 +137,7 @@ void Elm327Bridge::startMonitor() {
 }
 
 void Elm327Bridge::onReadyRead() {
-    m_readBuf += m_serial->readAll();
+    m_readBuf += m_io->readAll();
 
     while (true) {
         int idx = m_readBuf.indexOf('\r');
@@ -111,9 +158,6 @@ void Elm327Bridge::processLine(const QString& line) {
     if (line.isEmpty()) return;
 
     if (m_state == State::SendingFrame) {
-        // Step 0: waiting for STOPPED (exit ATMA) — then send AT SH
-        // Step 1: waiting for OK after AT SH     — then send data
-        // Step 2: waiting for OK after data      — then restart ATMA
         if (m_sendStep == 0 && (line == "STOPPED" || line == "OK" || line == ">")) {
             m_sendStep = 1;
             QString header = QString("AT SH %1").arg(m_pendingId, 3, 16, QChar('0')).toUpper();
@@ -146,14 +190,12 @@ socketspy::core::CanFrame Elm327Bridge::parseElm327Line(const QString& line) {
     socketspy::core::CanFrame frame{};
 
     QStringList parts = line.split(' ', Qt::SkipEmptyParts);
-    // Minimum: <ID> <DLC> — but DLC may be absent in some modes
     if (parts.size() < 2) return frame;
 
     bool idOk = false;
     frame.id = parts[0].toUInt(&idOk, 16);
     if (!idOk) return frame;
 
-    // Second token: try as DLC (decimal), else treat as first data byte
     bool dlcOk = false;
     int dlcVal = parts[1].toInt(&dlcOk, 10);
 
@@ -162,7 +204,6 @@ socketspy::core::CanFrame Elm327Bridge::parseElm327Line(const QString& line) {
         frame.dlc = static_cast<uint8_t>(dlcVal);
         dataStart = 2;
     } else {
-        // No explicit DLC field — infer from remaining tokens
         dataStart = 1;
         frame.dlc = static_cast<uint8_t>(parts.size() - 1);
         if (frame.dlc > 8) frame.dlc = 8;
@@ -191,9 +232,7 @@ bool Elm327Bridge::sendFrame(const socketspy::core::CanFrame& frame) {
 
     m_state = State::SendingFrame;
     m_sendStep = 0;
-
-    // Exit ATMA mode — ELM327 responds with "STOPPED", handled in processLine
-    m_serial->write("\r");
+    m_io->write("\r");
     return true;
 }
 

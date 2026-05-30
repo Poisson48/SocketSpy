@@ -4,6 +4,12 @@
 
 100% local, no telemetry, no network calls. Built on Linux SocketCAN.
 
+## Part of the ECU Studio Suite
+
+SocketSpy is part of the **[ECU Studio Suite](https://github.com/Poisson48/ecu_studio_suite)** — a complete Qt6 automotive software suite.
+The suite also includes **ECU Studio** (ECU reprogramming, map editor, MPPS flash tool support).
+Both apps share the same theme and SidebarNav pattern, and work well together: SocketSpy for live CAN monitoring while ECU Studio handles reprogramming.
+
 ## Screenshots
 
 | Monitor | Simulator |

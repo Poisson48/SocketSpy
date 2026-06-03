@@ -10,6 +10,7 @@
 #include "tools/canopen_scan.h"
 #include "tools/can_diff.h"
 #include "tools/get_stats.h"
+#include "tools/verify_signal.h"
 
 namespace socketspy::api::mcp {
 
@@ -25,6 +26,7 @@ void register_all_tools(McpServer& server) {
     server.register_tool(make_canopen_scan_tool());
     server.register_tool(make_can_diff_tool());
     server.register_tool(make_get_stats_tool());
+    server.register_tool(make_verify_signal_tool());
 }
 
 } // namespace socketspy::api::mcp

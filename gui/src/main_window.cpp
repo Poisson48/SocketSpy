@@ -26,6 +26,11 @@
 #include "xcp_panel.h"
 #include "doip_panel.h"
 #include "opendbc_panel.h"
+#include "busload_dashboard_panel.h"
+#include "error_diag_panel.h"
+#include "signal_validator_panel.h"
+#include "timed_replay_panel.h"
+#include "verify_signal_panel.h"
 #include "sidebar_nav.h"
 #include "iface_detector.h"
 #include "can_iface_config.h"
@@ -100,6 +105,11 @@ void MainWindow::setupUi() {
     m_xcpPanel        = new XcpPanel(this);
     m_doipPanel       = new DoipPanel(this);
     m_openDbcPanel    = new OpenDbcPanel(this);
+    m_busLoadDash     = new BusLoadDashboardPanel(this);
+    m_errorDiag       = new ErrorDiagPanel(this);
+    m_signalValidator = new SignalValidatorPanel(this);
+    m_timedReplay     = new TimedReplayPanel(this);
+    m_verifySignal    = new VerifySignalPanel(this);
     connect(m_openDbcPanel, &OpenDbcPanel::dbcFileSelected,
             this,           &MainWindow::loadDbcFromPath);
 
@@ -126,6 +136,11 @@ void MainWindow::setupUi() {
     m_sidebar->addPanel("X",             tr("XCP"),         m_xcpPanel);
     m_sidebar->addPanel("\xe2\xac\xa6",  tr("DoIP"),        m_doipPanel);
     m_sidebar->addPanel("\xe2\xac\x87",  tr("OpenDBC"),     m_openDbcPanel);
+    m_sidebar->addPanel("\xe2\x96\xa6",  tr("BusLoad"),  m_busLoadDash);     // u25A6
+    m_sidebar->addPanel("\xe2\x9a\xa0",  tr("Errors"),   m_errorDiag);       // u26A0 warning
+    m_sidebar->addPanel("\xe2\x9c\x93",  tr("Validate"), m_signalValidator); // u2713 check
+    m_sidebar->addPanel("\xe2\x8f\xb5",  tr("TimedRep"), m_timedReplay);     // u23F5 play
+    m_sidebar->addPanel("\xe2\x9c\x94",  tr("Verify"),   m_verifySignal);    // u2714 heavy check
 
     auto* central = new QWidget(this);
     auto* hbox = new QHBoxLayout(central);
@@ -175,12 +190,19 @@ void MainWindow::setupUi() {
         connect(src, sig, m_heatmapPanel,    &HeatmapPanel::onFrameReceived);
         connect(src, sig, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
         connect(src, sig, m_signalDetective,  &SignalDetectivePanel::onFrameReceived);
+        connect(src, sig, m_busLoadDash,     &BusLoadDashboardPanel::onFrameReceived);
+        connect(src, sig, m_errorDiag,       &ErrorDiagPanel::onFrameReceived);
+        connect(src, sig, m_signalValidator, &SignalValidatorPanel::onFrameReceived);
+        connect(src, sig, m_verifySignal,    &VerifySignalPanel::onFrameReceived);
     };
     wireFrames(m_elm327Panel, &Elm327Panel::frameReceived);
     wireFrames(m_simulator,   &SimulatorPanel::frameGenerated);
     connect(m_elm327Panel, &Elm327Panel::frameReceived,
             this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
     connect(m_simulator,   &SimulatorPanel::frameGenerated,
+            this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
+    wireFrames(m_timedReplay, &TimedReplayPanel::frameReady);
+    connect(m_timedReplay, &TimedReplayPanel::frameReady,
             this, &MainWindow::onAnyFrameReceived, Qt::DirectConnection);
 
     connect(m_dbcBuilder, &DbcBuilderPanel::dbcUpdated,
@@ -189,6 +211,8 @@ void MainWindow::setupUi() {
                 m_monitor->onDbcLoaded(db);
                 m_graph->onDbcLoaded(db);
                 m_stats->onDbcLoaded(db);
+                m_signalValidator->onDbcLoaded(db);
+                m_verifySignal->onDbcLoaded(db);
             });
 
 
@@ -339,6 +363,10 @@ void MainWindow::setupCapture(const QString& iface) {
     connect(m_capture, &CanCapture::frameReceived, m_heatmapPanel,    &HeatmapPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_rangeStatePanel, &RangeStatePanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, m_signalDetective,  &SignalDetectivePanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_busLoadDash,     &BusLoadDashboardPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_errorDiag,       &ErrorDiagPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_signalValidator, &SignalValidatorPanel::onFrameReceived);
+    connect(m_capture, &CanCapture::frameReceived, m_verifySignal,    &VerifySignalPanel::onFrameReceived);
     connect(m_capture, &CanCapture::frameReceived, this,              &MainWindow::onAnyFrameReceived,
             Qt::DirectConnection);
     connect(m_capture, &CanCapture::frameReceived, m_simulator, &SimulatorPanel::onFrameReceived);

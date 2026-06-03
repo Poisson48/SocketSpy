@@ -8,7 +8,9 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 set(GUI_HEADERS
+    include/busload_dashboard_panel.h
     include/can_capture.h
+    include/error_diag_panel.h
     include/main_window.h
     include/iface_detector.h
     include/monitor_panel.h
@@ -59,6 +61,9 @@ set(GUI_HEADERS
     include/xcp_panel.h
     include/doip_panel.h
     include/opendbc_panel.h
+    include/signal_validator_panel.h
+    include/timed_replay_panel.h
+    include/verify_signal_panel.h
     include/sidebar_nav.h
     include/uds_ecu_sim.h
     include/splash_screen.h
@@ -70,6 +75,11 @@ add_executable(socketspy
     src/main.cpp
     src/main_window.cpp
     src/main_window_actions.cpp
+    src/busload_dashboard_panel.cpp
+    src/error_diag_panel.cpp
+    src/signal_validator_panel.cpp
+    src/timed_replay_panel.cpp
+    src/verify_signal_panel.cpp
     src/iface_detector.cpp
     src/can_capture.cpp
     src/monitor_panel.cpp

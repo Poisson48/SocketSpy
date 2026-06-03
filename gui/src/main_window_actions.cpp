@@ -16,6 +16,8 @@
 #include "project_browser.h"
 #include "dbc_builder_panel.h"
 #include "protocol_panel.h"
+#include "signal_validator_panel.h"
+#include "verify_signal_panel.h"
 #include "blf_writer.h"
 #include "mdf4_writer.h"
 #include "asc_io.h"
@@ -102,6 +104,8 @@ void MainWindow::loadDbcFromPath(const QString& path) {
     m_stats->onDbcLoaded(*m_dbc);
     m_dbcBuilder->loadDbc(*m_dbc);
     m_protocolPanel->onDbcLoaded(*m_dbc);
+    m_signalValidator->onDbcLoaded(*m_dbc);
+    m_verifySignal->onDbcLoaded(*m_dbc);
     statusBar()->showMessage("DBC: " + QString::number(m_dbc->messages.size()) + " messages", 5000);
 }
 
@@ -186,7 +190,8 @@ void MainWindow::applyProject(const ProjectData& p) {
             auto res = socketspy::dbc::parse_dbc(QTextStream(&f).readAll().toStdString());
             if (res) { *m_dbc = *res; m_dbcPath = p.dbcPath;
                 m_monitor->onDbcLoaded(*m_dbc); m_graph->onDbcLoaded(*m_dbc); m_stats->onDbcLoaded(*m_dbc);
-                m_dbcBuilder->loadDbc(*m_dbc); m_protocolPanel->onDbcLoaded(*m_dbc); }
+                m_dbcBuilder->loadDbc(*m_dbc); m_protocolPanel->onDbcLoaded(*m_dbc);
+                m_signalValidator->onDbcLoaded(*m_dbc); m_verifySignal->onDbcLoaded(*m_dbc); }
         }
     }
     if (!p.logPath.isEmpty())

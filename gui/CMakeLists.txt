@@ -73,6 +73,8 @@ add_executable(socketspy
     src/iface_detector.cpp
     src/can_capture.cpp
     src/monitor_panel.cpp
+    src/monitor_panel_frames.cpp
+    src/monitor_panel_actions.cpp
     src/transmit_panel.cpp
     src/signal_graph.cpp
     src/stats_panel.cpp
@@ -87,6 +89,8 @@ add_executable(socketspy
     src/sim_profile.cpp
     src/can_simulator.cpp
     src/simulator_panel.cpp
+    src/simulator_panel_waveform.cpp
+    src/simulator_panel_ecu.cpp
     src/sim_profile_editor.cpp
     src/scripting/scripting_panel.cpp
     src/protocol_panel.cpp
@@ -95,6 +99,8 @@ add_executable(socketspy
     src/project_registry.cpp
     src/project_browser.cpp
     src/dbc_builder_panel.cpp
+    src/dbc_builder_panel_bitgrid.cpp
+    src/dbc_builder_panel_signals.cpp
     src/welcome_screen.cpp
     src/permission_checker.cpp
     src/mcp_panel.cpp

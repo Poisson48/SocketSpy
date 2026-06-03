@@ -1,644 +1,757 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SocketSpy — Linux CAN bus analysis platform</title>
-  <meta name="description" content="100% local Linux CAN bus analyser. Live frame monitor, DBC decoding, Lua scripting, protocol decoders, MCP server. No telemetry, no cloud." />
+  <title>SocketSpy — Linux CAN bus analyzer</title>
+  <meta name="description" content="100% local Linux SocketCAN analyzer. Live frame monitor, DBC decode, signal graphs, protocol decoders, Lua scripting, UDS, fuzzer, MCP server. No telemetry, no cloud." />
+  <meta name="theme-color" content="#0c1320" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230c1320'/%3E%3Cline x1='8' y1='34' x2='56' y2='34' stroke='%2338bdf8' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='34' r='5' fill='%2338bdf8'/%3E%3Ccircle cx='32' cy='34' r='5' fill='%2338bdf8'/%3E%3Ccircle cx='48' cy='34' r='5' fill='%2338bdf8'/%3E%3Cpath d='M24 22 Q27 14 30 22 Q33 30 36 22 Q39 14 42 22' stroke='%2334d399' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #0f1623;
-      --card:    #1a2235;
-      --input:   #111827;
-      --hover:   #232f45;
-      --border:  #2a3a55;
-      --accent:  #6366f1;
-      --accent2: #818cf8;
-      --green:   #22c55e;
-      --text:    #f1f5f9;
-      --muted:   #7c8fa6;
-      --radius:  10px;
+      --bg:       #0c1320;
+      --bg-soft:  #0f1828;
+      --card:     #141f33;
+      --card-2:   #18253c;
+      --input:    #0b1322;
+      --hover:    #1d2c45;
+      --border:   #24324b;
+      --border-2: #2e405e;
+      --accent:   #38bdf8;
+      --accent-2: #60d0fb;
+      --accent-d: #0ea5e9;
+      --green:    #34d399;
+      --amber:    #fbbf24;
+      --violet:   #a78bfa;
+      --text:     #eef4fb;
+      --muted:    #8295ad;
+      --muted-2:  #5f7390;
+      --radius:   12px;
+      --maxw:     1120px;
     }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
     body {
-      background: var(--bg);
+      background:
+        radial-gradient(1100px 540px at 50% -8%, rgba(56,189,248,.13), transparent 60%),
+        radial-gradient(900px 600px at 100% 0%, rgba(52,211,153,.07), transparent 55%),
+        var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       line-height: 1.6;
+      overflow-x: hidden;
     }
+
+    a { color: inherit; }
+    code, .mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+
+    /* lang visibility */
+    [data-en], [data-fr] { display: none; }
+    html[data-lang="en"] [data-en] { display: revert; }
+    html[data-lang="fr"] [data-fr] { display: revert; }
+    /* keep inline elements inline */
+    html[data-lang="en"] span[data-en],
+    html[data-lang="fr"] span[data-fr] { display: inline; }
 
     /* ── NAV ── */
     nav {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(15,22,35,.85);
-      backdrop-filter: blur(12px);
+      background: rgba(12,19,32,.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: .75rem 2rem;
     }
-    .nav-logo { display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 1.05rem; text-decoration: none; color: var(--text); }
+    .nav-inner {
+      max-width: var(--maxw); margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .7rem 1.5rem; gap: 1rem;
+    }
+    .nav-logo { display: flex; align-items: center; gap: .55rem; font-weight: 800; font-size: 1.05rem; text-decoration: none; color: var(--text); letter-spacing: -.01em; }
     .nav-logo svg { flex-shrink: 0; }
-    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
-    .nav-links a { color: var(--muted); text-decoration: none; font-size: .9rem; transition: color .15s; }
+    .nav-logo b { color: var(--accent); font-weight: 800; }
+    .nav-links { display: flex; gap: 1.4rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .88rem; font-weight: 500; transition: color .15s; }
     .nav-links a:hover { color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: .9rem; }
+
+    .lang-toggle {
+      display: inline-flex; border: 1px solid var(--border-2);
+      border-radius: 99px; overflow: hidden; background: var(--input);
+    }
+    .lang-toggle button {
+      background: transparent; border: none; color: var(--muted);
+      font-size: .76rem; font-weight: 700; padding: .3rem .7rem;
+      cursor: pointer; transition: background .15s, color .15s; letter-spacing: .03em;
+    }
+    .lang-toggle button.active { background: var(--accent); color: #03121e; }
 
     /* ── HERO ── */
-    .hero {
-      text-align: center;
-      padding: 6rem 1.5rem 5rem;
-      max-width: 820px; margin: 0 auto;
-    }
+    .hero { text-align: center; padding: 5.5rem 1.5rem 3rem; max-width: 880px; margin: 0 auto; }
     .badge {
-      display: inline-flex; align-items: center; gap: .4rem;
-      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.35);
-      color: var(--accent2); border-radius: 99px;
-      padding: .25rem .85rem; font-size: .78rem; font-weight: 600;
-      margin-bottom: 1.5rem; letter-spacing: .04em;
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.32);
+      color: var(--accent-2); border-radius: 99px;
+      padding: .3rem .9rem; font-size: .76rem; font-weight: 700;
+      margin-bottom: 1.6rem; letter-spacing: .03em;
     }
-    .badge::before { content: "●"; color: var(--green); font-size: .6rem; }
+    .badge .pulse {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(52,211,153,.55); }
+      70%  { box-shadow: 0 0 0 7px rgba(52,211,153,0); }
+      100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+    }
     h1 {
-      font-size: clamp(2.2rem, 5vw, 3.6rem);
-      font-weight: 800; line-height: 1.15;
-      background: linear-gradient(135deg, #f1f5f9 30%, var(--accent2));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: clamp(2.3rem, 6vw, 4rem);
+      font-weight: 800; line-height: 1.08; letter-spacing: -.025em;
       margin-bottom: 1.1rem;
     }
-    .hero-sub {
-      font-size: 1.15rem; color: var(--muted);
-      max-width: 580px; margin: 0 auto 2.5rem;
+    h1 .grad {
+      background: linear-gradient(120deg, var(--accent) 10%, var(--green) 90%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .hero-sub { font-size: 1.15rem; color: var(--muted); max-width: 640px; margin: 0 auto 2.2rem; }
+    .cta-row { display: flex; gap: .9rem; justify-content: center; flex-wrap: wrap; }
     .btn {
       display: inline-flex; align-items: center; gap: .5rem;
-      padding: .75rem 1.75rem; border-radius: var(--radius);
-      font-size: .95rem; font-weight: 600; text-decoration: none;
-      transition: filter .15s, transform .1s;
-      cursor: pointer; border: none;
+      padding: .8rem 1.6rem; border-radius: var(--radius);
+      font-size: .92rem; font-weight: 700; text-decoration: none;
+      transition: filter .15s, transform .12s, border-color .15s, background .15s;
+      cursor: pointer; border: 1px solid transparent;
     }
-    .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-ghost   { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn:hover { transform: translateY(-2px); }
     .btn svg { flex-shrink: 0; }
+    .btn-primary { background: var(--accent); color: #03121e; box-shadow: 0 8px 26px rgba(56,189,248,.28); }
+    .btn-primary:hover { filter: brightness(1.06); }
+    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border-2); }
+    .btn-ghost:hover { background: var(--hover); border-color: var(--accent); }
 
-    /* ── SCREEN SHOWCASE ── */
-    .screen-wrap {
-      max-width: 960px; margin: 0 auto 5rem;
-      padding: 0 1.5rem;
-    }
+    .hero-meta { margin-top: 1.7rem; display: flex; gap: 1.4rem; justify-content: center; flex-wrap: wrap; color: var(--muted-2); font-size: .8rem; }
+    .hero-meta span { display: inline-flex; align-items: center; gap: .35rem; }
+    .hero-meta svg { color: var(--green); }
+
+    /* ── SHOWCASE ── */
+    .screen-wrap { max-width: 980px; margin: 1rem auto 4.5rem; padding: 0 1.5rem; }
     .screen-mock {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 24px 80px rgba(0,0,0,.55);
-      position: relative;
+      background: var(--card); border: 1px solid var(--border-2); border-radius: 14px;
+      overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.6);
     }
-    #showcase-img {
-      transition: opacity .22s ease;
-    }
+    .mock-titlebar { background: var(--input); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; border-bottom: 1px solid var(--border); }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: #ef4444; } .dot-y { background: #eab308; } .dot-g { background: #22c55e; }
+    .mock-title { margin-left: .5rem; font-size: .82rem; color: var(--muted); }
+    #showcase-img { width: 100%; display: block; transition: opacity .22s ease; background: var(--card); aspect-ratio: 16/10; object-fit: cover; object-position: top; }
     #showcase-img.fading { opacity: 0; }
-
-    /* panel tab strip */
-    .panel-tabs {
-      display: flex; flex-wrap: wrap; gap: .4rem;
-      margin-top: .9rem; justify-content: center;
-    }
+    .panel-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; justify-content: center; }
     .panel-tab {
       background: var(--card); color: var(--muted);
       border: 1px solid var(--border); border-radius: 99px;
-      padding: .28rem .85rem; font-size: .78rem; font-weight: 600;
+      padding: .3rem .85rem; font-size: .78rem; font-weight: 600;
       cursor: pointer; transition: background .15s, color .15s, border-color .15s;
     }
     .panel-tab:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
-    .panel-tab.active {
-      background: rgba(99,102,241,.18); color: var(--accent2);
-      border-color: var(--accent);
-    }
+    .panel-tab.active { background: rgba(56,189,248,.16); color: var(--accent-2); border-color: var(--accent); }
 
-    /* animated live-stats strip */
-    .live-stats {
-      display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;
-      margin: 0 auto 4rem; max-width: 700px; padding: 0 1.5rem;
-    }
-    .stat-item { text-align: center; }
+    /* ── STATS ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; max-width: 800px; margin: 0 auto 5rem; padding: 0 1.5rem; }
+    .stat { text-align: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.3rem .6rem; }
     .stat-num {
-      display: block; font-size: 2rem; font-weight: 800;
-      background: linear-gradient(135deg, #f1f5f9 30%, var(--accent2));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; font-variant-numeric: tabular-nums;
+      display: block; font-size: 2.1rem; font-weight: 800; line-height: 1;
+      background: linear-gradient(120deg, var(--accent), var(--green));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      font-variant-numeric: tabular-nums;
     }
-    .stat-label { font-size: .75rem; color: var(--muted); font-weight: 600;
-      text-transform: uppercase; letter-spacing: .07em; }
+    .stat-label { font-size: .72rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-top: .5rem; }
 
-    /* feature card hover glow */
-    .feat-card { transition: border-color .2s, transform .15s, box-shadow .2s; }
-    .feat-card:hover {
-      border-color: var(--accent); transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(99,102,241,.15);
-    }
-    .mock-titlebar {
-      background: var(--input);
-      padding: .6rem 1rem;
-      display: flex; align-items: center; gap: .5rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot-red   { background: #ef4444; }
-    .dot-yel   { background: #eab308; }
-    .dot-grn   { background: #22c55e; }
-    .mock-title { margin-left: .5rem; font-size: .82rem; color: var(--muted); }
-    .mock-body  { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+    /* ── SECTIONS ── */
+    section { padding: 4.5rem 0; }
+    .section-head { max-width: 640px; margin-bottom: 2.6rem; }
+    .section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+    .section-label { text-transform: uppercase; letter-spacing: .12em; font-size: .72rem; color: var(--accent); font-weight: 800; margin-bottom: .7rem; }
+    h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: .6rem; }
+    .section-sub { color: var(--muted); font-size: 1.02rem; }
 
-    /* toolbar */
-    .mock-toolbar {
-      display: flex; align-items: center; gap: .75rem;
-      background: var(--input); border: 1px solid var(--border);
-      border-radius: 8px; padding: .45rem .75rem; font-size: .8rem; color: var(--muted);
-    }
-    .mock-select {
-      background: var(--hover); border: 1px solid var(--border);
-      border-radius: 6px; padding: .25rem .6rem; color: var(--text); font-size: .8rem;
-    }
-    .mock-btn-sm {
-      background: var(--accent); color: #fff; border: none; border-radius: 6px;
-      padding: .25rem .65rem; font-size: .78rem; font-weight: 600; cursor: default;
-    }
-    .mock-btn-stop {
-      background: #ef4444; color: #fff; border: none; border-radius: 6px;
-      padding: .25rem .65rem; font-size: .78rem; font-weight: 600; cursor: default;
-    }
-
-    /* table */
-    .mock-table { width: 100%; border-collapse: collapse; font-size: .78rem; font-family: monospace; }
-    .mock-table th {
-      text-align: left; color: var(--muted); font-weight: 600; font-family: sans-serif;
-      padding: .35rem .6rem; border-bottom: 1px solid var(--border);
-    }
-    .mock-table td { padding: .3rem .6rem; border-bottom: 1px solid rgba(42,58,85,.4); }
-    .mock-table tr:hover td { background: var(--hover); }
-    .hex  { color: #7dd3fc; }
-    .ts   { color: var(--muted); }
-    .iface{ color: var(--green); }
-    .sig  { color: #a78bfa; }
-    .ext  { color: #f59e0b; }
+    /* ── STATUS BOARD ── */
+    .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .board-col { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.3rem 1.3rem 1.5rem; }
+    .board-col-head { display: flex; align-items: center; gap: .55rem; margin-bottom: 1.1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--border); }
+    .board-pill { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: .22rem .6rem; border-radius: 99px; }
+    .pill-shipped  { background: rgba(52,211,153,.16); color: var(--green);  border: 1px solid rgba(52,211,153,.35); }
+    .pill-beta     { background: rgba(251,191,36,.15); color: var(--amber);  border: 1px solid rgba(251,191,36,.35); }
+    .pill-incoming { background: rgba(167,139,250,.15); color: var(--violet); border: 1px solid rgba(167,139,250,.35); }
+    .board-col-head .cnt { margin-left: auto; font-size: .8rem; color: var(--muted-2); font-weight: 700; }
+    .board-list { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+    .board-list li { display: flex; gap: .55rem; align-items: flex-start; font-size: .86rem; color: var(--text); }
+    .board-list li .ic { flex-shrink: 0; margin-top: .15rem; }
+    .board-list li small { display: block; color: var(--muted); font-size: .76rem; line-height: 1.45; }
+    .ic-ship  { color: var(--green); } .ic-beta { color: var(--amber); } .ic-inc { color: var(--violet); }
 
     /* ── FEATURES ── */
-    section { padding: 5rem 1.5rem; max-width: 1060px; margin: 0 auto; }
-    .section-label {
-      text-transform: uppercase; letter-spacing: .1em; font-size: .72rem;
-      color: var(--accent2); font-weight: 700; margin-bottom: .75rem;
-    }
-    h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700; margin-bottom: .5rem; }
-    .section-sub { color: var(--muted); max-width: 520px; margin-bottom: 3rem; }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-      gap: 1.25rem;
-    }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 1.1rem; }
     .feat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1.4rem 1.5rem;
-      transition: border-color .2s, transform .15s;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.35rem 1.4rem; transition: border-color .2s, transform .15s, box-shadow .2s;
     }
-    .feat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .feat-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 34px rgba(56,189,248,.12); }
     .feat-icon {
-      width: 40px; height: 40px; border-radius: 9px;
-      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.25);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 1rem; font-size: 1.2rem;
+      width: 42px; height: 42px; border-radius: 10px;
+      background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.22);
+      display: flex; align-items: center; justify-content: center; margin-bottom: .95rem;
+      color: var(--accent);
     }
-    .feat-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .35rem; }
-    .feat-card p  { font-size: .83rem; color: var(--muted); line-height: 1.55; }
+    .feat-card h3 { font-size: .98rem; font-weight: 700; margin-bottom: .35rem; }
+    .feat-card p { font-size: .83rem; color: var(--muted); line-height: 1.55; }
+    .feat-card code { background: var(--input); border: 1px solid var(--border); border-radius: 5px; padding: 0 .3rem; font-size: .78em; color: var(--accent-2); }
+
+    /* ── SUITE / LOOP ── */
+    .loop { background: linear-gradient(160deg, var(--card-2), var(--card)); border: 1px solid var(--border-2); border-radius: 16px; padding: 2.4rem; }
+    .loop-flow { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1.8rem; }
+    .loop-node { background: var(--input); border: 1px solid var(--border-2); border-radius: 12px; padding: 1rem 1.3rem; text-align: center; min-width: 150px; }
+    .loop-node b { display: block; font-size: .95rem; margin-bottom: .2rem; }
+    .loop-node small { color: var(--muted); font-size: .76rem; }
+    .loop-arrow { color: var(--accent); font-size: 1.5rem; line-height: 1; }
+    .loop-node.spy b { color: var(--accent); }
+    .loop-node.studio b { color: var(--green); }
 
     /* ── DOWNLOAD ── */
     .download-section {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 3rem 2.5rem;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 2rem; flex-wrap: wrap;
+      background: linear-gradient(155deg, var(--card-2), var(--card));
+      border: 1px solid var(--border-2); border-radius: 16px; padding: 2.6rem 2.4rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;
     }
-    .dl-left h2 { font-size: 1.7rem; margin-bottom: .5rem; }
-    .dl-left p  { color: var(--muted); font-size: .9rem; max-width: 460px; }
-    .dl-meta { display: flex; gap: 1.2rem; margin-top: 1.25rem; flex-wrap: wrap; }
-    .dl-pill {
-      background: var(--hover); border: 1px solid var(--border);
-      border-radius: 99px; padding: .25rem .9rem;
-      font-size: .78rem; color: var(--muted);
-    }
-    .dl-pill span { color: var(--text); font-weight: 600; }
-    .dl-right { display: flex; flex-direction: column; gap: .75rem; min-width: 220px; }
-    .code-block {
-      background: var(--input); border: 1px solid var(--border);
-      border-radius: 8px; padding: .75rem 1rem;
-      font-family: monospace; font-size: .8rem; color: #7dd3fc;
-    }
+    .dl-left h2 { font-size: 1.8rem; margin-bottom: .5rem; }
+    .dl-left p { color: var(--muted); font-size: .92rem; max-width: 470px; }
+    .dl-meta { display: flex; gap: .7rem; margin-top: 1.3rem; flex-wrap: wrap; }
+    .dl-pill { background: var(--input); border: 1px solid var(--border); border-radius: 99px; padding: .3rem .9rem; font-size: .78rem; color: var(--muted); }
+    .dl-pill b { color: var(--text); font-weight: 700; }
+    .dl-right { display: flex; flex-direction: column; gap: .75rem; min-width: 250px; flex: 1; }
+    .code-block { background: var(--input); border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem; font-size: .8rem; color: var(--accent-2); line-height: 1.7; }
+    .code-block .c { color: var(--muted-2); }
 
     /* ── ADAPTERS ── */
-    .adapters-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;
-    }
-    .adapter-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1rem 1.2rem;
-    }
-    .adapter-card h4 { font-size: .88rem; font-weight: 700; margin-bottom: .25rem; }
-    .adapter-card p  { font-size: .78rem; color: var(--muted); }
+    .adapters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .9rem; }
+    .adapter-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; transition: border-color .2s; }
+    .adapter-card:hover { border-color: var(--border-2); }
+    .adapter-card h4 { font-size: .9rem; font-weight: 700; margin-bottom: .25rem; }
+    .adapter-card p { font-size: .77rem; color: var(--muted); }
+    .adapter-card .drv { color: var(--accent-2); }
+
+    /* ── LIGHTBOX ── */
+    .lightbox { position: fixed; inset: 0; z-index: 200; background: rgba(5,9,16,.92); display: none; align-items: center; justify-content: center; padding: 2rem; cursor: zoom-out; backdrop-filter: blur(4px); }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; border: 1px solid var(--border-2); box-shadow: 0 30px 90px rgba(0,0,0,.7); }
 
     /* ── FOOTER ── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 2rem 1.5rem; text-align: center;
-      color: var(--muted); font-size: .82rem;
-    }
-    footer a { color: var(--muted); text-decoration: none; }
-    footer a:hover { color: var(--text); }
-    .footer-links { display: flex; gap: 1.5rem; justify-content: center; margin-bottom: .75rem; flex-wrap: wrap; }
+    footer { border-top: 1px solid var(--border); padding: 2.4rem 1.5rem; text-align: center; color: var(--muted); font-size: .82rem; }
+    footer a { color: var(--muted); text-decoration: none; transition: color .15s; }
+    footer a:hover { color: var(--accent); }
+    .footer-links { display: flex; gap: 1.4rem; justify-content: center; margin-bottom: .9rem; flex-wrap: wrap; }
+    .footer-note { color: var(--muted-2); font-size: .78rem; }
 
+    /* reveal on scroll */
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .badge .pulse { animation: none; } }
+
+    @media (max-width: 880px) {
+      .board { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 640px) {
-      nav { padding: .75rem 1rem; }
       .nav-links { display: none; }
-      .download-section { flex-direction: column; }
+      .download-section { flex-direction: column; align-items: stretch; }
+      .loop-arrow { transform: rotate(90deg); }
+      section { padding: 3.2rem 0; }
     }
   </style>
 </head>
 <body>
 
-<!-- ── NAV ──────────────────────────────────────────────────────── -->
+<!-- ── NAV ── -->
 <nav>
-  <a class="nav-logo" href="#">
-    <svg width="28" height="28" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <rect width="64" height="64" rx="12" fill="#0f1623"/>
-      <line x1="8" y1="32" x2="56" y2="32" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="16" cy="32" r="5" fill="#6366f1"/>
-      <circle cx="32" cy="32" r="5" fill="#6366f1"/>
-      <circle cx="48" cy="32" r="5" fill="#6366f1"/>
-      <path d="M26 20 Q28 15 30 20 Q32 25 34 20 Q36 15 38 20" stroke="#22c55e" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <rect x="4" y="28" width="4" height="8" rx="1" fill="#3d5270"/>
-      <rect x="56" y="28" width="4" height="8" rx="1" fill="#3d5270"/>
-      <line x1="16" y1="32" x2="16" y2="44" stroke="#3d5270" stroke-width="2"/>
-      <line x1="32" y1="32" x2="32" y2="44" stroke="#3d5270" stroke-width="2"/>
-      <line x1="48" y1="32" x2="48" y2="44" stroke="#3d5270" stroke-width="2"/>
-      <rect x="11" y="44" width="10" height="8" rx="2" fill="#1a2235" stroke="#3d5270" stroke-width="1"/>
-      <rect x="27" y="44" width="10" height="8" rx="2" fill="#1a2235" stroke="#6366f1" stroke-width="1"/>
-      <rect x="43" y="44" width="10" height="8" rx="2" fill="#1a2235" stroke="#3d5270" stroke-width="1"/>
-    </svg>
-    SocketSpy
-  </a>
-  <ul class="nav-links">
-    <li><a href="#features">Features</a></li>
-    <li><a href="#download">Download</a></li>
-    <li><a href="#adapters">Hardware</a></li>
-    <li><a href="https://github.com/Poisson48/SocketSpy/wiki">Docs</a></li>
-    <li><a href="https://github.com/Poisson48/SocketSpy">GitHub</a></li>
-  </ul>
+  <div class="nav-inner">
+    <a class="nav-logo" href="#top">
+      <svg width="28" height="28" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect width="64" height="64" rx="13" fill="#0f1828"/>
+        <line x1="8" y1="34" x2="56" y2="34" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="16" cy="34" r="5" fill="#38bdf8"/>
+        <circle cx="32" cy="34" r="5" fill="#38bdf8"/>
+        <circle cx="48" cy="34" r="5" fill="#38bdf8"/>
+        <path d="M24 22 Q27 14 30 22 Q33 30 36 22 Q39 14 42 22" stroke="#34d399" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <rect x="11" y="44" width="10" height="8" rx="2" fill="#0c1320" stroke="#2e405e" stroke-width="1"/>
+        <rect x="27" y="44" width="10" height="8" rx="2" fill="#0c1320" stroke="#38bdf8" stroke-width="1"/>
+        <rect x="43" y="44" width="10" height="8" rx="2" fill="#0c1320" stroke="#2e405e" stroke-width="1"/>
+      </svg>
+      Socket<b>Spy</b>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features" data-en data-t="nav_features">Features</a><a href="#features" data-fr>Fonctions</a></li>
+      <li><a href="#status" data-en>Status</a><a href="#status" data-fr>Statut</a></li>
+      <li><a href="#screens" data-en>Screenshots</a><a href="#screens" data-fr>Captures</a></li>
+      <li><a href="#download" data-en>Download</a><a href="#download" data-fr>Télécharger</a></li>
+      <li><a href="https://github.com/Poisson48/SocketSpy/wiki" data-en>Wiki</a><a href="https://github.com/Poisson48/SocketSpy/wiki" data-fr>Wiki</a></li>
+      <li><a href="https://github.com/Poisson48/SocketSpy">GitHub</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button id="lang-en" class="active" onclick="setLang('en')">EN</button>
+        <button id="lang-fr" onclick="setLang('fr')">FR</button>
+      </div>
+    </div>
+  </div>
 </nav>
 
-<!-- ── HERO ──────────────────────────────────────────────────────── -->
-<div class="hero">
-  <div class="badge">v0.8.4 — Linux x86_64 AppImage available</div>
-  <h1>CAN bus analysis,<br/>built for Linux</h1>
+<a id="top"></a>
+
+<!-- ── HERO ── -->
+<header class="hero">
+  <div class="badge">
+    <span class="pulse"></span>
+    <span data-en>v0.8.7 — Linux x86_64 AppImage</span>
+    <span data-fr>v0.8.7 — AppImage Linux x86_64</span>
+  </div>
+  <h1>
+    <span data-en>The CAN bus analyzer<br/><span class="grad">built for Linux</span></span>
+    <span data-fr>L'analyseur de bus CAN<br/><span class="grad">conçu pour Linux</span></span>
+  </h1>
   <p class="hero-sub">
-    Live frame monitor, DBC signal decoding, Lua scripting, protocol decoders
-    and Claude MCP integration — 100% local, no telemetry, no cloud.
+    <span data-en>Live frame monitor, DBC signal decoding, real-time graphs, protocol decoders, Lua scripting, UDS testing and a Claude MCP server — all running on native SocketCAN. 100% local, no telemetry, no cloud.</span>
+    <span data-fr>Moniteur de trames en direct, décodage de signaux DBC, graphes temps réel, décodeurs de protocoles, scripts Lua, tests UDS et serveur MCP pour Claude — le tout sur SocketCAN natif. 100% local, aucune télémétrie, aucun cloud.</span>
   </p>
   <div class="cta-row">
     <a class="btn btn-primary" href="https://github.com/Poisson48/SocketSpy/releases/latest">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Download AppImage
+      <span data-en>Download AppImage</span><span data-fr>Télécharger l'AppImage</span>
     </a>
     <a class="btn btn-ghost" href="https://github.com/Poisson48/SocketSpy">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
-      View on GitHub
+      <span data-en>View source</span><span data-fr>Voir le code</span>
     </a>
   </div>
-</div>
+  <div class="hero-meta">
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-en>Native SocketCAN</span><span data-fr>SocketCAN natif</span></span>
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-en>No installation</span><span data-fr>Sans installation</span></span>
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-en>GPL-3.0</span><span data-fr>GPL-3.0</span></span>
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-en>EN / FR UI</span><span data-fr>Interface EN / FR</span></span>
+  </div>
+</header>
 
-<!-- ── LIVE STATS ─────────────────────────────────────────────────── -->
-<div class="live-stats">
-  <div class="stat-item">
-    <span class="stat-num" id="stat-panels">18</span>
-    <span class="stat-label">Panels</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-num" id="stat-protocols">6</span>
-    <span class="stat-label">Protocol decoders</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-num" id="stat-mcp">11</span>
-    <span class="stat-label">MCP tools</span>
-  </div>
-  <div class="stat-item">
-    <span class="stat-num">100%</span>
-    <span class="stat-label">Local — no cloud</span>
-  </div>
-</div>
-
-<!-- ── SCREENSHOT SHOWCASE ────────────────────────────────────────── -->
-<div class="screen-wrap">
+<!-- ── SHOWCASE ── -->
+<div class="screen-wrap reveal">
   <div class="screen-mock">
     <div class="mock-titlebar">
-      <div class="dot dot-red"></div>
-      <div class="dot dot-yel"></div>
-      <div class="dot dot-grn"></div>
-      <span class="mock-title">SocketSpy v0.8.4 — vcan0</span>
+      <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+      <span class="mock-title">SocketSpy v0.8.7 — vcan0</span>
     </div>
-    <img id="showcase-img"
-         src="screenshots/ss_monitor.png"
-         alt="SocketSpy monitor panel"
-         style="width:100%;display:block;" />
+    <img id="showcase-img" src="screenshots/ss_monitor.png" alt="SocketSpy monitor panel" loading="lazy" />
   </div>
-  <div class="panel-tabs">
-    <button class="panel-tab active" onclick="switchPanel(this,'screenshots/ss_monitor.png','Monitor')">Monitor</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_simulator.png','Simulator')">Simulator</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_graph.png','Graphs')">Graphs</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_scripts.png','Scripts')">Scripts</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_protocols.png','Protocols')">Protocols</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_uds.png','UDS')">UDS</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_fuzzer.png','Fuzzer')">Fuzzer</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_diff.png','Diff')">Diff</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_transmit.png','Transmit')">Transmit</button>
-    <button class="panel-tab" onclick="switchPanel(this,'screenshots/ss_detective.png','Detective')">Detective</button>
-  </div>
+  <div class="panel-tabs" id="panel-tabs"></div>
 </div>
-<script>
-const panels = [
-  { src: 'screenshots/ss_monitor.png',   label: 'Monitor'   },
-  { src: 'screenshots/ss_simulator.png', label: 'Simulator' },
-  { src: 'screenshots/ss_graph.png',     label: 'Graphs'    },
-  { src: 'screenshots/ss_scripts.png',   label: 'Scripts'   },
-  { src: 'screenshots/ss_protocols.png', label: 'Protocols' },
-  { src: 'screenshots/ss_uds.png',       label: 'UDS'       },
-  { src: 'screenshots/ss_fuzzer.png',    label: 'Fuzzer'    },
-  { src: 'screenshots/ss_diff.png',      label: 'Diff'      },
-  { src: 'screenshots/ss_transmit.png',  label: 'Transmit'  },
-  { src: 'screenshots/ss_detective.png', label: 'Detective' },
-];
-let current = 0;
-let autoTimer = null;
 
+<!-- ── STATS ── -->
+<div class="stats reveal">
+  <div class="stat"><span class="stat-num" data-count="19">0</span><span class="stat-label" data-en>Panels</span><span class="stat-label" data-fr>Panneaux</span></div>
+  <div class="stat"><span class="stat-num" data-count="6">0</span><span class="stat-label" data-en>Protocol decoders</span><span class="stat-label" data-fr>Décodeurs</span></div>
+  <div class="stat"><span class="stat-num" data-count="11">0</span><span class="stat-label" data-en>MCP tools</span><span class="stat-label" data-fr>Outils MCP</span></div>
+  <div class="stat"><span class="stat-num" data-suffix="%">100</span><span class="stat-label" data-en>Local · no cloud</span><span class="stat-label" data-fr>Local · sans cloud</span></div>
+</div>
+
+<!-- ── STATUS BOARD ── -->
+<section id="status">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <div class="section-label" data-en>Roadmap</div><div class="section-label" data-fr>Feuille de route</div>
+      <h2 data-en>Feature status board</h2><h2 data-fr>Tableau de statut</h2>
+      <p class="section-sub" data-en>Everything in v0.8.7 ships today. Brand-new suite panels are in beta. Deeper ECU Studio interconnection is on the way.</p>
+      <p class="section-sub" data-fr>Tout ce qui est en v0.8.7 est livré aujourd'hui. Les tout nouveaux panneaux de la suite sont en bêta. L'interconnexion poussée avec ECU Studio arrive.</p>
+    </div>
+
+    <div class="board">
+      <!-- SHIPPED -->
+      <div class="board-col reveal">
+        <div class="board-col-head">
+          <span class="board-pill pill-shipped">Shipped</span>
+          <span data-en style="font-weight:700;font-size:.86rem">In v0.8.7</span><span data-fr style="font-weight:700;font-size:.86rem">En v0.8.7</span>
+          <span class="cnt">19</span>
+        </div>
+        <ul class="board-list" id="list-shipped"></ul>
+      </div>
+
+      <!-- BETA -->
+      <div class="board-col reveal">
+        <div class="board-col-head">
+          <span class="board-pill pill-beta">Beta</span>
+          <span data-en style="font-weight:700;font-size:.86rem">New &amp; unproven</span><span data-fr style="font-weight:700;font-size:.86rem">Récent / à éprouver</span>
+          <span class="cnt" id="cnt-beta">0</span>
+        </div>
+        <ul class="board-list" id="list-beta"></ul>
+      </div>
+
+      <!-- INCOMING -->
+      <div class="board-col reveal">
+        <div class="board-col-head">
+          <span class="board-pill pill-incoming">Incoming</span>
+          <span data-en style="font-weight:700;font-size:.86rem">Roadmap</span><span data-fr style="font-weight:700;font-size:.86rem">À venir</span>
+          <span class="cnt" id="cnt-inc">0</span>
+        </div>
+        <ul class="board-list" id="list-incoming"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section id="features">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-label" data-en>What's inside</div><div class="section-label" data-fr>Au menu</div>
+      <h2 data-en>Everything you need to read a CAN bus</h2><h2 data-fr>Tout pour analyser un bus CAN</h2>
+      <p class="section-sub" data-en>No account, no server, no subscription — every feature runs on your machine.</p>
+      <p class="section-sub" data-fr>Sans compte, sans serveur, sans abonnement — tout tourne sur votre machine.</p>
+    </div>
+    <div class="features-grid" id="features-grid"></div>
+  </div>
+</section>
+
+<!-- ── SCREENSHOTS ── -->
+<section id="screens">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <div class="section-label" data-en>Gallery</div><div class="section-label" data-fr>Galerie</div>
+      <h2 data-en>Real screenshots</h2><h2 data-fr>Vraies captures d'écran</h2>
+      <p class="section-sub" data-en>Captured on a live vcan0 bus. Click any image to enlarge.</p>
+      <p class="section-sub" data-fr>Capturées sur un bus vcan0 réel. Cliquez sur une image pour l'agrandir.</p>
+    </div>
+    <div class="features-grid" id="gallery"></div>
+  </div>
+</section>
+
+<!-- ── SUITE / LOOP ── -->
+<section id="suite">
+  <div class="wrap reveal">
+    <div class="loop">
+      <div class="section-label" data-en>Part of the ECU Studio Suite</div><div class="section-label" data-fr>Membre de l'ECU Studio Suite</div>
+      <h2 data-en>The flash → verify loop</h2><h2 data-fr>La boucle flash → vérification</h2>
+      <p class="section-sub" data-en>SocketSpy is a sub-program of the ECU Studio Suite. ECU Studio flashes a map onto an ECU — then SocketSpy confirms live on the CAN bus that the change took effect at the right operating point.</p>
+      <p class="section-sub" data-fr>SocketSpy est un sous-programme de l'ECU Studio Suite. ECU Studio flashe une cartographie sur un calculateur — puis SocketSpy confirme en direct sur le bus CAN que la modification a pris effet au bon point de fonctionnement.</p>
+
+      <div class="loop-flow">
+        <div class="loop-node studio"><b>ECU Studio</b><small data-en>Edit &amp; flash the map</small><small data-fr>Édite &amp; flashe la carte</small></div>
+        <span class="loop-arrow">→</span>
+        <div class="loop-node spy"><b>SocketSpy</b><small data-en>Watch the live signal</small><small data-fr>Observe le signal réel</small></div>
+        <span class="loop-arrow">→</span>
+        <div class="loop-node"><b data-en>Verified</b><b data-fr>Vérifié</b><small data-en>Right value, right point</small><small data-fr>Bonne valeur, bon point</small></div>
+      </div>
+
+      <div class="cta-row" style="justify-content:flex-start;margin-top:1.8rem">
+        <a class="btn btn-ghost" href="https://github.com/Poisson48/ecu_studio_suite">
+          <span data-en>Visit the Suite</span><span data-fr>Voir la Suite</span> →
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/Poisson48/SocketSpy/wiki">
+          <span data-en>Read the Wiki</span><span data-fr>Lire le Wiki</span> →
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DOWNLOAD ── -->
+<section id="download">
+  <div class="wrap reveal">
+    <div class="download-section">
+      <div class="dl-left">
+        <h2 data-en>Download SocketSpy</h2><h2 data-fr>Télécharger SocketSpy</h2>
+        <p data-en>Self-contained AppImage with Qt6 bundled. Runs on any x86_64 Linux with SocketCAN. No installation, no root required.</p>
+        <p data-fr>AppImage autonome avec Qt6 intégré. Fonctionne sur tout Linux x86_64 avec SocketCAN. Sans installation, sans root.</p>
+        <div class="dl-meta">
+          <div class="dl-pill"><span data-en>Version</span><span data-fr>Version</span> <b>0.8.7</b></div>
+          <div class="dl-pill"><span data-en>Size</span><span data-fr>Taille</span> <b>~29 MB</b></div>
+          <div class="dl-pill">Arch <b>x86_64</b></div>
+          <div class="dl-pill"><span data-en>License</span><span data-fr>Licence</span> <b>GPL-3.0</b></div>
+        </div>
+      </div>
+      <div class="dl-right">
+        <a class="btn btn-primary" href="https://github.com/Poisson48/SocketSpy/releases/latest" style="justify-content:center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-en>Download AppImage</span><span data-fr>Télécharger l'AppImage</span>
+        </a>
+        <div class="code-block mono">
+          <span class="c"># <span data-en>make it executable &amp; run</span><span data-fr>rendre exécutable &amp; lancer</span></span><br>
+          chmod +x SocketSpy-x86_64.AppImage<br>
+          ./SocketSpy-x86_64.AppImage
+        </div>
+        <a class="btn btn-ghost" href="https://github.com/Poisson48/SocketSpy" style="justify-content:center;font-size:.85rem">
+          <span data-en>Build from source</span><span data-fr>Compiler depuis les sources</span> →
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ADAPTERS ── -->
+<section id="adapters">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-label" data-en>Hardware</div><div class="section-label" data-fr>Matériel</div>
+      <h2 data-en>Works with any SocketCAN adapter</h2><h2 data-fr>Compatible avec tout adaptateur SocketCAN</h2>
+      <p class="section-sub" data-en>If the Linux kernel knows about it, SocketSpy detects it automatically.</p>
+      <p class="section-sub" data-fr>Si le noyau Linux le connaît, SocketSpy le détecte automatiquement.</p>
+    </div>
+    <div class="adapters-grid" id="adapters-grid"></div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/Poisson48/SocketSpy">GitHub</a>
+    <a href="https://github.com/Poisson48/SocketSpy/releases"><span data-en>Releases</span><span data-fr>Versions</span></a>
+    <a href="https://github.com/Poisson48/SocketSpy/wiki">Wiki</a>
+    <a href="https://github.com/Poisson48/ecu_studio_suite"><span data-en>ECU Studio Suite</span><span data-fr>ECU Studio Suite</span></a>
+    <a href="https://github.com/Poisson48/SocketSpy/blob/main/LICENSE">GPL-3.0</a>
+  </div>
+  <p data-en>SocketSpy — 100% local CAN bus analysis. No telemetry, no cloud.</p>
+  <p data-fr>SocketSpy — analyse de bus CAN 100% locale. Aucune télémétrie, aucun cloud.</p>
+  <p class="footer-note">Part of the ECU Studio Suite · Built on Linux SocketCAN</p>
+</footer>
+
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
+  <img id="lightbox-img" src="" alt="" />
+</div>
+
+<script>
+/* ── i18n ── */
+function setLang(l) {
+  document.documentElement.setAttribute('data-lang', l);
+  document.documentElement.setAttribute('lang', l);
+  document.getElementById('lang-en').classList.toggle('active', l === 'en');
+  document.getElementById('lang-fr').classList.toggle('active', l === 'fr');
+  try { localStorage.setItem('ss_lang', l); } catch (e) {}
+  renderDynamic();
+}
+const T = (en, fr) => document.documentElement.getAttribute('data-lang') === 'fr' ? fr : en;
+
+/* ── SHOWCASE PANELS ── */
+const panels = [
+  { src: 'screenshots/ss_monitor.png',   en: 'Monitor',   fr: 'Moniteur'   },
+  { src: 'screenshots/ss_simulator.png', en: 'Simulator', fr: 'Simulateur' },
+  { src: 'screenshots/ss_graph.png',     en: 'Graphs',    fr: 'Graphes'    },
+  { src: 'screenshots/ss_scripts.png',   en: 'Scripts',   fr: 'Scripts'    },
+  { src: 'screenshots/ss_protocols.png', en: 'Protocols', fr: 'Protocoles' },
+  { src: 'screenshots/ss_uds.png',       en: 'UDS',       fr: 'UDS'        },
+  { src: 'screenshots/ss_fuzzer.png',    en: 'Fuzzer',    fr: 'Fuzzer'     },
+  { src: 'screenshots/ss_diff.png',      en: 'Diff',      fr: 'Diff'       },
+  { src: 'screenshots/ss_transmit.png',  en: 'Transmit',  fr: 'Émission'   },
+  { src: 'screenshots/ss_detective.png', en: 'Detective', fr: 'Détective'  },
+];
+let current = 0, autoTimer = null;
+
+function renderTabs() {
+  const tabs = document.getElementById('panel-tabs');
+  tabs.innerHTML = '';
+  panels.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'panel-tab' + (i === current ? ' active' : '');
+    b.textContent = T(p.en, p.fr);
+    b.onclick = () => switchTo(i, true);
+    tabs.appendChild(b);
+  });
+}
 function switchTo(idx, fromUser) {
-  const img   = document.getElementById('showcase-img');
-  const tabs  = document.querySelectorAll('.panel-tab');
+  const img = document.getElementById('showcase-img');
   const title = document.querySelector('.mock-title');
   current = ((idx % panels.length) + panels.length) % panels.length;
   img.classList.add('fading');
   setTimeout(() => {
     img.src = panels[current].src;
-    img.alt = 'SocketSpy ' + panels[current].label + ' panel';
-    title.textContent = 'SocketSpy v0.8.4 — ' + panels[current].label;
-    tabs.forEach((b, i) => b.classList.toggle('active', i === current));
+    img.alt = 'SocketSpy ' + panels[current].en + ' panel';
+    title.textContent = 'SocketSpy v0.8.7 — ' + T(panels[current].en, panels[current].fr);
     img.classList.remove('fading');
-  }, 180);
-  if (fromUser) {
-    clearInterval(autoTimer);
-    autoTimer = setInterval(() => switchTo(current + 1, false), 5000);
-  }
+    renderTabs();
+  }, 170);
+  if (fromUser) { clearInterval(autoTimer); autoTimer = setInterval(() => switchTo(current + 1, false), 5500); }
 }
-
-function switchPanel(btn, src, label) {
-  const idx = panels.findIndex(p => p.src === src);
-  switchTo(idx, true);
-}
-
-// keyboard navigation
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') switchTo(current + 1, true);
   if (e.key === 'ArrowLeft')  switchTo(current - 1, true);
 });
-
-// auto-rotate every 5 s
-autoTimer = setInterval(() => switchTo(current + 1, false), 5000);
-
-// preload images
 panels.forEach(p => { const i = new Image(); i.src = p.src; });
 
-// count-up animation for stats
-function countUp(el, target, duration) {
-  let start = 0; const step = duration / target;
-  const t = setInterval(() => {
-    start++;
-    el.textContent = start;
-    if (start >= target) clearInterval(t);
-  }, step);
+/* ── STATUS BOARD DATA ── */
+const shipped = [
+  ['Live frame monitor','Moniteur de trames','2000-row buffer, search by ID, pause / clear, hardware timestamps.','Buffer de 2000 lignes, recherche par ID, pause / effacement, horodatage matériel.'],
+  ['DBC signal decode','Décodage DBC','Lossless round-trip DBC parser; decoded values appear inline.','Parseur DBC round-trip sans perte ; valeurs décodées en ligne.'],
+  ['Signal graphs','Graphes de signaux','Up to 8 live traces on a rolling 10-second QChart window.','Jusqu\'à 8 courbes sur une fenêtre QChart glissante de 10 s.'],
+  ['Frame transmit','Émission de trames','Standard / extended / FD frames, DLC 0–15, with validation.','Trames standard / étendues / FD, DLC 0–15, validées.'],
+  ['Protocol decoders','Décodeurs de protocoles','CANopen, J1939, ISO-TP, UDS, OBD-II, NMEA 2000.','CANopen, J1939, ISO-TP, UDS, OBD-II, NMEA 2000.'],
+  ['Lua 5.4 scripting','Scripts Lua 5.4','Sandboxed engine with watchdog, editor and live console.','Moteur sandboxé avec watchdog, éditeur et console live.'],
+  ['CAN simulator','Simulateur CAN','Generate realistic traffic without hardware; custom profiles.','Génère du trafic réaliste sans matériel ; profils personnalisés.'],
+  ['Claude MCP server','Serveur MCP Claude','JSON-RPC 2.0 over stdio / TCP (127.0.0.1), 11 tools.','JSON-RPC 2.0 via stdio / TCP (127.0.0.1), 11 outils.'],
+  ['io_uring capture','Capture io_uring','High-throughput pipeline, lock-free ring buffer, no drops.','Pipeline haut débit, ring buffer lock-free, zéro perte.'],
+  ['Frame fuzzer','Fuzzer de trames','Random / incremental / bit-flip injection with counter.','Injection aléatoire / incrémentale / bit-flip avec compteur.'],
+  ['UDS tester','Testeur UDS','ISO 14229 + ISO 15765-2: read/clear DTC, read ECU info.','ISO 14229 + ISO 15765-2 : lire/effacer DTC, infos ECU.'],
+  ['UDS ECU simulator','Simulateur ECU UDS','ISO-TP server + 10 UDS services, SecurityAccess, DIDs/DTCs.','Serveur ISO-TP + 10 services UDS, SecurityAccess, DIDs/DTCs.'],
+  ['BLF / MDF4 export','Export BLF / MDF4','Vector-compatible BLF v2 and asammdf / MATLAB MDF4 v4.10.','BLF v2 compatible Vector et MDF4 v4.10 asammdf / MATLAB.'],
+  ['Capture diff','Diff de captures','Diff two .log/.csv by ID: A only / B only / Changed / Same.','Diff de deux .log/.csv par ID : A / B / Modifié / Identique.'],
+  ['Multi-bus monitor','Moniteur multi-bus','Run two SocketCAN interfaces in parallel with a Bus column.','Deux interfaces SocketCAN en parallèle avec colonne Bus.'],
+  ['Detachable panels','Panneaux détachables','Icon sidebar; drag or detach any panel into a floating window.','Barre d\'icônes ; détachez un panneau en fenêtre flottante.'],
+  ['Signal Detective','Signal Detective','Auto-classify CAN IDs; wiggle test ranks changed signals.','Classe les IDs ; le wiggle test classe les signaux modifiés.'],
+  ['BLF / MDF / copy TSV','Copie TSV','Copy any cell, row or full table as TSV (Ctrl+C / right-click).','Copiez cellule, ligne ou table en TSV (Ctrl+C / clic droit).'],
+  ['French / English UI','Interface FR / EN','Full Qt i18n; language choice persists across sessions.','i18n Qt complet ; le choix de langue persiste entre sessions.'],
+];
+const beta = [
+  ['ELM327 / Bluetooth panel','Panneau ELM327 / Bluetooth','New: scan &amp; connect to ELM327 adapters over Bluetooth RFCOMM via Qt.','Nouveau : scan &amp; connexion aux adaptateurs ELM327 en Bluetooth RFCOMM via Qt.'],
+  ['Suite hub launcher','Lanceur du hub Suite','Launch SocketSpy from the ECU Studio Suite hub — works, still new.','Lance SocketSpy depuis le hub ECU Studio Suite — fonctionne, encore récent.'],
+  ['Flash → verify loop','Boucle flash → vérif','Live verification of an ECU Studio flash on the bus — early days.','Vérification live d\'un flash ECU Studio sur le bus — tout début.'],
+];
+const incoming = [
+  ['Deeper ECU Studio link','Lien ECU Studio poussé','Jump from a flashed map directly to the matching live signal.','Sauter d\'une carte flashée au signal live correspondant.'],
+  ['Shared operating-point sync','Sync du point de fonctionnement','Suite-wide RPM / load context shared between both apps.','Contexte RPM / charge partagé entre les deux applications.'],
+  ['More protocol decoders','Plus de décodeurs','XCP/CCP and extended diagnostics on the roadmap.','XCP/CCP et diagnostics étendus au programme.'],
+];
+
+function boardItem(arr, cls) {
+  const ico = cls === 'ship'
+    ? '<svg class="ic ic-ship" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+    : cls === 'beta'
+    ? '<svg class="ic ic-beta" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>'
+    : '<svg class="ic ic-inc" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  return arr.map(it => `<li>${ico}<span><strong>${T(it[0], it[1])}</strong><small>${T(it[2], it[3])}</small></span></li>`).join('');
 }
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      obs.unobserve(e.target);
-      countUp(document.getElementById('stat-panels'),    18, 900);
-      countUp(document.getElementById('stat-protocols'),  6, 600);
-      countUp(document.getElementById('stat-mcp'),        11, 700);
-    }
+
+/* ── FEATURE CARDS DATA (icon, en title, fr title, en desc, fr desc) ── */
+const featIcons = {
+  monitor:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+  dbc:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>',
+  graph:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>',
+  tx:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+  proto:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+  lua:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+  sim:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="16" cy="11" r="1"/><circle cx="18" cy="13" r="1"/></svg>',
+  mcp:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>',
+  fuzz:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  uds:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  diff:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="18" x2="21" y2="18"/></svg>',
+  detect:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+};
+const features = [
+  ['monitor','Live Frame Monitor','Moniteur de trames','Real-time scrolling table, 2000-row buffer, search by ID, pause/clear, hardware timestamps via io_uring.','Table défilante temps réel, buffer 2000 lignes, recherche par ID, pause/effacement, horodatage matériel via io_uring.'],
+  ['dbc','DBC Signal Decoding','Décodage DBC','Load a <code>.dbc</code> file and decoded values appear inline. Lossless round-trip parser (BU_, BO_, SG_, VAL_).','Chargez un <code>.dbc</code> et les valeurs décodées s\'affichent en ligne. Parseur round-trip sans perte (BU_, BO_, SG_, VAL_).'],
+  ['graph','Signal Graphs','Graphes de signaux','Up to 8 live traces on a rolling 10-second QChart window — voltages, temperatures, speeds in real time.','Jusqu\'à 8 courbes sur une fenêtre QChart glissante de 10 s — tensions, températures, vitesses en temps réel.'],
+  ['tx','Frame Transmit','Émission de trames','Send standard, extended or FD frames (DLC 0–15, 64 bytes) with input validation. Ideal for probing ECU responses.','Envoyez des trames standard, étendues ou FD (DLC 0–15, 64 octets) validées. Idéal pour sonder les réponses d\'un ECU.'],
+  ['proto','Protocol Decoders','Décodeurs de protocoles','Live tab decoding CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II and NMEA 2000 as frames arrive.','Onglet live décodant CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II et NMEA 2000 au fil des trames.'],
+  ['lua','Lua 5.4 Scripting','Scripts Lua 5.4','In-app editor with Run/Stop and live console. Sandboxed engine with watchdog; CAN, SDO and log APIs built in.','Éditeur intégré Run/Stop avec console live. Moteur sandboxé avec watchdog ; APIs CAN, SDO et log incluses.'],
+  ['sim','CAN Simulator','Simulateur CAN','Generate realistic CAN traffic without hardware. Built-in vehicle profiles or custom profiles from the UI.','Générez du trafic CAN réaliste sans matériel. Profils véhicule intégrés ou personnalisés depuis l\'interface.'],
+  ['mcp','Claude MCP Server','Serveur MCP Claude','JSON-RPC 2.0 over stdio or TCP (127.0.0.1) exposing 11 tools to Claude Desktop and Claude Code.','JSON-RPC 2.0 via stdio ou TCP (127.0.0.1) exposant 11 outils à Claude Desktop et Claude Code.'],
+  ['fuzz','Frame Fuzzer','Fuzzer de trames','Inject random, incremental or bit-flip frames at a configurable interval. Per-run frame counter included.','Injectez des trames aléatoires, incrémentales ou bit-flip à intervalle réglable. Compteur de trames par session.'],
+  ['uds','UDS Tester + ECU Sim','Testeur UDS + Sim ECU','ISO 14229 + ISO 15765-2: read/clear DTC, read ECU info — plus a full UDS ECU simulator with SecurityAccess.','ISO 14229 + ISO 15765-2 : lire/effacer DTC, infos ECU — plus un simulateur ECU UDS complet avec SecurityAccess.'],
+  ['diff','Capture Diff','Diff de captures','Compare two captures (.log/.csv) grouped by ID — A only, B only, Changed, Same — with byte-level deltas.','Comparez deux captures (.log/.csv) groupées par ID — A, B, Modifié, Identique — avec deltas par octet.'],
+  ['detect','Signal Detective','Signal Detective','Auto-classify CAN IDs by rate and type. Wiggle test captures a baseline, then ranks the top changed signals.','Classe les IDs par cadence et type. Le wiggle test capture une base puis classe les signaux les plus modifiés.'],
+];
+
+/* ── GALLERY DATA ── */
+const gallery = [
+  ['ss_welcome.png','Welcome screen','Écran d\'accueil'],
+  ['ss_monitor.png','Live monitor','Moniteur live'],
+  ['ss_simulator.png','CAN simulator','Simulateur CAN'],
+  ['ss_graph.png','Signal graphs','Graphes de signaux'],
+  ['ss_scripts.png','Lua scripts','Scripts Lua'],
+  ['ss_protocols.png','Protocol decoders','Décodeurs de protocoles'],
+  ['ss_uds.png','UDS tester','Testeur UDS'],
+  ['ss_fuzzer.png','Frame fuzzer','Fuzzer de trames'],
+  ['ss_diff.png','Capture diff','Diff de captures'],
+  ['ss_transmit.png','Frame transmit','Émission de trames'],
+  ['ss_detective.png','Signal Detective','Signal Detective'],
+];
+
+/* ── ADAPTERS DATA ── */
+const adapters = [
+  ['CANable 2.0 / Pro','gs_usb'],
+  ['Seeed USB-CAN','gs_usb'],
+  ['PEAK PCAN-USB / FD','peak_usb'],
+  ['Kvaser Leaf / USBcan','kvaser_usb'],
+  ['Ixxat USB-to-CAN','ixxat_usb2can'],
+  ['ELM327 (Bluetooth)','rfcomm'],
+];
+const adapterDesc = ['Virtual vcan0','Virtuel vcan0','No hardware needed — test locally','Aucun matériel requis — test local'];
+
+/* ── RENDER ── */
+function renderDynamic() {
+  document.getElementById('list-shipped').innerHTML   = boardItem(shipped, 'ship');
+  document.getElementById('list-beta').innerHTML      = boardItem(beta, 'beta');
+  document.getElementById('list-incoming').innerHTML  = boardItem(incoming, 'inc');
+  document.getElementById('cnt-beta').textContent     = beta.length;
+  document.getElementById('cnt-inc').textContent      = incoming.length;
+
+  document.getElementById('features-grid').innerHTML = features.map(f =>
+    `<div class="feat-card"><div class="feat-icon">${featIcons[f[0]]}</div><h3>${T(f[1], f[2])}</h3><p>${T(f[3], f[4])}</p></div>`
+  ).join('');
+
+  document.getElementById('gallery').innerHTML = gallery.map(g => {
+    const cap = T(g[1], g[2]);
+    return `<div class="feat-card" style="padding:0;overflow:hidden;cursor:zoom-in" onclick="openLightbox('screenshots/${g[0]}','${cap.replace(/'/g,"\\'")}')">
+      <img src="screenshots/${g[0]}" alt="${cap}" loading="lazy" style="width:100%;display:block;aspect-ratio:16/10;object-fit:cover;object-position:top;border-bottom:1px solid var(--border)"/>
+      <div style="padding:.7rem 1rem;font-size:.82rem;font-weight:600;color:var(--text)">${cap}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('adapters-grid').innerHTML =
+    adapters.map(a => `<div class="adapter-card"><h4>${a[0]}</h4><p class="drv mono">${a[1]} driver</p></div>`).join('') +
+    `<div class="adapter-card"><h4>${T(adapterDesc[0], adapterDesc[1])}</h4><p>${T(adapterDesc[2], adapterDesc[3])}</p></div>`;
+
+  renderTabs();
+  const title = document.querySelector('.mock-title');
+  if (title) title.textContent = 'SocketSpy v0.8.7 — ' + T(panels[current].en, panels[current].fr);
+}
+
+function openLightbox(src, alt) {
+  const lb = document.getElementById('lightbox');
+  const im = document.getElementById('lightbox-img');
+  im.src = src; im.alt = alt; lb.classList.add('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('open'); });
+
+/* ── count-up ── */
+function countUp(el) {
+  const target = parseInt(el.getAttribute('data-count'), 10);
+  if (isNaN(target)) return;
+  let n = 0; const step = Math.max(20, 900 / target);
+  const t = setInterval(() => { n++; el.textContent = n; if (n >= target) clearInterval(t); }, step);
+}
+
+/* ── reveal + stats observers ── */
+const revObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); revObs.unobserve(e.target); } });
+}, { threshold: 0.12 });
+
+window.addEventListener('DOMContentLoaded', () => {
+  try { const saved = localStorage.getItem('ss_lang'); if (saved) setLang(saved); else renderDynamic(); }
+  catch (e) { renderDynamic(); }
+
+  document.querySelectorAll('.reveal').forEach(el => revObs.observe(el));
+
+  const statObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        statObs.unobserve(e.target);
+        document.querySelectorAll('.stat-num[data-count]').forEach(countUp);
+      }
+    });
   });
+  const stats = document.querySelector('.stats');
+  if (stats) statObs.observe(stats);
+
+  autoTimer = setInterval(() => switchTo(current + 1, false), 5500);
 });
-obs.observe(document.querySelector('.live-stats'));
 </script>
-
-<!-- ── FEATURES ──────────────────────────────────────────────────── -->
-<section id="features">
-  <div class="section-label">What's inside</div>
-  <h2>Everything you need to analyse a CAN bus</h2>
-  <p class="section-sub">No account, no server, no subscription. Everything runs on your machine.</p>
-
-  <div class="features-grid">
-
-    <div class="feat-card">
-      <div class="feat-icon">📡</div>
-      <h3>Live Frame Monitor</h3>
-      <p>Real-time scrolling table with 2000-row buffer. Search by ID, pause, clear. Hardware timestamps via io_uring.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">📄</div>
-      <h3>DBC Signal Decoding</h3>
-      <p>Load a <code>.dbc</code> file and decoded signal values appear inline in the frame table. Full round-trip lossless parser — VERSION, BU_, BO_, SG_, VAL_, CM_.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">📈</div>
-      <h3>Signal Graphs</h3>
-      <p>Up to 8 live traces on a rolling 10-second QChart window. Watch voltages, temperatures and speeds in real time.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">📤</div>
-      <h3>Frame Transmit</h3>
-      <p>Send standard, extended or FD frames (DLC 0–15, 64 bytes) with input validation. Perfect for testing ECU responses.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🔌</div>
-      <h3>Interface Auto-detect</h3>
-      <p>Scans <code>/sys/class/net</code> for all ARPHRD_CAN interfaces. Hot-swap adapters without restarting the app.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🧩</div>
-      <h3>Protocol Decoders</h3>
-      <p>Live in-app tab decoding CANopen NMT/SDO/PDO/EMCY, J1939, ISO-TP, UDS, OBD-II and NMEA 2000 as frames arrive.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🌙</div>
-      <h3>Lua 5.4 Scripting</h3>
-      <p>In-app editor with Run/Stop and live output console. Sandboxed Lua engine with watchdog. CAN, SDO and log APIs built in.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🎮</div>
-      <h3>CAN Simulator</h3>
-      <p>Generate realistic CAN traffic without hardware. Built-in vehicle profiles or create custom profiles from the UI — signals, periods and DLC all configurable.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🤖</div>
-      <h3>Claude MCP Integration</h3>
-      <p>JSON-RPC 2.0 server (stdio or TCP on 127.0.0.1) exposing 11 tools to Claude Desktop and Claude Code. Ask Claude to decode frames, send commands, or run scripts.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">⚡</div>
-      <h3>io_uring Capture</h3>
-      <p>High-throughput frame capture pipeline with hardware timestamps and a lock-free SPSC ring buffer — no frames dropped at high bus loads.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🎯</div>
-      <h3>Frame Fuzzer</h3>
-      <p>Inject random, incremental or bit-flip CAN frames at a configurable interval from the Fuzzer tab. Per-run frame counter tracks how many frames were sent.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🔧</div>
-      <h3>UDS Tester</h3>
-      <p>ISO 14229 + ISO 15765-2 transport layer built in. Read DTC (0x19), Clear DTC (0x14), Read ECU Info via 0x22 — VIN, serial number and active session. Live session indicator.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">💾</div>
-      <h3>BLF / MDF4 Export</h3>
-      <p>File → "Export BLF..." produces a Vector CANalyzer-compatible BLF v2 file. "Export MDF4..." produces an asammdf / MATLAB-compatible MDF4 v4.10 file.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🔍</div>
-      <h3>Capture Diff</h3>
-      <p>Compare two CAN captures (.log or .csv) in the Diff tab. Results grouped by ID: A only, B only, Changed, Same. Byte-level delta and ID filter included.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🚌</div>
-      <h3>Multi-bus Monitor</h3>
-      <p>Tools → "+ Add Second Bus..." opens a second SocketCAN interface alongside the first. A "Bus" column in the Monitor lets you tell frame sources apart at a glance.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🪟</div>
-      <h3>Detachable Panels</h3>
-      <p>Icon sidebar replaces the old 22-tab scroll bar. Drag any panel — or right-click → Detach — to float it as an independent window. The Redock button snaps it back instantly.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🔬</div>
-      <h3>Signal Detective</h3>
-      <p>Auto-classify every live CAN ID by update rate (slow / medium / fast) and signal type (digital / analog / constant / counter) using pure heuristics. Wiggle test: capture baseline, perform a physical action, then rank the top 30 changed signals by score.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🖥️</div>
-      <h3>UDS ECU Simulator</h3>
-      <p>Full ISO-TP server + UDS responder (services 0x10 / 0x11 / 0x14 / 0x19 / 0x22 / 0x27 / 0x28 / 0x2E / 0x31 / 0x3E), SecurityAccess seed/key, configurable DIDs and DTCs. Test your UDS client without real hardware.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">📋</div>
-      <h3>Copy to Clipboard</h3>
-      <p>Ctrl+C or right-click on any table to copy a single cell, the selected rows, or the full table as TSV — paste straight into Excel or a terminal.</p>
-    </div>
-
-    <div class="feat-card">
-      <div class="feat-icon">🌐</div>
-      <h3>French / English UI</h3>
-      <p>Full Qt i18n via .ts files. Switch between French and English from the settings menu — your choice persists across sessions.</p>
-    </div>
-
-  </div>
-</section>
-
-<!-- ── DOWNLOAD ───────────────────────────────────────────────────── -->
-<section id="download" style="padding-top:0">
-  <div class="download-section">
-    <div class="dl-left">
-      <h2>Download SocketSpy</h2>
-      <p>Self-contained AppImage — Qt6 fully bundled. Runs on any x86_64 Linux with SocketCAN support. No installation, no root required.</p>
-      <div class="dl-meta">
-        <div class="dl-pill">Version <span>0.8.4</span></div>
-        <div class="dl-pill">Size <span>~29 MB</span></div>
-        <div class="dl-pill">Arch <span>x86_64</span></div>
-        <div class="dl-pill">License <span>GPL-3.0</span></div>
-      </div>
-    </div>
-    <div class="dl-right">
-      <a class="btn btn-primary" href="https://github.com/Poisson48/SocketSpy/releases/latest" style="justify-content:center">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download AppImage
-      </a>
-      <div class="code-block">chmod +x SocketSpy-x86_64.AppImage<br>./SocketSpy-x86_64.AppImage</div>
-      <a class="btn btn-ghost" href="https://github.com/Poisson48/SocketSpy" style="justify-content:center;font-size:.85rem">Build from source →</a>
-    </div>
-  </div>
-</section>
-
-<!-- ── ADAPTERS ───────────────────────────────────────────────────── -->
-<section id="adapters">
-  <div class="section-label">Hardware</div>
-  <h2>Works with any SocketCAN adapter</h2>
-  <p class="section-sub">If the Linux kernel knows about it, SocketSpy will detect it automatically.</p>
-
-  <div class="adapters-grid">
-    <div class="adapter-card">
-      <h4>CANable 2.0 / Pro</h4>
-      <p>gs_usb driver</p>
-    </div>
-    <div class="adapter-card">
-      <h4>Seeed USB-CAN</h4>
-      <p>gs_usb driver</p>
-    </div>
-    <div class="adapter-card">
-      <h4>PEAK PCAN-USB / FD</h4>
-      <p>peak_usb driver</p>
-    </div>
-    <div class="adapter-card">
-      <h4>Kvaser Leaf / USBcan</h4>
-      <p>kvaser_usb driver</p>
-    </div>
-    <div class="adapter-card">
-      <h4>Ixxat USB-to-CAN</h4>
-      <p>ixxat_usb2can driver</p>
-    </div>
-    <div class="adapter-card">
-      <h4>Virtual vcan0</h4>
-      <p>No hardware needed — test locally</p>
-    </div>
-  </div>
-</section>
-
-<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
-<footer>
-  <div class="footer-links">
-    <a href="https://github.com/Poisson48/SocketSpy">GitHub</a>
-    <a href="https://github.com/Poisson48/SocketSpy/releases">Releases</a>
-    <a href="https://github.com/Poisson48/SocketSpy/wiki">Documentation</a>
-    <a href="https://github.com/Poisson48/SocketSpy/blob/main/LICENSE">GPL-3.0 License</a>
-  </div>
-  <p>SocketSpy — 100% local, no telemetry, no cloud.</p>
-</footer>
 
 </body>
 </html>

@@ -60,6 +60,11 @@
     <message><source>XCP</source><translation>XCP</translation></message>
     <message><source>DoIP</source><translation>DoIP</translation></message>
     <message><source>OpenDBC</source><translation>OpenDBC</translation></message>
+    <message><source>BusLoad</source><translation>Charge</translation></message>
+    <message><source>Errors</source><translation>Erreurs</translation></message>
+    <message><source>Validate</source><translation>Valider</translation></message>
+    <message><source>TimedRep</source><translation>RejeuT</translation></message>
+    <message><source>Verify</source><translation>Verifier</translation></message>
     <message><source>Statistics</source><translation>Statistiques</translation></message>
     <message><source>OBD2/BT</source><translation>OBD2/BT</translation></message>
     <message><source>Interface: </source><translation>Interface : </translation></message>

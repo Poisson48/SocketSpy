@@ -51,6 +51,11 @@ class SignalDetectivePanel;
 class XcpPanel;
 class DoipPanel;
 class OpenDbcPanel;
+class BusLoadDashboardPanel;
+class ErrorDiagPanel;
+class SignalValidatorPanel;
+class TimedReplayPanel;
+class VerifySignalPanel;
 class SidebarNav;
 
 class MainWindow : public QMainWindow {
@@ -148,6 +153,11 @@ private:
     XcpPanel*            m_xcpPanel{nullptr};
     DoipPanel*           m_doipPanel{nullptr};
     OpenDbcPanel*        m_openDbcPanel{nullptr};
+    BusLoadDashboardPanel* m_busLoadDash{nullptr};
+    ErrorDiagPanel*        m_errorDiag{nullptr};
+    SignalValidatorPanel*  m_signalValidator{nullptr};
+    TimedReplayPanel*      m_timedReplay{nullptr};
+    VerifySignalPanel*     m_verifySignal{nullptr};
 
     CanCapture*          m_capture{nullptr};
     CanCapture*          m_capture2{nullptr};  // optional second bus

@@ -38,6 +38,7 @@ if(_api_ok)
         src/mcp/tools/canopen_scan.cpp
         src/mcp/tools/can_diff.cpp
         src/mcp/tools/get_stats.cpp
+        src/mcp/tools/verify_signal.cpp
     )
     target_include_directories(apilib
         PUBLIC  include
